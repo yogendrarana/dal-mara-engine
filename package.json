@@ -1,0 +1,39 @@
+{
+	"name": "dal-mara-engine",
+	"version": "0.1.0",
+	"type": "module",
+	"private": false,
+	"description": "Pure deterministic game engine and notation system for Dal Mara",
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		}
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"build": "tsup && tsc --emitDeclarationOnly",
+		"typecheck": "tsc --noEmit",
+		"format": "biome format --write .",
+		"check": "biome check --write .",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"prepublishOnly": "bun run build && bun run test"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.5.8",
+		"tsup": "^8.5.1",
+		"typescript": "^7.0.0",
+		"vitest": "^3.0.7"
+	}
+}
