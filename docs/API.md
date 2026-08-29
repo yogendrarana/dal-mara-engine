@@ -103,7 +103,7 @@ game.winnerId; // string | null
 import { getLegalMoves, getLegalMoves4P, getLegalMoves2P } from "dal-mara-engine";
 
 const legalMoves = game.getLegalMoves(game.currentPlayer.id);
-// returns: LegalPlayableCard[]: { card: Card, fromStackIndex?: number, stackId?: string }
+// returns: LegalPlayableCard[]: { card: Card, stackPosition?: number, stackId?: string }
 ```
 
 ### Ghopte Phase Rules:
@@ -120,7 +120,7 @@ game.playCard({
   playerId: "p1",
   cardId: "As",
   stackId: "stack-0", // optional (for 2P stack play)
-  fromStackIndex: 0, // optional (for 2P stack play)
+  stackPosition: 0, // optional (for 2P stack play)
 });
 ```
 
@@ -142,14 +142,19 @@ game.pickupTurupCard({
 
 ---
 
-# Dal Mara Notation (DMN) - FEN Equivalent
+# Dal Mara Notation (DMN) - DMN1 Format
 
-DMN is a compact string format capturing the exact game state.
+DMN is a compact space-separated string format capturing the exact game state snapshot.
+
+**Format**:
+```
+DMN1 <Mode> <DealerPosition> <Trick> <TrickPlay> <TrickLeaderPosition> <NextTrickLeaderPosition> <PlayedBy> <IsGhopte> <IsTurup> <CardPlayed>
+```
 
 ```ts
 // Export DMN
 const dmnStr = game.toDMN();
-// Example: "v1/4P/PLAYING/D:0,T:1/TR:h/P0:Ah,Kh|P1:2s,3s|.../-/.../..."
+// Example: "DMN1 4 0 1 1 0 1 0 0 0 AS"
 
 // Restore from DMN
 const restoredGame = Engine.fromDMN(dmnStr);

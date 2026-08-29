@@ -1,19 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { Engine } from "../src/engine";
+import { createDeck, Game } from "../src";
+
+const deck = createDeck();
 
 describe("2-Player Game Mode", () => {
 	it("should initialize 2-player deal, turup declaration, and stack setup", () => {
-		const game = Engine.createGame({
+		const game = Game.create({
 			id: "game-2p",
 			mode: "2P",
 			seed: 777,
+			dealerId: "p1",
 			players: [
-				{ id: "p1", name: "Alice" },
-				{ id: "p2", name: "Bob" },
+				{ id: "p1", name: "Alice", position: 0, team: "p1" },
+				{ id: "p2", name: "Bob", position: 1, team: "p2" },
 			],
-		});
+		}) as Game;
 
-		const startRes = game.start();
+		const startRes = game.start(deck);
 		expect(startRes.success).toBe(true);
 		expect(game.phase).toBe("TURUP_DECLARATION");
 

@@ -29,13 +29,13 @@ const game = Engine.createGame({
   id: "game-101",
   mode: "4P",
   seed: 42,
-  players: [
-    { id: "p1", name: "Alice" },
-    { id: "p2", name: "Bob" },
-    { id: "p3", name: "Charlie" },
-    { id: "p4", name: "Dave" },
-  ],
   dealerId: "p1",
+  players: [
+    { id: "p1", name: "Alice", position: 0 },
+    { id: "p2", name: "Bob", position: 1 },
+    { id: "p3", name: "Charlie", position: 2 },
+    { id: "p4", name: "Dave", position: 3 },
+  ],
 });
 
 // Start the game
@@ -53,9 +53,9 @@ if (activePlayer) {
   });
 }
 
-// Export FEN snapshot (Dal Mara Notation)
+// Export Dal Mara Notation (DMN)
 const dmnStr = game.toDMN();
-console.log(dmnStr); // e.g. "v1/4P/PLAYING/D:0,T:1/TR:NONE/P0:...|P1:.../-/.../..."
+console.log(dmnStr); // e.g. "DMN1 4 0 1 1 0 1 0 0 0 AS"
 
 // Restore game snapshot from DMN
 const restoredGame = Engine.fromDMN(dmnStr);

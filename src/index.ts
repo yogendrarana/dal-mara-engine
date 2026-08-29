@@ -1,27 +1,38 @@
-export { Game } from "./game";
-export { Engine } from "./engine";
+export { Game } from "./engine/game";
+export { Engine } from "./engine/engine";
 
 // types and constants
 export * from "./types/index";
+export * from "./core/constants";
+export * from "./core/errors";
 
 // apis
 export {
 	createCard,
 	createDeck,
 	compareCardRanks,
-} from "./cards/deck";
+} from "./core/deck";
+
 export {
 	getLegalMoves,
 	getLegalMoves4P,
 	getLegalMoves2P,
-} from "./legal-moves/index";
-export { mulberry32, shuffleDeck } from "./cards/shuffle";
-export { exportReplay, playReplay } from "./replay/index";
-export { serializeState, deserializeState } from "./serializers/index";
-export { exportToDMN, importFromDMN, cardToDMN, dmnToCard } from "./dmn/index";
+} from "./core/legal-moves";
+
+export { gameReducer4P } from "./core/reducers/four-player";
+export { gameReducer2P } from "./core/reducers/two-player";
+
+export { mulberry32, shuffleDeck } from "./core/shuffle";
+export { exportReplay, playReplay, type ReplayData } from "./engine/replay";
+export { serializeState, deserializeState } from "./engine/serializers";
 export {
-	createInitialState,
-	gameReducer,
-	gameReducer4P,
-	gameReducer2P,
-} from "./reducers/index";
+	exportToDMN,
+	importFromDMN,
+	cardToDMN,
+	dmnToCard,
+	type DMNState,
+} from "./engine/dmn";
+export {
+	validateAction,
+	validateCreateGame,
+} from "./core/validators";

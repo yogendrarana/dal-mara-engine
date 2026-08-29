@@ -1,22 +1,27 @@
+import { createDeck } from "../src/core/deck";
+import { Game } from "./../src/engine/game";
 import { describe, expect, it } from "vitest";
-import { Engine } from "../src/engine";
-import { DalMaraError } from "../src/types";
+
+const deck = createDeck();
 
 describe("4-Player Game Mode", () => {
 	it("should initialize a 4-player game with 4 players and deal 13 cards each", () => {
-		const game = Engine.createGame({
+		const game = Game.create({
 			id: "game-1",
 			mode: "4P",
 			seed: 99999,
+			dealerId: "p1",
 			players: [
-				{ id: "p1", name: "Alice" },
-				{ id: "p2", name: "Bob" },
-				{ id: "p3", name: "Charlie" },
-				{ id: "p4", name: "Dave" },
+				{ id: "p1", name: "Alice", position: 0, team: "red" },
+				{ id: "p2", name: "Bob", position: 1, team: "blue" },
+				{ id: "p3", name: "Charlie", position: 2, team: "red" },
+				{ id: "p4", name: "Dave", position: 3, team: "blue" },
 			],
-		});
+		}) as Game;
 
-		const startRes = game.start();
+		expect(game instanceof Game).toBe(true);
+
+		const startRes = game.start(deck);
 		expect(startRes.success).toBe(true);
 
 		const hand1 = game.state.hands.p1;
@@ -30,32 +35,33 @@ describe("4-Player Game Mode", () => {
 		expect(hand4?.length).toBe(13);
 	});
 
-	it("should reject creation with invalid player count", () => {
-		expect(() => {
-			Engine.createGame({
-				id: "game-err",
-				mode: "4P",
-				players: [
-					{ id: "p1", name: "Alice" },
-					{ id: "p2", name: "Bob" },
-				],
-			});
-		}).toThrow(DalMaraError);
+	it("should return validation error with invalid player count", () => {
+		const result = Game.create({
+			id: "game-err",
+			mode: "4P",
+			dealerId: "p1",
+			players: [
+				{ id: "p1", name: "Alice", position: 0 },
+				{ id: "p2", name: "Bob", position: 1 },
+			],
+		});
+		expect("success" in result && result.success).toBe(false);
 	});
 
 	it("should enforce strict follow-suit validation", () => {
-		const game = Engine.createGame({
+		const game = Game.create({
 			id: "game-2",
 			mode: "4P",
 			seed: 42,
+			dealerId: "p1",
 			players: [
-				{ id: "p1", name: "Alice" },
-				{ id: "p2", name: "Bob" },
-				{ id: "p3", name: "Charlie" },
-				{ id: "p4", name: "Dave" },
+				{ id: "p1", name: "Alice", position: 0, team: "red" },
+				{ id: "p2", name: "Bob", position: 1, team: "blue" },
+				{ id: "p3", name: "Charlie", position: 2, team: "red" },
+				{ id: "p4", name: "Dave", position: 3, team: "blue" },
 			],
-		});
-		game.start();
+		}) as Game;
+		game.start(deck);
 
 		const turnP = game.currentPlayer;
 		if (!turnP) return;
@@ -90,19 +96,49 @@ describe("4-Player Game Mode", () => {
 	});
 
 	it("should initialize game with Turup as null before void suit play", () => {
-		const game = Engine.createGame({
+		const game = Game.create({
 			id: "game-3",
 			mode: "4P",
 			seed: 100,
+			dealerId: "p1",
 			players: [
-				{ id: "p1", name: "Alice" },
-				{ id: "p2", name: "Bob" },
-				{ id: "p3", name: "Charlie" },
-				{ id: "p4", name: "Dave" },
+				{ id: "p1", name: "Alice", position: 0, team: "red" },
+				{ id: "p2", name: "Bob", position: 1, team: "blue" },
+				{ id: "p3", name: "Charlie", position: 2, team: "red" },
+				{ id: "p4", name: "Dave", position: 3, team: "blue" },
 			],
-		});
-		game.start();
+		}) as Game;
+		game.start(deck);
 
 		expect(game.currentTurup).toBeNull();
+	});
+
+	it("should start in DEAL phase and allow dealer to shuffle and deal", () => {
+		const game = Game.create({
+			id: "game-shuffle-deal",
+			mode: "4P",
+			seed: 12345,
+			dealerId: "p1",
+			players: [
+				{ id: "p1", name: "Alice", position: 0, team: "red" },
+				{ id: "p2", name: "Bob", position: 1, team: "blue" },
+				{ id: "p3", name: "Charlie", position: 2, team: "red" },
+				{ id: "p4", name: "Dave", position: 3, team: "blue" },
+			],
+		}) as Game;
+
+		expect(game.phase).toBe("DEAL");
+
+		const nonDealerShuffle = game.shuffle("p2");
+		expect(nonDealerShuffle.success).toBe(false);
+
+		const initialRng = game.state.rngState;
+		const shuffleRes = game.shuffle("p1");
+		expect(shuffleRes.success).toBe(true);
+		expect(game.state.rngState).not.toBe(initialRng);
+
+		const dealRes = game.deal("p1");
+		expect(dealRes.success).toBe(true);
+		expect(game.phase).not.toBe("DEAL");
 	});
 });

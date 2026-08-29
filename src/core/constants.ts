@@ -1,0 +1,94 @@
+export const GAME_MODES = {
+	FOUR_PLAYER: "4P",
+	TWO_PLAYER: "2P",
+} as const;
+
+export const SUITS = {
+	SPADES: "spades",
+	HEARTS: "hearts",
+	DIAMONDS: "diamonds",
+	CLUBS: "clubs",
+} as const;
+
+export const RANKS = {
+	TWO: "2",
+	THREE: "3",
+	FOUR: "4",
+	FIVE: "5",
+	SIX: "6",
+	SEVEN: "7",
+	EIGHT: "8",
+	NINE: "9",
+	TEN: "10",
+	JACK: "J",
+	QUEEN: "Q",
+	KING: "K",
+	ACE: "A",
+} as const;
+
+export const GAME_PHASES = {
+	DEAL: "DEAL",
+	TURUP_DECLARATION: "TURUP_DECLARATION", // 2P mode only
+	GHOPTE: "GHOPTE", // 4P mode only
+	PLAYING: "PLAYING",
+	END: "END",
+} as const;
+
+// Ghopte resolution order:
+// "daler last is the default value"
+export const GHOPTE_RESOLUTION_ORDER = {
+	DEALER_FIRST: "dealer_first",
+	DEALER_LAST: "dealer_last",
+} as const;
+
+export const ACTION_TYPES = {
+	SHUFFLE: "SHUFFLE",
+	DEAL: "DEAL",
+	DECLARE_TURUP: "DECLARE_TURUP",
+	PICKUP_TURUP_CARD: "PICKUP_TURUP_CARD",
+	PLAY_CARD: "PLAY_CARD",
+	PLAY_GHOPTE: "PLAY_GHOPTE",
+} as const;
+
+export const ENGINE_ERROR_CODES = {
+	// game creation / configuration
+	INVALID_GAME_ID: "INVALID_GAME_ID",
+	INVALID_MODE: "INVALID_MODE",
+	INVALID_PLAYER_COUNT: "INVALID_PLAYER_COUNT",
+	INVALID_PLAYERS: "INVALID_PLAYERS",
+	INVALID_DEALER: "INVALID_DEALER",
+	INVALID_CONFIGURATION: "INVALID_CONFIGURATION",
+
+	// game state / phase
+	INVALID_PHASE: "INVALID_PHASE",
+	GAME_FULL: "GAME_FULL",
+	GAME_ALREADY_STARTED: "GAME_ALREADY_STARTED",
+	GAME_ALREADY_FINISHED: "GAME_ALREADY_FINISHED",
+
+	// players
+	PLAYER_NOT_FOUND: "PLAYER_NOT_FOUND",
+	NOT_PLAYER_TURN: "NOT_PLAYER_TURN",
+
+	// stack
+	STACK_NOT_FOUND: "STACK_NOT_FOUND",
+
+	// cards
+	CARD_NOT_OWNED: "CARD_NOT_OWNED",
+	MUST_FOLLOW_SUIT: "MUST_FOLLOW_SUIT",
+	INVALID_CARD: "INVALID_CARD",
+
+	// turup
+	INVALID_TURUP_DECLARATION: "INVALID_TURUP_DECLARATION",
+
+	// ghopte
+	INVALID_GHOPTE_SUBMISSION: "INVALID_GHOPTE_SUBMISSION",
+
+	// dmn
+	INVALID_DMN: "INVALID_DMN",
+
+	// serializers
+	INVALID_SERIALIZATION: "INVALID_SERIALIZATION",
+
+	// generic
+	INVALID_ACTION: "INVALID_ACTION",
+} as const;

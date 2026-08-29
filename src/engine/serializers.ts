@@ -1,4 +1,5 @@
-import { DalMaraError, type GameState } from "../types/index";
+import { DalMaraError } from "../core/errors";
+import type { GameState } from "../types/index";
 
 export interface SerializedGameData {
 	readonly version: string;
@@ -19,10 +20,7 @@ export function deserializeState(json: string): GameState {
 	try {
 		const parsed = JSON.parse(json) as SerializedGameData;
 		if (!parsed?.state) {
-			throw new DalMaraError(
-				"Invalid serialized game state JSON: missing 'state' field",
-				"INVALID_SERIALIZATION",
-			);
+			throw new DalMaraError("Invalid serialized game state JSON: missing 'state' field", "INVALID_SERIALIZATION");
 		}
 		return parsed.state;
 	} catch (e) {

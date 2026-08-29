@@ -167,7 +167,38 @@ Afterwards, the winner of each trick starts the next trick.
 
 ---
 
-# 8. Playing a Trick
+# 8. Ghopte
+
+Before the first trick begins, every player examines their hand.
+
+If a player has exactly **one card of a suit**, and that card is the **10**, a special round called **Ghopte** begins.
+
+Example
+
+Player owns ♦10 but no other Diamonds.
+
+Ghopte is declared for that player.
+
+Note that there can be multiple Ghopte declarations for all players who satisfies the condition. Same player can have multiple Ghopte declarations if he has multiple 10s with no other cards of that suit.
+
+---
+
+## Ghopte Procedure
+
+1. All hands are scanned after dealing. All Ghoptes across all players are detected.
+2. Ghoptes are resolved one by one in anti-clockwise sequence. The order in which ghopte cards are resolved can be configured as:
+   - dealer-last (default)
+   - dealer-first
+3. For each Ghopte round:
+   - The target suit is established by the Ghopte 10 suit and put face down on the table.
+   - The other three players try to guess the suit of the Ghopte card and choose one potential winning card and place it face down. When all 4 players place their cards face down, they reveal the cards simultaneously and decide the winner.
+   - The player with the highest legal card matching the target suit wins the trick and captures all 4 cards. If no other player matches the Ghopte suit, the player who declared Ghopte wins. 
+4. Each Ghopte trick resolved counts as 1 of the 13 total rounds.
+5. Once all Ghopte rounds are resolved, normal trick play continues.
+
+---
+
+# 9. Playing a Trick
 
 The leader plays any card.
 
@@ -179,7 +210,7 @@ Play continues anticlockwise.
 
 ---
 
-# 9. Turup in Four Player Mode
+# 10. Turup in Four Player Mode
 
 Turup does **not** exist at the start of the game.
 
@@ -334,38 +365,7 @@ but protecting and capturing 10s is the primary objective.
 
 ---
 
-# 14. Ghopte
 
-Before the first trick begins, every player examines their hand.
-
-If a player has exactly **one card of a suit**, and that card is the **10**, a special round called **Ghopte** begins.
-
-Example
-
-Player owns
-
-♦10
-
-No other Diamonds.
-
-Ghopte is declared.
-
----
-
-## Ghopte Procedure
-
-1. All hands are scanned after dealing. All Ghoptes across all players are detected.
-2. Ghoptes are resolved one by one in anti-clockwise sequence. The order in which ghopte cards are resolved can be configured as:
-   - dealer-last (default)
-   - dealer-first
-3. For each Ghopte round:
-   - The target suit is established by the Ghopte 10 suit and put face down on the table.
-   - The other three players try to guess the suit of the Ghopte card and choose one potential winning card and place it face down. When all 4 players place their cards face down, they reveal the cards simultaneously and decide the winner.
-   - The player with the highest legal card matching the target suit wins the trick and captures all 4 cards. If no other player matches the Ghopte suit, the player who declared Ghopte wins. 
-4. Each Ghopte trick resolved counts as 1 of the 13 total rounds.
-5. Once all Ghopte rounds are resolved, normal trick play continues.
-
----
 
 # 15. End of Game
 

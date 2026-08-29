@@ -1,23 +1,12 @@
-import { compareCardRanks } from "../cards/deck";
-import type {
-	Card,
-	GhopteInfo,
-	GhopteState,
-	PlayedCard,
-	Player,
-	Suit,
-	Trick,
-} from "../types/index";
-import { RANKS, SUITS, TEAMS } from "../types/index";
+import { compareCardRanks } from "../deck";
+import type { Card, GhopteInfo, GhopteResolutionOrder, GhopteState, PlayedCard, Player, Suit, Trick } from "../../types/index";
+import { GHOPTE_RESOLUTION_ORDER, RANKS, SUITS } from "../constants";
 
 /**
- * Get anti-clockwise next position in square arrangement [P0, P1, P2, P3].
+ * Get anti-clockwise next seat in square arrangement [P0, P1, P2, P3].
  * Sequence: P0 (0) -> P1 (1) -> P2 (2) -> P3 (3) -> P0 (0).
  */
-export function getAnticlockwiseNextPosition(
-	currentPos: number,
-	totalPlayers = 4,
-): number {
+export function getAnticlockwiseNextPosition(currentPos: number, totalPlayers = 4): number {
 	return (currentPos + 1) % totalPlayers;
 }
 
@@ -25,67 +14,60 @@ export function getAnticlockwiseNextPosition(
  * Get first player index to receive cards / start play.
  * Starts from the player immediately to the dealer's right (anti-clockwise).
  */
-export function getFirstPlayerIndex(
-	dealerIndex: number,
+export function getFirstPlayerPosition({
+	dealerPosition,
 	totalPlayers = 4,
-): number {
-	return (dealerIndex + 1) % totalPlayers;
+}: {
+	dealerPosition: number;
+	totalPlayers: number;
+}): number {
+	return (dealerPosition + 1) % totalPlayers;
 }
 
 /**
- * Assign teams based on square seating:
- * P0 & P2 (diagonals) -> team1
- * P1 & P3 (diagonals) -> team2
+ *
+ * @param pos
+ * @returns
  */
-export function assignTeams(players: readonly Player[]): Player[] {
-	return players.map((p) => ({
-		...p,
-		teamId: p.position % 2 === 0 ? TEAMS.TEAM_1 : TEAMS.TEAM_2,
-	}));
-}
+const getPlayerIdByPos = ({ position, players }: { position: number; players: readonly Player[] }): string => {
+	const p = players.find((pl) => pl.position === position);
+
+	if (!p) {
+		throw new Error(`Player position ${position} not found in player list`);
+	}
+	return p.id;
+};
 
 /**
  * 4-Player Deal distribution:
  * Pass 1: 5 cards to each player (total 20)
  * Pass 2: 4 cards to each player (total 16)
  * Pass 3: 4 cards to each player (total 16)
+ *
  * Total 52 cards. Dealt anticlockwise starting from dealer's right.
  */
 export function dealFourPlayer({
 	deck,
-	dealerIndex,
+	dealerPosition,
 	players,
 }: {
 	deck: readonly Card[];
-	dealerIndex: number;
+	dealerPosition: number;
 	players: readonly Player[];
 }): Record<string, Card[]> {
-	if (players.length !== 4) {
-		throw new Error(
-			`4-Player mode requires exactly 4 players, got ${players.length}`,
-		);
-	}
-
+	// initialize empty hands
 	const hands: Record<string, Card[]> = {};
 	for (const player of players) {
 		hands[player.id] = [];
 	}
 
 	let deckIndex = 0;
-	const startPos = getFirstPlayerIndex(dealerIndex, 4);
-
-	const getPlayerIdByPos = (pos: number): string => {
-		const p = players.find((pl) => pl.position === pos);
-		if (!p) {
-			throw new Error(`Player position ${pos} not found in player list`);
-		}
-		return p.id;
-	};
+	const startPos = getFirstPlayerPosition({ dealerPosition, totalPlayers: 4 });
 
 	// deal pass 1: 5 cards each
 	let currPos = startPos;
 	for (let i = 0; i < 4; i++) {
-		const pId = getPlayerIdByPos(currPos);
+		const pId = getPlayerIdByPos({ position: currPos, players });
 		const targetHand = hands[pId];
 		if (!targetHand) {
 			throw new Error(`Hand not initialized for player ${pId}`);
@@ -98,7 +80,7 @@ export function dealFourPlayer({
 	// deal pass 2: 4 cards each
 	currPos = startPos;
 	for (let i = 0; i < 4; i++) {
-		const pId = getPlayerIdByPos(currPos);
+		const pId = getPlayerIdByPos({ position: currPos, players });
 		const targetHand = hands[pId];
 		if (!targetHand) {
 			throw new Error(`Hand not initialized for player ${pId}`);
@@ -111,7 +93,7 @@ export function dealFourPlayer({
 	// deal pass 3: 4 cards each
 	currPos = startPos;
 	for (let i = 0; i < 4; i++) {
-		const pId = getPlayerIdByPos(currPos);
+		const pId = getPlayerIdByPos({ position: currPos, players });
 		const targetHand = hands[pId];
 		if (!targetHand) {
 			throw new Error(`Hand not initialized for player ${pId}`);
@@ -131,39 +113,34 @@ export function dealFourPlayer({
  * - "dealer-last" (default): starts from dealer's right, ending with dealer
  * - "dealer-first": starts from dealer
  */
-export function detectGhopte(
-	hands: Record<string, readonly Card[]>,
-	players: readonly Player[] = [],
-	dealerIndex = 0,
-	resolutionOrder: "dealer-last" | "dealer-first" = "dealer-last",
-): GhopteState | null {
+export function detectGhopte({
+	hands = {},
+	players = [],
+	dealerPosition = 0,
+	ghopteResolutionOrder,
+}: {
+	hands: Record<string, readonly Card[]>;
+	players: readonly Player[];
+	dealerPosition: number;
+	ghopteResolutionOrder: GhopteResolutionOrder;
+}): GhopteState | null {
 	const allGhoptes: GhopteInfo[] = [];
 
-	const playerList: readonly Player[] =
-		players.length > 0
-			? players
-			: Object.keys(hands).map((id, index) => ({
-					id,
-					name: id,
-					position: index,
-					teamId: index % 2 === 0 ? TEAMS.TEAM_1 : TEAMS.TEAM_2,
-				}));
-
 	const playerByPos: Record<number, Player> = {};
-	for (const p of playerList) {
+	for (const p of players) {
 		playerByPos[p.position] = p;
 	}
 
-	const total = playerList.length || 4;
-	const startOffset = resolutionOrder === "dealer-last" ? 1 : 0;
+	const total = 4;
+	const startOffset = ghopteResolutionOrder === GHOPTE_RESOLUTION_ORDER.DEALER_LAST ? 1 : 0;
+	// dealer last = 1, dealer first = 0
 
 	for (let i = 0; i < total; i++) {
-		const pos = (dealerIndex + startOffset + i) % total;
+		const pos = (dealerPosition + startOffset + i) % total;
+
 		const player = playerByPos[pos];
 		if (!player) {
-			throw new Error(
-				`Player at position ${pos} not found during Ghopte detection`,
-			);
+			throw new Error(`Player at position ${pos} not found during Ghopte detection`);
 		}
 
 		const hand = hands[player.id] ?? [];
@@ -181,6 +158,7 @@ export function detectGhopte(
 		for (const [suit, cards] of Object.entries(suitCounts)) {
 			if (cards.length === 1) {
 				const card = cards[0];
+
 				if (card && card.rank === RANKS.TEN) {
 					allGhoptes.push({
 						order: allGhoptes.length,
@@ -207,11 +185,15 @@ export function detectGhopte(
 /**
  * Check follow-suit rule in 4P mode.
  */
-export function validateFollowSuit(
-	hand: readonly Card[],
-	cardToPlay: Card,
-	leadSuit: Suit | null,
-): boolean {
+export function validateFollowSuit({
+	hand,
+	cardToPlay,
+	leadSuit,
+}: {
+	hand: readonly Card[];
+	cardToPlay: Card;
+	leadSuit: Suit | null;
+}): boolean {
 	if (!leadSuit) return true;
 	if (cardToPlay.suit === leadSuit) return true;
 
@@ -223,11 +205,9 @@ export function validateFollowSuit(
  * Determine winner of a completed 4-Player trick.
  * In 4P mode, active Turup is passed in `currentTurup`.
  */
-export function resolve4PTrickWinner(options: {
-	trick: Trick;
-	currentTurup: Suit | null;
-}): string {
+export function resolve4PTrickWinner(options: { trick: Trick; currentTurup: Suit | null }): string {
 	const { trick, currentTurup } = options;
+
 	const firstCard = trick.cards[0];
 	if (!firstCard) {
 		throw new Error("Cannot resolve empty trick");
@@ -240,33 +220,25 @@ export function resolve4PTrickWinner(options: {
 		const current = trick.cards[i];
 		if (!current) continue;
 
+		const currentCardSuit = current.card.suit;
+		const winningCardSuit = winningPlayedCard.card.suit;
+
 		if (currentTurup) {
-			if (winningPlayedCard.card.suit === currentTurup) {
-				if (
-					current.card.suit === currentTurup &&
-					compareCardRanks(current.card, winningPlayedCard.card) > 0
-				) {
+			if (currentCardSuit === currentTurup) {
+				if (winningCardSuit !== currentTurup || compareCardRanks(current.card, winningPlayedCard.card) > 0) {
 					winningPlayedCard = current;
 				}
-			} else if (current.card.suit === currentTurup) {
-				winningPlayedCard = current;
-			} else if (
-				leadSuit &&
-				current.card.suit === leadSuit &&
-				winningPlayedCard.card.suit === leadSuit &&
-				compareCardRanks(current.card, winningPlayedCard.card) > 0
-			) {
-				winningPlayedCard = current;
+				continue;
 			}
-		} else {
-			if (
-				leadSuit &&
-				current.card.suit === leadSuit &&
-				(winningPlayedCard.card.suit !== leadSuit ||
-					compareCardRanks(current.card, winningPlayedCard.card) > 0)
-			) {
-				winningPlayedCard = current;
-			}
+
+			if (winningCardSuit === currentTurup) continue;
+		}
+
+		if (
+			currentCardSuit === leadSuit &&
+			(winningCardSuit !== leadSuit || compareCardRanks(current.card, winningPlayedCard.card) > 0)
+		) {
+			winningPlayedCard = current;
 		}
 	}
 

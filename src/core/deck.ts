@@ -1,26 +1,7 @@
-import {
-	SUITS,
-	type Card,
-	type CardId,
-	type Rank,
-	type Suit,
-} from "../types/index";
+import { SUITS } from "./constants";
+import type { Card, CardId, Rank, Suit } from "../types/index";
 
-export const RANKS: readonly Rank[] = [
-	"2",
-	"3",
-	"4",
-	"5",
-	"6",
-	"7",
-	"8",
-	"9",
-	"10",
-	"J",
-	"Q",
-	"K",
-	"A",
-];
+export const RANKS: readonly Rank[] = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
 
 export const RANK_VALUE: Record<Rank, number> = {
 	"2": 2,
