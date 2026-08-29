@@ -24,30 +24,31 @@ export function mulberry32(state: number): {
 /**
  *
  * @param deck
- * @param initialRngState
+ * @param rngState
  * @returns
  *
  * @note
  * Seeded Fisher-Yates shuffle.
  * Returns new shuffled deck array and updated RNG state.
+ * RNG = Random Numer Generator
  */
 
-export function shuffleDeck(
-	deck: readonly Card[],
-	initialRngState: number,
-): { shuffled: Card[]; nextRngState: number } {
+export function shuffleDeck({ deck, rngState }: { deck: readonly Card[]; rngState: number }): {
+	shuffled: Card[];
+	nextRngState: number;
+} {
 	const result = [...deck];
-	let currentState = initialRngState;
+	let currentRngState = rngState;
 
 	for (let i = result.length - 1; i > 0; i--) {
-		const { value, nextState } = mulberry32(currentState);
+		const { value, nextState } = mulberry32(currentRngState);
 
-		currentState = nextState;
+		currentRngState = nextState;
 		const j = Math.floor(value * (i + 1));
 		const temp = result[i];
 		result[i] = result[j];
 		result[j] = temp;
 	}
 
-	return { shuffled: result, nextRngState: currentState };
+	return { shuffled: result, nextRngState: currentRngState };
 }

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { Engine } from "../src/engine";
+import { createDeck, Game } from "../src";
+
+const deck = createDeck();
 
 describe("Stress & Determinism Testing", () => {
 	it("should simulate 1,000 complete 4-Player games without errors", () => {
@@ -7,19 +9,20 @@ describe("Stress & Determinism Testing", () => {
 		let completedCount = 0;
 
 		for (let seed = 1; seed <= gameCount; seed++) {
-			const game = Engine.createGame({
+			const game = Game.create({
 				id: `stress-4p-${seed}`,
 				mode: "4P",
 				seed,
+				dealerId: "p1",
 				players: [
-					{ id: "p1", name: "Alice" },
-					{ id: "p2", name: "Bob" },
-					{ id: "p3", name: "Charlie" },
-					{ id: "p4", name: "Dave" },
+					{ id: "p1", name: "Alice", position: 0, team: "red" },
+					{ id: "p2", name: "Bob", position: 1, team: "blue" },
+					{ id: "p3", name: "Charlie", position: 2, team: "red" },
+					{ id: "p4", name: "Dave", position: 3, team: "blue" },
 				],
-			});
+			}) as Game;
 
-			const startRes = game.start();
+			const startRes = game.start(deck);
 			expect(startRes.success).toBe(true);
 
 			let maxSafetyMoves = 200;
@@ -38,13 +41,13 @@ describe("Stress & Determinism Testing", () => {
 				const playRes = game.playCard({
 					playerId: turnP.id,
 					cardId: move.card.id,
-					fromStackIndex: move.fromStackIndex,
+					stackPosition: move.stackPosition,
 				});
 				expect(playRes.success).toBe(true);
 			}
 
 			expect(game.isFinished).toBe(true);
-			expect(game.winnerId).not.toBeNull();
+			expect(game.winnerTeam).not.toBeNull();
 			completedCount++;
 		}
 
@@ -56,17 +59,18 @@ describe("Stress & Determinism Testing", () => {
 		let completedCount = 0;
 
 		for (let seed = 1; seed <= gameCount; seed++) {
-			const game = Engine.createGame({
+			const game = Game.create({
 				id: `stress-2p-${seed}`,
 				mode: "2P",
 				seed,
+				dealerId: "p1",
 				players: [
-					{ id: "p1", name: "Alice" },
-					{ id: "p2", name: "Bob" },
+					{ id: "p1", name: "Alice", position: 0, team: "p1" },
+					{ id: "p2", name: "Bob", position: 1, team: "p2" },
 				],
-			});
+			}) as Game;
 
-			const startRes = game.start();
+			const startRes = game.start(deck);
 			expect(startRes.success).toBe(true);
 
 			const declP = game.currentPlayer;
@@ -92,13 +96,13 @@ describe("Stress & Determinism Testing", () => {
 				const playRes = game.playCard({
 					playerId: turnP.id,
 					cardId: move.card.id,
-					fromStackIndex: move.fromStackIndex,
+					stackPosition: move.stackPosition,
 				});
 				expect(playRes.success).toBe(true);
 			}
 
 			expect(game.isFinished).toBe(true);
-			expect(game.winnerId).not.toBeNull();
+			expect(game.winnerTeam).not.toBeNull();
 			completedCount++;
 		}
 

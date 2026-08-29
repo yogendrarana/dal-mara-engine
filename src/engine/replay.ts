@@ -1,7 +1,10 @@
-import { createInitialState, gameReducer } from "../reducers/index";
 import type { Action, GameMode, GameState, Player } from "../types/index";
-import { ACTION_TYPES, DalMaraError } from "../types/index";
-import { validateAction } from "../validators/index";
+import { DalMaraError } from "../core/errors";
+import { validateAction } from "../core/validators";
+import { createInitialState } from "../core/state";
+import { GAME_MODES } from "../core/constants";
+import { gameReducer4P } from "../core/reducers/four-player";
+import { gameReducer2P } from "../core/reducers/two-player";
 
 export interface ReplayData {
 	readonly version: string;
@@ -24,27 +27,28 @@ export function exportReplay(state: GameState): ReplayData {
 }
 
 export function playReplay(replay: ReplayData): GameState {
-	if (!replay || !replay.players || !replay.actions) {
-		throw new DalMaraError(
-			"Invalid replay data: missing players or actions",
-			"INVALID_REPLAY",
-		);
+	if (!replay?.players || !replay.actions) {
+		throw new DalMaraError("Invalid replay data: missing players or actions", "INVALID_REPLAY");
 	}
+
+	const dealerId = replay.players[0]?.id ?? "p1";
 
 	// 1. Recreate initial state using createInitialState
 	let state = createInitialState({
 		id: replay.gameId,
 		mode: replay.mode,
 		seed: replay.seed,
-		players: replay.players.map((p) => ({ id: p.id, name: p.name })),
+		dealerId,
+		players: replay.players.map((p, idx) => ({
+			id: p.id,
+			name: p.name,
+			position: p.position ?? idx,
+		})),
 	});
 
 	// 2. Apply all actions sequentially
 	for (const action of replay.actions) {
-		if (
-			action.type === ACTION_TYPES.CREATE_GAME ||
-			action.type === ACTION_TYPES.JOIN_PLAYER
-		) {
+		if ((action.type as string) === "CREATE_GAME" || (action.type as string) === "JOIN_PLAYER") {
 			continue;
 		}
 
@@ -53,10 +57,18 @@ export function playReplay(replay: ReplayData): GameState {
 			throw new DalMaraError(
 				`Replay action '${action.type}' failed validation: ${validation.error.message}`,
 				"REPLAY_VALIDATION_ERROR",
-				{ action, error: validation.error },
+				{
+					action,
+					error: validation.error,
+				},
 			);
 		}
-		state = gameReducer(state, action);
+
+		if (state.mode === GAME_MODES.FOUR_PLAYER) {
+			state = gameReducer4P(state, action);
+		} else {
+			state = gameReducer2P(state, action);
+		}
 	}
 
 	return state;

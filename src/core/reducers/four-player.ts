@@ -1,0 +1,398 @@
+import { dealFourPlayer, detectGhopte, getAnticlockwiseNextPosition, resolve4PTrickWinner } from "../rules/four-player";
+
+import { createInitialScoreState, evaluateGameWinner4P, isGameFinished4P, updateScoreOnTrickWon } from "../scoring/scoring";
+
+import { ACTION_TYPES, ENGINE_ERROR_CODES, GAME_PHASES } from "../constants";
+
+import type { Action, GameState, PlayedCard, Trick } from "../../types/index";
+
+import { createDeck } from "../deck";
+import { shuffleDeck } from "../shuffle";
+import { DalMaraError } from "../errors";
+
+export function gameReducer4P(state: GameState, action: Action): GameState {
+	const nextActionHistory = [...state.actionHistory, action];
+
+	const dealer = state.players.find((p) => p.id === state.dealerId);
+	if (!dealer) {
+		throw new DalMaraError("Cannot find the dealer in the player list.", ENGINE_ERROR_CODES.INVALID_DEALER);
+	}
+
+	switch (action.type) {
+		case ACTION_TYPES.SHUFFLE: {
+			const { deck } = action.payload;
+			if (state.phase !== GAME_PHASES.DEAL) return state;
+
+			const initialDeck = deck ?? createDeck();
+			const { nextRngState } = shuffleDeck({
+				deck: initialDeck,
+				rngState: state.rngState,
+			});
+
+			return {
+				...state,
+				rngState: nextRngState,
+				actionHistory: nextActionHistory,
+			};
+		}
+
+		case ACTION_TYPES.DEAL: {
+			const { deck } = action.payload;
+			if (state.phase !== GAME_PHASES.DEAL) return state;
+
+			const initialDeck = deck ?? createDeck();
+			const { shuffled, nextRngState } = shuffleDeck({
+				deck: initialDeck,
+				rngState: state.rngState,
+			});
+
+			const hands = dealFourPlayer({
+				deck: shuffled,
+				dealerPosition: dealer.position,
+				players: state.players,
+			});
+
+			const ghopteState = detectGhopte({
+				hands,
+				players: state.players,
+				dealerPosition: dealer.position,
+				ghopteResolutionOrder: state.settings.ghopteResolutionOrder,
+			});
+
+			if (ghopteState && ghopteState.ghoptes.length > 0) {
+				const activeGhopte = ghopteState.ghoptes[ghopteState.activeIndex];
+				if (!activeGhopte) return state;
+
+				const declarer = state.players.find((p) => p.id === activeGhopte.declarerId);
+				if (!declarer) return state;
+
+				return {
+					...state,
+					phase: GAME_PHASES.GHOPTE,
+					hands,
+					ghopteState,
+					currentTurnPlayerId: declarer.id,
+					rngState: nextRngState,
+					actionHistory: nextActionHistory,
+				};
+			}
+
+			// Normal 4P start (no Ghopte)
+			const firstTurnPos = getAnticlockwiseNextPosition(dealer.position, 4);
+			const firstPlayer = state.players.find((p) => p.position === firstTurnPos);
+			if (!firstPlayer) return state;
+
+			return {
+				...state,
+				phase: GAME_PHASES.PLAYING,
+				hands,
+				currentTurnPlayerId: firstPlayer.id,
+				rngState: nextRngState,
+				actionHistory: nextActionHistory,
+			};
+		}
+
+		case ACTION_TYPES.PLAY_GHOPTE: {
+			const { playerId, cardId } = action.payload;
+
+			const hand = state.hands[playerId];
+			if (!hand) return state;
+
+			const playedCardObj = hand.find((c) => c.id === cardId);
+			if (!playedCardObj) return state;
+
+			const updatedHands = {
+				...state.hands,
+				[playerId]: hand.filter((c) => c.id !== cardId),
+			};
+
+			const playedCardItem: PlayedCard = {
+				playerId,
+				card: playedCardObj,
+				playOrder: state.currentTrick.cards.length + 1,
+			};
+
+			if (state.phase !== GAME_PHASES.GHOPTE || !state.ghopteState) return state;
+
+			const currentGhopte = state.ghopteState.ghoptes[state.ghopteState.activeIndex];
+			if (!currentGhopte) return state;
+
+			const targetSuit = currentGhopte.suit;
+			const isLead = state.currentTrick.cards.length === 0;
+			const currentTrickLeadSuit = isLead ? targetSuit : state.currentTrick.leadSuit;
+
+			const updatedTrickCards = [...state.currentTrick.cards, playedCardItem];
+			const isTrickComplete = updatedTrickCards.length === 4;
+
+			const updatedCurrentTrick: Trick = {
+				trickNumber: state.roundNumber,
+				leadSuit: currentTrickLeadSuit,
+				cards: updatedTrickCards,
+				winnerId: null,
+			};
+
+			if (isTrickComplete) {
+				const winnerId = resolve4PTrickWinner({
+					trick: updatedCurrentTrick,
+					currentTurup: null,
+				});
+
+				const winnerPlayer = state.players.find((p) => p.id === winnerId);
+				if (!winnerPlayer) return state;
+
+				const wonCards = updatedTrickCards.map((pc) => pc.card);
+				const currentScore = state.scores[winnerId] ?? createInitialScoreState();
+				const updatedScore = updateScoreOnTrickWon({
+					currentScore,
+					wonCards,
+					trickNumber: state.roundNumber,
+					wonByPlayerId: winnerId,
+				});
+
+				const completedTrick: Trick = {
+					...updatedCurrentTrick,
+					winnerId,
+				};
+
+				const updatedTrickHistory = [...state.trickHistory, completedTrick];
+
+				// Mark current Ghopte as resolved
+				const updatedGhoptes = state.ghopteState.ghoptes.map((g, idx) =>
+					idx === state.ghopteState?.activeIndex ? { ...g, resolved: true } : g,
+				);
+
+				const nextGhopteIndex = state.ghopteState.activeIndex + 1;
+				const hasMoreGhoptes = nextGhopteIndex < updatedGhoptes.length;
+
+				if (hasMoreGhoptes) {
+					const nextGhopte = updatedGhoptes[nextGhopteIndex];
+					if (!nextGhopte) return state;
+					const nextDeclarer = state.players.find((p) => p.id === nextGhopte.declarerId);
+					if (!nextDeclarer) return state;
+
+					return {
+						...state,
+						hands: updatedHands,
+						ghopteState: {
+							ghoptes: updatedGhoptes,
+							activeIndex: nextGhopteIndex,
+						},
+						scores: {
+							...state.scores,
+							[winnerId]: updatedScore,
+						},
+						trickHistory: updatedTrickHistory,
+						roundNumber: state.roundNumber + 1,
+						currentTurnPlayerId: nextDeclarer.id,
+						currentTrick: {
+							trickNumber: state.roundNumber + 1,
+							leadSuit: null,
+							cards: [],
+							winnerId: null,
+						},
+						actionHistory: nextActionHistory,
+					};
+				} else {
+					// All Ghoptes resolved! Transition to PLAYING phase.
+					return {
+						...state,
+						phase: GAME_PHASES.PLAYING,
+						hands: updatedHands,
+						ghopteState: null,
+						scores: {
+							...state.scores,
+							[winnerId]: updatedScore,
+						},
+						trickHistory: updatedTrickHistory,
+						roundNumber: state.roundNumber + 1,
+						currentTurnPlayerId: winnerId,
+						currentTrick: {
+							trickNumber: state.roundNumber + 1,
+							leadSuit: null,
+							cards: [],
+							winnerId: null,
+						},
+						actionHistory: nextActionHistory,
+					};
+				}
+			}
+
+			// Ghopte trick in progress: advance turn to next player
+			const currentPlayer = state.players.find((p) => p.id === playerId);
+			if (!currentPlayer) return state;
+			const nextPos = getAnticlockwiseNextPosition(currentPlayer.position, 4);
+			const nextPlayer = state.players.find((p) => p.position === nextPos);
+			if (!nextPlayer) return state;
+
+			return {
+				...state,
+				hands: updatedHands,
+				currentTrick: updatedCurrentTrick,
+				currentTurnPlayerId: nextPlayer.id,
+				actionHistory: nextActionHistory,
+			};
+		}
+
+		case ACTION_TYPES.PLAY_CARD: {
+			const { playerId, cardId } = action.payload;
+
+			const hand = state.hands[playerId];
+			if (!hand) return state;
+
+			const playedCardObj = hand.find((c) => c.id === cardId);
+			if (!playedCardObj) return state;
+
+			const updatedHands = {
+				...state.hands,
+				[playerId]: hand.filter((c) => c.id !== cardId),
+			};
+
+			const playedCardItem: PlayedCard = {
+				playerId,
+				card: playedCardObj,
+				playOrder: state.currentTrick.cards.length + 1,
+			};
+
+			const isLead = state.currentTrick.cards.length === 0;
+			const currentTrickLeadSuit = isLead ? playedCardObj.suit : state.currentTrick.leadSuit;
+
+			let newTurup = state.currentTurup;
+
+			// Permanent Turup Rule:
+
+			if (!state.currentTurup) {
+				// 1. The first time turup has been created
+				if (playedCardObj.suit !== currentTrickLeadSuit) newTurup = playedCardObj.suit;
+			} else {
+				/**
+				 * If the turup was made in same trick number by a player, the other players has these options within the same trick:
+				 * 1. Must play a card belonging to lead suit of current trick if you have card of the lead suite.
+				 * 2. If card of lead suite is not present he has two choice:
+				 *    a) If he does not have card of turup suit as will,
+				 * 	     whatever he plays becomes new turup and overides previously made turup in the same trick.
+				 *       Which means, player should not have the lading suit card and turup suit card as well, to be able to override the
+				 *       turup made by other player.
+				 *    b) If he does have turup, he can choose to not play turup and he can play other suit card. But as long as he has th turup,
+				 *       his card does not override the exiting suit.
+				 *
+				 * Now, all these things should hapen within same trick. You cannot override the turup created in past trick in future trick. Once, the
+				 * trick is made, it remais same for future tricks until the end.
+				 *
+				 * I gusess we have not implemented turup override properly.
+				 *
+				 */
+			}
+
+			const updatedTrickCards = [...state.currentTrick.cards, playedCardItem];
+			const isTrickComplete = updatedTrickCards.length === 4;
+
+			const updatedCurrentTrick: Trick = {
+				trickNumber: state.roundNumber,
+				leadSuit: currentTrickLeadSuit,
+				cards: updatedTrickCards,
+				winnerId: null,
+			};
+
+			// if trick is completed
+			if (isTrickComplete) {
+				const winnerId = resolve4PTrickWinner({
+					trick: updatedCurrentTrick,
+					currentTurup: newTurup,
+				});
+
+				const winnerPlayer = state.players.find((p) => p.id === winnerId);
+				if (!winnerPlayer) return state;
+
+				const wonCards = updatedTrickCards.map((pc) => pc.card);
+				const currentScore = state.scores[winnerId] ?? createInitialScoreState();
+
+				const updatedScore = updateScoreOnTrickWon({
+					currentScore,
+					wonCards,
+					trickNumber: state.roundNumber,
+					wonByPlayerId: winnerId,
+				});
+
+				const updatedScores = {
+					...state.scores,
+					[winnerId]: updatedScore,
+				};
+
+				const completedTrick: Trick = {
+					...updatedCurrentTrick,
+					winnerId,
+				};
+
+				const updatedTrickHistory = [...state.trickHistory, completedTrick];
+
+				const finished = isGameFinished4P({
+					totalTricksPlayed: updatedTrickHistory.length,
+					hands: updatedHands,
+				});
+
+				if (finished) {
+					const winnerEval = evaluateGameWinner4P({
+						scores: updatedScores,
+						players: state.players,
+					});
+
+					return {
+						...state,
+						phase: GAME_PHASES.END,
+						hands: updatedHands,
+						currentTurup: newTurup,
+						currentTrick: {
+							trickNumber: Math.min(updatedTrickHistory.length + 1, 13),
+							leadSuit: null,
+							cards: [],
+							winnerId: null,
+						},
+						scores: updatedScores,
+						trickHistory: updatedTrickHistory,
+						roundNumber: Math.min(updatedTrickHistory.length + 1, 13),
+						currentTurnPlayerId: null,
+						winnerTeam: winnerEval.winnerTeam,
+						actionHistory: nextActionHistory,
+					};
+				}
+
+				return {
+					...state,
+					hands: updatedHands,
+					currentTurup: newTurup,
+					currentTrick: {
+						trickNumber: Math.min(updatedTrickHistory.length + 1, 13),
+						leadSuit: null,
+						cards: [],
+						winnerId: null,
+					},
+					scores: updatedScores,
+					trickHistory: updatedTrickHistory,
+					roundNumber: Math.min(updatedTrickHistory.length + 1, 13),
+					currentTurnPlayerId: winnerId,
+					actionHistory: nextActionHistory,
+				};
+			}
+
+			// trick not complete: advance turn to next player
+			const currentPlayer = state.players.find((p) => p.id === playerId);
+			if (!currentPlayer) return state;
+
+			const nextPos = getAnticlockwiseNextPosition(currentPlayer.position, 4);
+			const nextPlayer = state.players.find((p) => p.position === nextPos);
+			if (!nextPlayer) return state;
+
+			return {
+				...state,
+				hands: updatedHands,
+				currentTurup: newTurup,
+				currentTrick: updatedCurrentTrick,
+				currentTurnPlayerId: nextPlayer.id,
+				actionHistory: nextActionHistory,
+			};
+		}
+
+		default:
+			return state;
+	}
+}

@@ -35,10 +35,7 @@ export class EventDispatcher {
 		}
 	}
 
-	public emit(
-		eventType: GameEventType,
-		payload: Record<string, unknown> = {},
-	): void {
+	public emit(eventType: GameEventType, payload: Record<string, unknown> = {}): void {
 		const event: GameEvent = {
 			type: eventType,
 			payload: Object.freeze(payload),

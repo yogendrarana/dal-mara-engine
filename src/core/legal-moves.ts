@@ -1,23 +1,16 @@
 import type { Card, GameState } from "../types/index";
-import { GAME_MODES, GAME_PHASES, RANKS } from "../types/index";
+import { GAME_MODES, GAME_PHASES, RANKS } from "./constants";
 
 export interface LegalPlayableCard {
 	readonly card: Card;
-	readonly fromStackIndex?: number;
-	readonly stackId?: string;
+	readonly stackPosition?: number;
 }
 
 /**
  * Get legal playable cards for 4-Player mode.
  */
-export function getLegalMoves4P(
-	state: GameState,
-	playerId: string,
-): LegalPlayableCard[] {
-	if (
-		state.phase !== GAME_PHASES.PLAYING &&
-		state.phase !== GAME_PHASES.GHOPTE
-	) {
+export function getLegalMoves4P(state: GameState, playerId: string): LegalPlayableCard[] {
+	if (state.phase !== GAME_PHASES.PLAYING && state.phase !== GAME_PHASES.GHOPTE) {
 		return [];
 	}
 
@@ -28,14 +21,11 @@ export function getLegalMoves4P(
 
 	// 1. Ghopte Phase
 	if (state.phase === GAME_PHASES.GHOPTE && state.ghopteState) {
-		const activeGhopte =
-			state.ghopteState.ghoptes[state.ghopteState.activeIndex];
+		const activeGhopte = state.ghopteState.ghoptes[state.ghopteState.activeIndex];
 
 		// If current player is the Ghopte declarer, they play their Ghopte 10
 		if (activeGhopte && activeGhopte.declarerId === playerId) {
-			const ghopteCard = hand.find(
-				(c) => c.suit === activeGhopte.suit && c.rank === RANKS.TEN,
-			);
+			const ghopteCard = hand.find((c) => c.suit === activeGhopte.suit && c.rank === RANKS.TEN);
 			if (ghopteCard) {
 				return [{ card: ghopteCard }];
 			}
@@ -47,9 +37,7 @@ export function getLegalMoves4P(
 			.map((g) => g.tenCard.id);
 
 		// Other players are guessing the face-down Ghopte card: any card from hand EXCEPT their own pending Ghopte 10s
-		const guessingMoves = availableCards.filter(
-			(item) => !pendingOwnGhopteIds.includes(item.card.id),
-		);
+		const guessingMoves = availableCards.filter((item) => !pendingOwnGhopteIds.includes(item.card.id));
 
 		return guessingMoves.length > 0 ? guessingMoves : availableCards;
 	}
@@ -60,9 +48,7 @@ export function getLegalMoves4P(
 		return availableCards;
 	}
 
-	const matchingLeadSuit = availableCards.filter(
-		(item) => item.card.suit === leadSuit,
-	);
+	const matchingLeadSuit = availableCards.filter((item) => item.card.suit === leadSuit);
 
 	if (matchingLeadSuit.length > 0) {
 		return matchingLeadSuit;
@@ -75,10 +61,7 @@ export function getLegalMoves4P(
 /**
  * Get legal playable cards for 2-Player mode.
  */
-export function getLegalMoves2P(
-	state: GameState,
-	playerId: string,
-): LegalPlayableCard[] {
+export function getLegalMoves2P(state: GameState, playerId: string): LegalPlayableCard[] {
 	if (state.phase !== GAME_PHASES.PLAYING) {
 		return [];
 	}
@@ -101,8 +84,7 @@ export function getLegalMoves2P(
 		if (stack.faceUpCard) {
 			availableCards.push({
 				card: stack.faceUpCard,
-				fromStackIndex: idx,
-				stackId: stack.id,
+				stackPosition: idx,
 			});
 		}
 	});
@@ -111,9 +93,7 @@ export function getLegalMoves2P(
 		return availableCards;
 	}
 
-	const matchingLeadSuit = availableCards.filter(
-		(item) => item.card.suit === leadSuit,
-	);
+	const matchingLeadSuit = availableCards.filter((item) => item.card.suit === leadSuit);
 
 	if (matchingLeadSuit.length > 0) {
 		return matchingLeadSuit;
@@ -126,10 +106,7 @@ export function getLegalMoves2P(
 /**
  * Main getLegalMoves dispatcher.
  */
-export function getLegalMoves(
-	state: GameState,
-	playerId: string,
-): LegalPlayableCard[] {
+export function getLegalMoves(state: GameState, playerId: string): LegalPlayableCard[] {
 	if (state.mode === GAME_MODES.FOUR_PLAYER) {
 		return getLegalMoves4P(state, playerId);
 	}
