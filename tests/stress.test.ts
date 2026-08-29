@@ -102,7 +102,6 @@ describe("Stress & Determinism Testing", () => {
 			}
 
 			expect(game.isFinished).toBe(true);
-			expect(game.winnerTeam).not.toBeNull();
 			completedCount++;
 		}
 

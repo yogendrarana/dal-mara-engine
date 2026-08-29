@@ -135,20 +135,16 @@ export function resolve2PTrickWinner(options: { trick: Trick; currentTurup: Suit
 
 	const leadSuit = trick.leadSuit ?? card1.card.suit;
 
-	// @TODO: In 2P mode, turup is already eclare before the game start, so the turup is already present for all tricks.
-	// Hence, this if check is not required.
-	if (currentTurup) {
-		if (card1.card.suit === currentTurup && card2.card.suit !== currentTurup) {
-			return card1.playerId;
-		}
+	if (card1.card.suit === currentTurup && card2.card.suit !== currentTurup) {
+		return card1.playerId;
+	}
 
-		if (card2.card.suit === currentTurup && card1.card.suit !== currentTurup) {
-			return card2.playerId;
-		}
+	if (card2.card.suit === currentTurup && card1.card.suit !== currentTurup) {
+		return card2.playerId;
+	}
 
-		if (card1.card.suit === currentTurup && card2.card.suit === currentTurup) {
-			return compareCardRanks(card1.card, card2.card) >= 0 ? card1.playerId : card2.playerId;
-		}
+	if (card1.card.suit === currentTurup && card2.card.suit === currentTurup) {
+		return compareCardRanks(card1.card, card2.card) >= 0 ? card1.playerId : card2.playerId;
 	}
 
 	// Neither is Turup

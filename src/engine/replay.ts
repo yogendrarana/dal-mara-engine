@@ -2,7 +2,7 @@ import type { Action, GameMode, GameState, Player } from "../types/index";
 import { DalMaraError } from "../core/errors";
 import { validateAction } from "../core/validators";
 import { createInitialState } from "../core/state";
-import { GAME_MODES } from "../core/constants";
+import { GAME_MODES, GHOPTE_RESOLUTION_ORDER } from "../core/constants";
 import { gameReducer4P } from "../core/reducers/four-player";
 import { gameReducer2P } from "../core/reducers/two-player";
 
@@ -39,10 +39,12 @@ export function playReplay(replay: ReplayData): GameState {
 		mode: replay.mode,
 		seed: replay.seed,
 		dealerId,
+		ghopteResolutionOrder: GHOPTE_RESOLUTION_ORDER.DEALER_LAST,
 		players: replay.players.map((p, idx) => ({
 			id: p.id,
 			name: p.name,
 			position: p.position ?? idx,
+			team: p.team ?? (idx % 2 === 0 ? "team1" : "team2"),
 		})),
 	});
 

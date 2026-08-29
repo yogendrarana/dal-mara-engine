@@ -1,5 +1,5 @@
 import { compareCardRanks } from "../deck";
-import type { Card, GhopteInfo, GhopteResolutionOrder, GhopteState, PlayedCard, Player, Suit, Trick } from "../../types/index";
+import type { Card, GhopteInfo, GhopteResolutionOrder, GhopteState, PlayedCard, Player, PlayerPosition, Suit, Trick } from "../../types/index";
 import { GHOPTE_RESOLUTION_ORDER, RANKS, SUITS } from "../constants";
 
 /**
@@ -124,23 +124,32 @@ export function detectGhopte({
 	dealerPosition: number;
 	ghopteResolutionOrder: GhopteResolutionOrder;
 }): GhopteState | null {
+	const playersList: readonly Player[] =
+		players.length > 0
+			? players
+			: Object.keys(hands).map((id, index) => ({
+					id,
+					name: id,
+					position: (index % 4) as PlayerPosition,
+					team: index % 2 === 0 ? "team1" : "team2",
+				}));
+
 	const allGhoptes: GhopteInfo[] = [];
 
 	const playerByPos: Record<number, Player> = {};
-	for (const p of players) {
+	for (const p of playersList) {
 		playerByPos[p.position] = p;
 	}
 
-	const total = 4;
+	const total = playersList.length;
 	const startOffset = ghopteResolutionOrder === GHOPTE_RESOLUTION_ORDER.DEALER_LAST ? 1 : 0;
-	// dealer last = 1, dealer first = 0
 
 	for (let i = 0; i < total; i++) {
 		const pos = (dealerPosition + startOffset + i) % total;
 
 		const player = playerByPos[pos];
 		if (!player) {
-			throw new Error(`Player at position ${pos} not found during Ghopte detection`);
+			continue;
 		}
 
 		const hand = hands[player.id] ?? [];

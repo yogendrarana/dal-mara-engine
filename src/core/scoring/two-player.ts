@@ -64,18 +64,23 @@ export function evaluateGameWinner2P(options: {
 		};
 	}
 
-	// @TODO:In 2P mode, there i chance, trick won an 10s won are equal. In that case game is a draw.
-	// But this code is not handling that.
-
-	if (p0Tricks >= p1Tricks) {
+	// 2-2 tens tie broken by tricks
+	if (p0Tricks > p1Tricks) {
 		return {
 			winnerTeam: p0.id,
 			reason: `2-2 tie broken by tricks: ${p0.name} (${p0Tricks}) vs ${p1.name} (${p1Tricks})`,
 		};
 	}
 
+	if (p1Tricks > p0Tricks) {
+		return {
+			winnerTeam: p1.id,
+			reason: `2-2 tie broken by tricks: ${p1.name} (${p1Tricks}) vs ${p0.name} (${p0Tricks})`,
+		};
+	}
+
 	return {
-		winnerTeam: p1.id,
-		reason: `2-2 tie broken by tricks: ${p1.name} (${p1Tricks}) vs ${p0.name} (${p0Tricks})`,
+		winnerTeam: null,
+		reason: `Game ended in a draw (equal tens: ${p0Score.capturedTens}, equal tricks: ${p0Tricks})`,
 	};
 }

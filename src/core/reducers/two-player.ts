@@ -32,11 +32,6 @@ export function gameReducer2P(state: GameState, action: Action): GameState {
 			};
 		}
 
-		// @TODO: for 2P, first 6 hand cards are dealt, game goes to tutrup declaratoin phase
-		// Once turup is declared only then stack cards are dealt.
-		// So we need to do this:
-		// a) Convert current DEAL action to DEAL_4P or 4P_DEAL, then add new actions for 2P like 2P_DEAL_HAND and 2P_DEAL_STACK
-		// So in 2p this is the order the game has to follow: deal hand cards -> declatre turup by non dealer -> deal stack cards, no skipping allowed
 		case ACTION_TYPES.DEAL: {
 			const { deck } = action.payload;
 
@@ -169,26 +164,6 @@ export function gameReducer2P(state: GameState, action: Action): GameState {
 
 				if (playedCardObj) {
 					updatedHands[playerId] = hand.filter((c) => c.id !== cardId);
-				} else {
-					// @TODO: Card is already checked in stacks if they are in stacks as face up cards.
-					// So, this fallback looks to be redundant
-
-					// Search face-up stacks as fallback if stackId was omitted
-					const sIdx = playerStacks.findIndex((s) => s.faceUpCard?.id === cardId);
-					if (sIdx >= 0) {
-						const stack = playerStacks[sIdx];
-						if (stack?.faceUpCard) {
-							playedCardObj = stack.faceUpCard;
-							const newHidden = [...stack.hiddenCards];
-							const nextFaceUp = newHidden.pop() ?? null;
-							playerStacks[sIdx] = {
-								...stack,
-								hiddenCards: newHidden,
-								faceUpCard: nextFaceUp,
-							};
-							updatedStacks[playerId] = playerStacks;
-						}
-					}
 				}
 			}
 
