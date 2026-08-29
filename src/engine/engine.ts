@@ -4,7 +4,7 @@ import { Game } from "./game";
 import { importFromDMN } from "./dmn";
 import { deserializeState } from "./serializers";
 import { playReplay, type ReplayData } from "./replay";
-import { GAME_MODES, GAME_PHASES } from "../core/constants";
+import { GAME_MODES, GAME_PHASES, GHOPTE_RESOLUTION_ORDER } from "../core/constants";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: <engine class with static factories>
 export class Engine {
@@ -26,7 +26,7 @@ export class Engine {
 			id: partialState.id ?? "game-dmn",
 			mode,
 			phase: partialState.phase ?? GAME_PHASES.PLAYING,
-			settings: { mode },
+			settings: { mode, ghopteResolutionOrder: GHOPTE_RESOLUTION_ORDER.DEALER_LAST },
 			players,
 			dealerId,
 			currentTurnPlayerId: partialState.currentTurnPlayerId ?? null,

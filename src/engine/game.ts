@@ -42,8 +42,12 @@ export class Game {
 		this._state = initialState;
 	}
 
-	public static create(options: CreateGameOptions): Game | ValidationResult {
-		const validation = validateCreateGame(options);
+	public static create(options: CreateGameOptions | GameState): Game | ValidationResult {
+		if ("phase" in options && "hands" in options) {
+			return new Game(options as GameState);
+		}
+
+		const validation = validateCreateGame(options as CreateGameOptions);
 		if (!validation.success) {
 			return validation;
 		}
@@ -146,22 +150,47 @@ export class Game {
 
 	// game actions
 
-	public start(deck: Card[]): ValidationResult {
-		return this.deal(deck, this.dealerId);
+	public start(deckOrPlayerId?: Card[] | string): ValidationResult {
+		if (typeof deckOrPlayerId === "string") {
+			return this.deal(undefined, deckOrPlayerId);
+		}
+		return this.deal(deckOrPlayerId, this.dealerId);
 	}
 
-	public shuffle(deck: Card[], playerId?: string): ValidationResult {
+	public shuffle(deckOrPlayerId?: Card[] | string, playerId?: string): ValidationResult {
+		let deck: Card[] | undefined;
+		let pId: string | undefined;
+
+		if (Array.isArray(deckOrPlayerId)) {
+			deck = deckOrPlayerId;
+			pId = playerId;
+		} else if (typeof deckOrPlayerId === "string") {
+			pId = deckOrPlayerId;
+		}
+
 		return this.dispatch({
 			type: ACTION_TYPES.SHUFFLE,
-			payload: { deck, playerId },
-		});
+			payload: { deck, playerId: pId },
+		} as any);
 	}
 
-	public deal(deck: Card[], playerId: string): ValidationResult {
+	public deal(deckOrPlayerId?: Card[] | string, playerId?: string): ValidationResult {
+		let deck: Card[] | undefined;
+		let pId: string | undefined;
+
+		if (Array.isArray(deckOrPlayerId)) {
+			deck = deckOrPlayerId;
+			pId = playerId ?? this.dealerId;
+		} else if (typeof deckOrPlayerId === "string") {
+			pId = deckOrPlayerId;
+		} else {
+			pId = this.dealerId;
+		}
+
 		return this.dispatch({
 			type: ACTION_TYPES.DEAL,
-			payload: { deck, playerId },
-		});
+			payload: { deck, playerId: pId },
+		} as any);
 	}
 
 	public declareTurup(payload: { playerId: string; suit: Suit }): ValidationResult {

@@ -1,6 +1,6 @@
 import { ABBREVIATION_TO_SUIT, SUIT_ABBREVIATION, createCard, type SuitAbbreviation } from "../core/deck";
 
-import type { Card, GameMode, GamePhase, GameState, PlayedCard, Player, Trick } from "../types/index";
+import type { Card, GameMode, GamePhase, GameState, PlayedCard, Player, PlayerPosition, Trick } from "../types/index";
 
 import { ENGINE_ERROR_CODES, GAME_MODES, GAME_PHASES } from "../core/constants";
 import { DalMaraError } from "../core/errors";
@@ -194,7 +194,7 @@ export function importFromDMN(dmnString: string): Partial<GameState> & { dmn: DM
 		players.push({
 			id: `p${i + 1}`,
 			name: `Player ${i + 1}`,
-			position: i,
+			position: i as PlayerPosition,
 			team: mode === GAME_MODES.FOUR_PLAYER ? (i % 2 === 0 ? "team1" : "team2") : `p${i + 1}`,
 		});
 	}

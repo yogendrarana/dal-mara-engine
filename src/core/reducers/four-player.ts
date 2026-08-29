@@ -258,29 +258,27 @@ export function gameReducer4P(state: GameState, action: Action): GameState {
 
 			let newTurup = state.currentTurup;
 
-			// Permanent Turup Rule:
+			// Turup Creation & Override Logic (within the same trick):
+			const trickHasOffSuitCard = state.currentTrick.cards.some(
+				(pc) => pc.card.suit !== state.currentTrick.leadSuit,
+			);
+			const turupFromPastTrick = state.currentTurup !== null && !trickHasOffSuitCard;
 
-			if (!state.currentTurup) {
-				// 1. The first time turup has been created
-				if (playedCardObj.suit !== currentTrickLeadSuit) newTurup = playedCardObj.suit;
-			} else {
-				/**
-				 * If the turup was made in same trick number by a player, the other players has these options within the same trick:
-				 * 1. Must play a card belonging to lead suit of current trick if you have card of the lead suite.
-				 * 2. If card of lead suite is not present he has two choice:
-				 *    a) If he does not have card of turup suit as will,
-				 * 	     whatever he plays becomes new turup and overides previously made turup in the same trick.
-				 *       Which means, player should not have the lading suit card and turup suit card as well, to be able to override the
-				 *       turup made by other player.
-				 *    b) If he does have turup, he can choose to not play turup and he can play other suit card. But as long as he has th turup,
-				 *       his card does not override the exiting suit.
-				 *
-				 * Now, all these things should hapen within same trick. You cannot override the turup created in past trick in future trick. Once, the
-				 * trick is made, it remais same for future tricks until the end.
-				 *
-				 * I gusess we have not implemented turup override properly.
-				 *
-				 */
+			if (!turupFromPastTrick) {
+				const isOffSuit = playedCardObj.suit !== currentTrickLeadSuit;
+				if (isOffSuit) {
+					if (!newTurup) {
+						// First time turup is created in this trick
+						newTurup = playedCardObj.suit;
+					} else if (newTurup !== playedCardObj.suit) {
+						// Turup was created in this same trick. Check if player can override it.
+						const playerHand = updatedHands[playerId] ?? [];
+						const hasExistingTurupInHand = playerHand.some((c) => c.suit === newTurup);
+						if (!hasExistingTurupInHand) {
+							newTurup = playedCardObj.suit;
+						}
+					}
+				}
 			}
 
 			const updatedTrickCards = [...state.currentTrick.cards, playedCardItem];
