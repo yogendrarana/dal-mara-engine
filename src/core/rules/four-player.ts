@@ -1,6 +1,16 @@
 import { compareCardRanks } from "../deck";
-import type { Card, GhopteInfo, GhopteResolutionOrder, GhopteState, PlayedCard, Player, PlayerPosition, Suit, Trick } from "../../types/index";
-import { GHOPTE_RESOLUTION_ORDER, RANKS, SUITS } from "../constants";
+import { GHOPTE_RESOLUTION_ORDER, RANKS, SUITS } from "../const";
+import type {
+	Card,
+	GhopteInfo,
+	GhopteResolutionOrder,
+	GhopteState,
+	PlayedCard,
+	Player,
+	PlayerPosition,
+	Suit,
+	Trick,
+} from "../../types/index";
 
 /**
  * Get anti-clockwise next seat in square arrangement [P0, P1, P2, P3].

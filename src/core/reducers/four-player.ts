@@ -1,14 +1,10 @@
-import { dealFourPlayer, detectGhopte, getAnticlockwiseNextPosition, resolve4PTrickWinner } from "../rules/four-player";
-
-import { createInitialScoreState, evaluateGameWinner4P, isGameFinished4P, updateScoreOnTrickWon } from "../scoring/scoring";
-
-import { ACTION_TYPES, ENGINE_ERROR_CODES, GAME_PHASES } from "../constants";
-
-import type { Action, GameState, PlayedCard, Trick } from "../../types/index";
-
 import { createDeck } from "../deck";
 import { shuffleDeck } from "../shuffle";
 import { DalMaraError } from "../errors";
+import { ACTION_TYPES, ENGINE_ERROR_CODES, GAME_PHASES } from "../const";
+import type { Action, GameState, PlayedCard, Trick } from "../../types/index";
+import { dealFourPlayer, detectGhopte, getAnticlockwiseNextPosition, resolve4PTrickWinner } from "../rules/four-player";
+import { createInitialScoreState, evaluateGameWinner4P, isGameFinished4P, updateScoreOnTrickWon } from "../scoring/scoring";
 
 export function gameReducer4P(state: GameState, action: Action): GameState {
 	const nextActionHistory = [...state.actionHistory, action];
@@ -259,9 +255,7 @@ export function gameReducer4P(state: GameState, action: Action): GameState {
 			let newTurup = state.currentTurup;
 
 			// Turup Creation & Override Logic (within the same trick):
-			const trickHasOffSuitCard = state.currentTrick.cards.some(
-				(pc) => pc.card.suit !== state.currentTrick.leadSuit,
-			);
+			const trickHasOffSuitCard = state.currentTrick.cards.some((pc) => pc.card.suit !== state.currentTrick.leadSuit);
 			const turupFromPastTrick = state.currentTurup !== null && !trickHasOffSuitCard;
 
 			if (!turupFromPastTrick) {

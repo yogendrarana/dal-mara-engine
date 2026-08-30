@@ -1,5 +1,5 @@
 import type { Card, GameState } from "../types/index";
-import { GAME_MODES, GAME_PHASES, RANKS } from "./constants";
+import { GAME_MODES, GAME_PHASES, RANKS } from "./const";
 
 export interface LegalPlayableCard {
 	readonly card: Card;

@@ -1,5 +1,5 @@
 import type { Card, CardId, Suit } from "./card";
-import type { ACTION_TYPES } from "../core/constants";
+import type { ACTION_TYPES } from "../core/const";
 
 export type ActionType = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 

@@ -1,8 +1,7 @@
-import type { Card, CapturedTrickRecord, ScoreState } from "../../types/index";
-import { RANKS } from "../constants";
-
-export * from "./four-player";
 export * from "./two-player";
+export * from "./four-player";
+import { RANKS } from "../const";
+import type { Card, CapturedTrickRecord, ScoreState } from "../../types/index";
 
 export function createInitialScoreState(): ScoreState {
 	return {

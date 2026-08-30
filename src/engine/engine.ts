@@ -4,7 +4,7 @@ import { Game } from "./game";
 import { importFromDMN } from "./dmn";
 import { deserializeState } from "./serializers";
 import { playReplay, type ReplayData } from "./replay";
-import { GAME_MODES, GAME_PHASES, GHOPTE_RESOLUTION_ORDER } from "../core/constants";
+import { GAME_MODES, GAME_PHASES, GHOPTE_RESOLUTION_ORDER } from "../core/const";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: <engine class with static factories>
 export class Engine {

@@ -2,7 +2,7 @@ import { createInitialScoreState, evaluateGameWinner2P, isGameFinished2P, update
 
 import { createDeck } from "../deck";
 import { shuffleDeck } from "../shuffle";
-import { ACTION_TYPES, ENGINE_ERROR_CODES, GAME_PHASES } from "../constants";
+import { ACTION_TYPES, ENGINE_ERROR_CODES, GAME_PHASES } from "../const";
 import type { Action, Card, GameState, PlayedCard, Trick } from "../../types/index";
 import { create2PStacks, dealTwoPlayer, resolve2PTrickWinner } from "../rules/two-player";
 import { DalMaraError } from "../errors";

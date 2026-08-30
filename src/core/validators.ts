@@ -1,4 +1,4 @@
-import { ACTION_TYPES, ENGINE_ERROR_CODES, GAME_MODES, GAME_PHASES, RANKS } from "./constants";
+import { ACTION_TYPES, ENGINE_ERROR_CODES, GAME_MODES, GAME_PHASES, RANKS } from "./const";
 
 import { createValidationError } from "./errors";
 import { validateFollowSuit } from "./rules/four-player";

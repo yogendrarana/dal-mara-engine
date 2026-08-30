@@ -2,7 +2,7 @@ import type { Action, GameMode, GameState, Player } from "../types/index";
 import { DalMaraError } from "../core/errors";
 import { validateAction } from "../core/validators";
 import { createInitialState } from "../core/state";
-import { GAME_MODES, GHOPTE_RESOLUTION_ORDER } from "../core/constants";
+import { GAME_MODES, GHOPTE_RESOLUTION_ORDER } from "../core/const";
 import { gameReducer4P } from "../core/reducers/four-player";
 import { gameReducer2P } from "../core/reducers/two-player";
 

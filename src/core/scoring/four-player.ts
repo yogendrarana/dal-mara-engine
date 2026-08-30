@@ -1,5 +1,5 @@
 import type { Card, Player, ScoreState } from "../../types/index";
-import { ENGINE_ERROR_CODES } from "../constants";
+import { ENGINE_ERROR_CODES } from "../const";
 import { DalMaraError } from "../errors";
 import { createInitialScoreState } from "./scoring";
 

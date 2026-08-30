@@ -3,7 +3,8 @@ export { Engine } from "./engine/engine";
 
 // types and constants
 export * from "./types/index";
-export * from "./core/constants";
+export * from "./core/const";
+
 export * from "./core/errors";
 
 // apis
@@ -12,6 +13,8 @@ export {
 	createDeck,
 	compareCardRanks,
 } from "./core/deck";
+
+// utilities
 
 export {
 	getLegalMoves,

@@ -2,7 +2,7 @@ import type { Player } from "./player";
 import type { Action } from "./action";
 import type { Card, PlayedCard, Suit } from "./card";
 
-import type { GAME_MODES, GAME_PHASES, GHOPTE_RESOLUTION_ORDER } from "../core/constants";
+import type { GAME_MODES, GAME_PHASES, GHOPTE_RESOLUTION_ORDER } from "../core/const";
 
 // types
 

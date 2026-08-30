@@ -1,8 +1,11 @@
-import type { RANKS, SUITS } from "../core/constants";
-import type { SuitAbbreviation } from "../core/deck";
+import type { RANKS, SUITS } from "../core/const";
+
+export type SuitAbbreviation = "s" | "h" | "d" | "c";
 
 export type Suit = (typeof SUITS)[keyof typeof SUITS];
+
 export type Rank = (typeof RANKS)[keyof typeof RANKS];
+
 export type CardId = `${Rank}${SuitAbbreviation}`;
 
 export interface Card {

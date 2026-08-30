@@ -19,7 +19,7 @@ import { serializeState } from "./serializers";
 import { EventDispatcher } from "../events/dispatcher";
 import { exportReplay, type ReplayData } from "./replay";
 import { validateAction, validateCreateGame } from "../core/validators";
-import { ACTION_TYPES, GAME_MODES, GAME_PHASES, GHOPTE_RESOLUTION_ORDER } from "../core/constants";
+import { ACTION_TYPES, GAME_MODES, GAME_PHASES, GHOPTE_RESOLUTION_ORDER } from "../core/const";
 import { getLegalMoves, type LegalPlayableCard } from "../core/legal-moves";
 import { createInitialState } from "../core/state";
 import { gameReducer4P } from "../core/reducers/four-player";

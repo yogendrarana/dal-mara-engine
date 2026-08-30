@@ -1,4 +1,4 @@
-import type { ENGINE_ERROR_CODES } from "../core/constants";
+import type { ENGINE_ERROR_CODES } from "../core/const";
 
 export type EngineErrorCode = (typeof ENGINE_ERROR_CODES)[keyof typeof ENGINE_ERROR_CODES];
 

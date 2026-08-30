@@ -1,4 +1,4 @@
-import { GAME_PHASES } from "./constants";
+import { GAME_PHASES } from "./const";
 import { createInitialScoreState } from "./scoring/scoring";
 import type { GameMode, GameState, GhopteResolutionOrder, Player, ScoreState } from "../types/index";
 
