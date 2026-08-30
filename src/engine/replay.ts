@@ -10,7 +10,6 @@ export interface ReplayData {
 	readonly version: string;
 	readonly gameId: string;
 	readonly mode: GameMode;
-	readonly seed: number;
 	readonly players: readonly Player[];
 	readonly actions: readonly Action[];
 }
@@ -20,7 +19,6 @@ export function exportReplay(state: GameState): ReplayData {
 		version: "1.0",
 		gameId: state.id,
 		mode: state.mode,
-		seed: state.settings.seed ?? state.rngSeed,
 		players: state.players,
 		actions: state.actionHistory,
 	};
@@ -37,7 +35,6 @@ export function playReplay(replay: ReplayData): GameState {
 	let state = createInitialState({
 		id: replay.gameId,
 		mode: replay.mode,
-		seed: replay.seed,
 		dealerId,
 		ghopteResolutionOrder: GHOPTE_RESOLUTION_ORDER.DEALER_LAST,
 		players: replay.players.map((p, idx) => ({

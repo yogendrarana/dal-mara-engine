@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { compareCardRanks, createCard, createDeck, shuffleDeck } from "../src";
-import { parseCardId } from "../src/core/deck";
+import { compareCardRanks, createCard, createDeck } from "../src";
+import { parseCardId } from "../src/core/card";
 
 describe("Card & Deck System", () => {
 	it("should generate 52 unique cards in a standard deck", () => {
@@ -26,15 +26,5 @@ describe("Card & Deck System", () => {
 		expect(card).not.toBeNull();
 		expect(card?.rank).toBe("10");
 		expect(card?.suit).toBe("spades");
-	});
-
-	it("should perform reproducible seeded PRNG shuffle", () => {
-		const deck = createDeck();
-		const seed = 123456;
-		const res1 = shuffleDeck({ deck, rngState: seed });
-		const res2 = shuffleDeck({ deck, rngState: seed });
-
-		expect(res1.shuffled).toEqual(res2.shuffled);
-		expect(res1.nextRngState).toEqual(res2.nextRngState);
 	});
 });

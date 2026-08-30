@@ -41,8 +41,6 @@ export function createInitialState(options: {
 		trickHistory: [],
 		roundNumber: 1,
 		winnerTeam: null,
-		rngSeed: seed,
-		rngState: seed,
 		actionHistory: [],
 	};
 }

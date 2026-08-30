@@ -1,7 +1,6 @@
 import { createInitialScoreState, evaluateGameWinner2P, isGameFinished2P, updateScoreOnTrickWon } from "../scoring/scoring";
 
-import { createDeck } from "../deck";
-import { shuffleDeck } from "../shuffle";
+import { createDeck, shuffleDeck } from "../deck";
 import { ACTION_TYPES, ENGINE_ERROR_CODES, GAME_PHASES } from "../const";
 import type { Action, Card, GameState, PlayedCard, Trick } from "../../types/index";
 import { create2PStacks, dealTwoPlayer, resolve2PTrickWinner } from "../rules/two-player";
@@ -18,31 +17,16 @@ export function gameReducer2P(state: GameState, action: Action): GameState {
 	const dealerPosition = dealer.position;
 
 	switch (action.type) {
-		case ACTION_TYPES.SHUFFLE: {
-			const { deck } = action.payload;
-			if (state.phase !== GAME_PHASES.DEAL) return state;
-
-			const initialDeck = deck ?? createDeck();
-			const { nextRngState } = shuffleDeck({ deck: initialDeck, rngState: state.rngState });
-
-			return {
-				...state,
-				rngState: nextRngState,
-				actionHistory: nextActionHistory,
-			};
-		}
-
 		case ACTION_TYPES.DEAL: {
 			const { deck } = action.payload;
 
 			if (state.phase !== GAME_PHASES.DEAL) return state;
 			if (state.players.length !== 2) return state;
 
-			const initialDeck = deck ?? createDeck();
+			const finalDeck = deck.length === 52 ? deck : shuffleDeck(createDeck());
 
-			const { shuffled, nextRngState } = shuffleDeck({ deck: initialDeck, rngState: state.rngState });
 			const { hands, remainingDeck } = dealTwoPlayer({
-				deck: shuffled,
+				deck: finalDeck,
 				dealerPosition: dealer.position,
 				players: state.players,
 			});
@@ -58,7 +42,6 @@ export function gameReducer2P(state: GameState, action: Action): GameState {
 				hands,
 				stacks2P,
 				currentTurnPlayerId: nonDealer.id,
-				rngState: nextRngState,
 				actionHistory: nextActionHistory,
 			};
 		}

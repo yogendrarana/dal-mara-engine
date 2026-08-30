@@ -1,4 +1,4 @@
-import { createCard } from "../core/deck";
+import { createCard } from "../core/card";
 
 import type {
 	Card,

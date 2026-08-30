@@ -1,4 +1,4 @@
-import { compareCardRanks } from "../deck";
+import { compareCardRanks } from "../card";
 import type { Card, Player, PlayerStack2P, Suit, Trick } from "../../types/index";
 
 /**

@@ -1,4 +1,4 @@
-import { compareCardRanks } from "../deck";
+import { compareCardRanks } from "../card";
 import { GHOPTE_RESOLUTION_ORDER, RANKS, SUITS } from "../const";
 import type {
 	Card,

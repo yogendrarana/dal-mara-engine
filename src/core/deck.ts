@@ -1,16 +1,6 @@
-import type { Card, CardId, Rank, Suit, SuitAbbreviation } from "../types/index";
-import { ABBREVIATION_TO_SUIT, CARD_RANKS, RANK_VALUE, SUIT_ABBREVIATION, SUITS } from "./const";
-
-// create card
-export function createCard(suit: Suit, rank: Rank): Card {
-	const suitAbbr = SUIT_ABBREVIATION[suit];
-
-	return {
-		id: `${rank}${suitAbbr}`,
-		suit,
-		rank,
-	};
-}
+import { createCard } from "./card";
+import type { Card } from "../types/index";
+import { CARD_RANKS, SUITS } from "./const";
 
 // create deck
 export function createDeck(): Card[] {
@@ -25,22 +15,18 @@ export function createDeck(): Card[] {
 	return deck;
 }
 
-// compare ranks
-export function compareCardRanks(a: Card, b: Card): number {
-	return RANK_VALUE[a.rank] - RANK_VALUE[b.rank];
-}
+/**
+ * Shuffles a deck using the Fisher-Yates algorithm.
+ * Returns a new shuffled deck without mutating the original.
+ */
+export function shuffleDeck(deck: readonly Card[]): Card[] {
+	const result = [...deck];
 
-// parse card id
-export function parseCardId(id: CardId): Card | null {
-	if (!id || id.length < 2) return null;
-	const suitAbbr = id.slice(-1) as SuitAbbreviation;
-	const rankStr = id.slice(0, -1);
+	for (let i = result.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
 
-	const suit = ABBREVIATION_TO_SUIT[suitAbbr];
-	if (!suit) return null;
+		[result[i], result[j]] = [result[j], result[i]];
+	}
 
-	const rank = CARD_RANKS.find((r) => r === rankStr);
-	if (!rank) return null;
-
-	return createCard(suit, rank);
+	return result;
 }

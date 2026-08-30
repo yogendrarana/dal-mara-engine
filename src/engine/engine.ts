@@ -44,8 +44,6 @@ export class Engine {
 			trickHistory: [],
 			roundNumber: partialState.roundNumber ?? 1,
 			winnerTeam: null,
-			rngSeed: 0,
-			rngState: 0,
 			actionHistory: [],
 		};
 

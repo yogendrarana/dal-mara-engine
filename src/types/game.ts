@@ -93,8 +93,4 @@ export interface GameState {
 
 	// Recorded action history for replay
 	readonly actionHistory: readonly Action[];
-
-	// Random Number Generator (RNG) seed & counter state for determinism
-	readonly rngSeed: number;
-	readonly rngState: number;
 }

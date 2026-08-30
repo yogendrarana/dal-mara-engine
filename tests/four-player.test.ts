@@ -41,8 +41,8 @@ describe("4-Player Game Mode", () => {
 			mode: "4P",
 			dealerId: "p1",
 			players: [
-				{ id: "p1", name: "Alice", position: 0 },
-				{ id: "p2", name: "Bob", position: 1 },
+				{ id: "p1", name: "Alice", position: 0, team: "red" },
+				{ id: "p2", name: "Bob", position: 1, team: "blue" },
 			],
 		});
 		expect("success" in result && result.success).toBe(false);
@@ -132,10 +132,8 @@ describe("4-Player Game Mode", () => {
 		const nonDealerShuffle = game.shuffle("p2");
 		expect(nonDealerShuffle.success).toBe(false);
 
-		const initialRng = game.state.rngState;
 		const shuffleRes = game.shuffle("p1");
 		expect(shuffleRes.success).toBe(true);
-		expect(game.state.rngState).not.toBe(initialRng);
 
 		const dealRes = game.deal("p1");
 		expect(dealRes.success).toBe(true);

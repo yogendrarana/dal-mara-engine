@@ -1,5 +1,4 @@
-import { createDeck } from "../deck";
-import { shuffleDeck } from "../shuffle";
+import { createDeck, shuffleDeck } from "../deck";
 import { DalMaraError } from "../errors";
 import { ACTION_TYPES, ENGINE_ERROR_CODES, GAME_PHASES } from "../const";
 import type { Action, GameState, PlayedCard, Trick } from "../../types/index";
@@ -15,35 +14,14 @@ export function gameReducer4P(state: GameState, action: Action): GameState {
 	}
 
 	switch (action.type) {
-		case ACTION_TYPES.SHUFFLE: {
-			const { deck } = action.payload;
-			if (state.phase !== GAME_PHASES.DEAL) return state;
-
-			const initialDeck = deck ?? createDeck();
-			const { nextRngState } = shuffleDeck({
-				deck: initialDeck,
-				rngState: state.rngState,
-			});
-
-			return {
-				...state,
-				rngState: nextRngState,
-				actionHistory: nextActionHistory,
-			};
-		}
-
 		case ACTION_TYPES.DEAL: {
 			const { deck } = action.payload;
 			if (state.phase !== GAME_PHASES.DEAL) return state;
 
-			const initialDeck = deck ?? createDeck();
-			const { shuffled, nextRngState } = shuffleDeck({
-				deck: initialDeck,
-				rngState: state.rngState,
-			});
+			const finalDeck = deck?.length === 52 ? deck : shuffleDeck(createDeck());
 
 			const hands = dealFourPlayer({
-				deck: shuffled,
+				deck: finalDeck,
 				dealerPosition: dealer.position,
 				players: state.players,
 			});
@@ -68,7 +46,6 @@ export function gameReducer4P(state: GameState, action: Action): GameState {
 					hands,
 					ghopteState,
 					currentTurnPlayerId: declarer.id,
-					rngState: nextRngState,
 					actionHistory: nextActionHistory,
 				};
 			}
@@ -83,7 +60,6 @@ export function gameReducer4P(state: GameState, action: Action): GameState {
 				phase: GAME_PHASES.PLAYING,
 				hands,
 				currentTurnPlayerId: firstPlayer.id,
-				rngState: nextRngState,
 				actionHistory: nextActionHistory,
 			};
 		}

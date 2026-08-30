@@ -228,12 +228,6 @@ export class Game {
 
 		// emit event notifications to subscribers
 		switch (action.type) {
-			case ACTION_TYPES.SHUFFLE:
-				this.eventDispatcher.emit("DeckShuffled", {
-					rngState: this._state.rngState,
-				});
-				break;
-
 			case ACTION_TYPES.DEAL:
 				this.eventDispatcher.emit("CardsDealt", { phase: this._state.phase });
 
