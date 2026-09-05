@@ -192,7 +192,6 @@ const game = Game.create({
     { id: "p3", name: "Charlie", position: 2, team: "red" },
     { id: "p4", name: "Dave", position: 3, team: "blue" },
   ],
-  ghopteResolutionOrder: "dealer-last", // optional: "dealer-last" (default) | "dealer-first"
 });
 
 if ("success" in game && !game.success) {
@@ -344,14 +343,14 @@ const unsubscribeAll = game.onAny((event) => {
 Dal Mara Notation (`DMN1`) is a compact, space-separated snapshot format (similar to chess FEN) designed for network transmission and instant game state restoration.
 
 ```ts
-import { Engine } from "dal-mara-engine";
+import { fromDMN, Game } from "dal-mara-engine";
 
 // Export current snapshot to DMN1 string
 const dmnString = game.toDMN();
 // Example: "DMN1 4 0 1 1 0 1 0 0 0 AS"
 
-// Restore game instance from DMN1 string
-const restoredGame = Engine.fromDMN(dmnString);
+// Restore game instance from DMN1 string (or via Game.fromDMN)
+const restoredGame = fromDMN(dmnString);
 ```
 
 **DMN1 Token Structure**:
@@ -365,26 +364,26 @@ DMN1 <Mode> <DealerPosition> <Trick> <TrickPlay> <TrickLeaderPosition> <NextTric
 
 #### JSON State Serialization
 ```ts
-import { Engine } from "dal-mara-engine";
+import { Game } from "dal-mara-engine";
 
 // Serialize full game state to JSON
 const json = game.serialize();
 
 // Deserialize and revive into active Game instance
-const revivedGame = Engine.deserialize(json);
+const revivedGame = Game.deserialize(json);
 ```
 
 #### Replay Engine
 Export game actions to replay matches step-by-step with 100% determinism:
 
 ```ts
-import { Engine } from "dal-mara-engine";
+import { Game } from "dal-mara-engine";
 
 // Export replay action log
 const replayData = game.exportReplay();
 
 // Re-run match from start to reconstruct final state
-const replayedGame = Engine.playReplay(replayData);
+const replayedGame = Game.playReplay(replayData);
 ```
 
 ---

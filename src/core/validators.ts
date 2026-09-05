@@ -3,7 +3,7 @@ import { ACTION_TYPES, ENGINE_ERROR_CODES, GAME_MODES, GAME_PHASES, RANKS } from
 import { createValidationError } from "./errors";
 import { validateFollowSuit } from "./rules/four-player";
 import { validate2PFollowSuit } from "./rules/two-player";
-import type { Action, Card, GameMode, GameState, GhopteResolutionOrder, Player, ValidationResult } from "../types/index";
+import type { Action, Card, GameMode, GameState, Player, ValidationResult } from "../types/index";
 
 /**
  * Validate game creation options.
@@ -13,7 +13,6 @@ export function validateCreateGame(options: {
 	mode: GameMode;
 	players: readonly Player[];
 	dealerId: string;
-	ghopteResolutionOrder?: GhopteResolutionOrder;
 }): ValidationResult {
 	if (!options.id || typeof options.id !== "string" || options.id.trim() === "") {
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_GAME_ID, "Game id is required to create a game");

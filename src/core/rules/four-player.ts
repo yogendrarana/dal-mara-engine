@@ -1,16 +1,6 @@
 import { compareCardRanks } from "../card";
-import { GHOPTE_RESOLUTION_ORDER, RANKS, SUITS } from "../const";
-import type {
-	Card,
-	GhopteInfo,
-	GhopteResolutionOrder,
-	GhopteState,
-	PlayedCard,
-	Player,
-	PlayerPosition,
-	Suit,
-	Trick,
-} from "../../types/index";
+import { RANKS, SUITS } from "../const";
+import type { Card, GhopteInfo, GhopteState, PlayedCard, Player, PlayerPosition, Suit, Trick } from "../../types/index";
 
 /**
  * Get anti-clockwise next seat in square arrangement [P0, P1, P2, P3].
@@ -127,12 +117,10 @@ export function detectGhopte({
 	hands = {},
 	players = [],
 	dealerPosition = 0,
-	ghopteResolutionOrder,
 }: {
 	hands: Record<string, readonly Card[]>;
-	players: readonly Player[];
-	dealerPosition: number;
-	ghopteResolutionOrder: GhopteResolutionOrder;
+	players?: readonly Player[];
+	dealerPosition?: number;
 }): GhopteState | null {
 	const playersList: readonly Player[] =
 		players.length > 0
@@ -152,10 +140,10 @@ export function detectGhopte({
 	}
 
 	const total = playersList.length;
-	const startOffset = ghopteResolutionOrder === GHOPTE_RESOLUTION_ORDER.DEALER_LAST ? 1 : 0;
 
 	for (let i = 0; i < total; i++) {
-		const pos = (dealerPosition + startOffset + i) % total;
+		// Normal anti-clockwise direction starting after the dealer (dealer is last)
+		const pos = (dealerPosition + 1 + i) % total;
 
 		const player = playerByPos[pos];
 		if (!player) {

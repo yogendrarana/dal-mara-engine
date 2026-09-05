@@ -30,7 +30,6 @@ export function gameReducer4P(state: GameState, action: Action): GameState {
 				hands,
 				players: state.players,
 				dealerPosition: dealer.position,
-				ghopteResolutionOrder: state.settings.ghopteResolutionOrder,
 			});
 
 			if (ghopteState && ghopteState.ghoptes.length > 0) {

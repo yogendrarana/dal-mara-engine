@@ -2,7 +2,7 @@ import type { Player } from "./player";
 import type { Action } from "./action";
 import type { Card, PlayedCard, Suit } from "./card";
 
-import type { GAME_MODES, GAME_PHASES, GHOPTE_RESOLUTION_ORDER } from "../core/const";
+import type { GAME_MODES, GAME_PHASES } from "../core/const";
 
 // types
 
@@ -16,11 +16,8 @@ export interface Trick {
 	readonly winnerId: string | null;
 }
 
-export type GhopteResolutionOrder = (typeof GHOPTE_RESOLUTION_ORDER)[keyof typeof GHOPTE_RESOLUTION_ORDER];
-
 export interface GameSettings {
 	readonly mode: GameMode;
-	readonly ghopteResolutionOrder: GhopteResolutionOrder;
 }
 
 export interface GhopteInfo {

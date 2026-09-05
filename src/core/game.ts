@@ -6,7 +6,6 @@ import type {
 	GameEventType,
 	GameMode,
 	GameState,
-	GhopteResolutionOrder,
 	PickupTurupCardAction,
 	PlayCardAction,
 	Player,
@@ -17,23 +16,22 @@ import type {
 	ValidationResult,
 } from "../types/index";
 
-import { exportToDMN } from "./dmn";
-import { serializeState } from "./serializers";
+import { exportToDMN, fromDMN } from "./dmn";
+import { deserializeState, serializeState } from "./serializers";
 import { EventDispatcher } from "../events/dispatcher";
-import { exportReplay, type ReplayData } from "./replay";
-import { validateAction, validateCreateGame } from "../core/validators";
-import { ACTION_TYPES, GAME_MODES, GAME_PHASES, GHOPTE_RESOLUTION_ORDER } from "../core/const";
-import { getLegalMoves, type LegalPlayableCard } from "../core/legal-moves";
-import { createInitialState } from "../core/state";
-import { gameReducer4P } from "../core/reducers/four-player";
-import { gameReducer2P } from "../core/reducers/two-player";
+import { exportReplay, playReplay, type ReplayData } from "./replay";
+import { validateAction, validateCreateGame } from "./validators";
+import { ACTION_TYPES, GAME_MODES, GAME_PHASES } from "./const";
+import { getLegalMoves, type LegalPlayableCard } from "./legal-moves";
+import { createInitialState } from "./state";
+import { gameReducer4P } from "./reducers/four-player";
+import { gameReducer2P } from "./reducers/two-player";
 
 export interface CreateGameOptions {
 	readonly id: string;
 	readonly mode: GameMode;
 	readonly players: readonly Player[];
 	readonly dealerId: string;
-	readonly ghopteResolutionOrder?: GhopteResolutionOrder;
 }
 
 export class Game {
@@ -59,10 +57,23 @@ export class Game {
 			mode: options.mode,
 			players: options.players,
 			dealerId: options.dealerId,
-			ghopteResolutionOrder: options.ghopteResolutionOrder ?? GHOPTE_RESOLUTION_ORDER.DEALER_LAST,
 		});
 
 		return new Game(initialState);
+	}
+
+	public static fromDMN(dmnString: string): Game | ValidationResult {
+		return fromDMN(dmnString);
+	}
+
+	public static deserialize(json: string): Game | ValidationResult {
+		const state = deserializeState(json);
+		return Game.create(state);
+	}
+
+	public static playReplay(replay: ReplayData): Game | ValidationResult {
+		const state = playReplay(replay);
+		return Game.create(state);
 	}
 
 	// game access

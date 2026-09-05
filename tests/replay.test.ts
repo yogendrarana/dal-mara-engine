@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createDeck, Engine } from "../src";
-import { Game } from "../src";
+import { createDeck, Game } from "../src";
 
 const deck = createDeck();
 
@@ -20,7 +19,7 @@ describe("Serialization & Replay Engine", () => {
 		game.deal({ deck, playerId: "p1" });
 
 		const json = game.serialize();
-		const deserializedGame = Engine.deserialize(json);
+		const deserializedGame = Game.deserialize(json) as Game;
 
 		expect(deserializedGame.id).toBe(game.id);
 		expect(deserializedGame.mode).toBe(game.mode);
@@ -54,7 +53,7 @@ describe("Serialization & Replay Engine", () => {
 		}
 
 		const replayData = game.exportReplay();
-		const replayedGame = Engine.playReplay(replayData);
+		const replayedGame = Game.playReplay(replayData) as Game;
 
 		expect(replayedGame.state.hands).toEqual(game.state.hands);
 		expect(replayedGame.state.currentTrick).toEqual(game.state.currentTrick);

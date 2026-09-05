@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createDeck, Engine, importFromDMN } from "../src";
-import { Game } from "../src";
+import { createDeck, fromDMN, Game, importFromDMN, toDMN } from "../src";
 
 const deck = createDeck();
 
@@ -21,6 +20,7 @@ describe("Dal Mara Notation (DMN) - DMN1 Format", () => {
 
 		const dmnStr = game.toDMN();
 		expect(dmnStr.startsWith("DMN1 4 ")).toBe(true);
+		expect(toDMN(game)).toBe(dmnStr);
 
 		const tokens = dmnStr.split(" ");
 		expect(tokens.length).toBe(11);
@@ -59,8 +59,11 @@ describe("Dal Mara Notation (DMN) - DMN1 Format", () => {
 		expect(parsed.dmn.mode).toBe("4P");
 		expect(parsed.dmn.dealerPosition).toBe(0);
 
-		const restoredGame = Engine.fromDMN(dmnStr1);
+		const restoredGame = fromDMN(dmnStr1) as Game;
 		expect(restoredGame.mode).toBe(game.mode);
+
+		const restoredGameFromStatic = Game.fromDMN(dmnStr1) as Game;
+		expect(restoredGameFromStatic.mode).toBe(game.mode);
 	});
 
 	it("should export and import 2-Player game DMN state", () => {
@@ -83,7 +86,7 @@ describe("Dal Mara Notation (DMN) - DMN1 Format", () => {
 		const dmnStr1 = game.toDMN();
 		expect(dmnStr1.startsWith("DMN1 2 ")).toBe(true);
 
-		const restoredGame = Engine.fromDMN(dmnStr1);
+		const restoredGame = fromDMN(dmnStr1) as Game;
 		expect(restoredGame.mode).toBe("2P");
 	});
 });

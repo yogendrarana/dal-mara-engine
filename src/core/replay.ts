@@ -1,10 +1,10 @@
 import type { Action, GameMode, GameState, Player } from "../types/index";
-import { DalMaraError } from "../core/errors";
-import { validateAction } from "../core/validators";
-import { createInitialState } from "../core/state";
-import { GAME_MODES, GHOPTE_RESOLUTION_ORDER } from "../core/const";
-import { gameReducer4P } from "../core/reducers/four-player";
-import { gameReducer2P } from "../core/reducers/two-player";
+import { DalMaraError } from "./errors";
+import { validateAction } from "./validators";
+import { createInitialState } from "./state";
+import { GAME_MODES } from "./const";
+import { gameReducer4P } from "./reducers/four-player";
+import { gameReducer2P } from "./reducers/two-player";
 
 export interface ReplayData {
 	readonly version: string;
@@ -36,7 +36,6 @@ export function playReplay(replay: ReplayData): GameState {
 		id: replay.gameId,
 		mode: replay.mode,
 		dealerId,
-		ghopteResolutionOrder: GHOPTE_RESOLUTION_ORDER.DEALER_LAST,
 		players: replay.players.map((p, idx) => ({
 			id: p.id,
 			name: p.name,

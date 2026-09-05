@@ -1,4 +1,4 @@
-import { DalMaraError } from "../core/errors";
+import { DalMaraError } from "./errors";
 import type { GameState } from "../types/index";
 
 export interface SerializedGameData {
@@ -32,4 +32,8 @@ export function deserializeState(json: string): GameState {
 			"INVALID_SERIALIZATION",
 		);
 	}
+}
+
+export function deserialize(json: string): GameState {
+	return deserializeState(json);
 }

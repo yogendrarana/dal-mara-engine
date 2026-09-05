@@ -1,5 +1,5 @@
 import { createDeck } from "../src/core/deck";
-import { Game } from "./../src/engine/game";
+import { Game } from "../src";
 import { describe, expect, it } from "vitest";
 
 const deck = createDeck();

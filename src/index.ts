@@ -1,5 +1,4 @@
-export { Game } from "./engine/game";
-export { Engine } from "./engine/engine";
+export { Game, type CreateGameOptions } from "./core/game";
 
 // types and constants
 export * from "./types/index";
@@ -26,16 +25,18 @@ export {
 export { gameReducer4P } from "./core/reducers/four-player";
 export { gameReducer2P } from "./core/reducers/two-player";
 
-export { exportReplay, playReplay, type ReplayData } from "./engine/replay";
-export { serializeState, deserializeState } from "./engine/serializers";
+export { exportReplay, playReplay, type ReplayData } from "./core/replay";
+export { serializeState, deserializeState, deserialize } from "./core/serializers";
 
 export {
 	exportToDMN,
 	importFromDMN,
+	fromDMN,
+	toDMN,
 	cardToDMN,
 	dmnToCard,
 	type DMNState,
-} from "./engine/dmn";
+} from "./core/dmn";
 
 export {
 	validateAction,

@@ -10,10 +10,3 @@ export const GAME_PHASES = {
 	PLAYING: "PLAYING",
 	END: "END",
 } as const;
-
-// Ghopte resolution order:
-// "daler last is the default value"
-export const GHOPTE_RESOLUTION_ORDER = {
-	DEALER_FIRST: "dealer_first",
-	DEALER_LAST: "dealer_last",
-} as const;
