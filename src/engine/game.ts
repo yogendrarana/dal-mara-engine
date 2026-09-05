@@ -1,13 +1,16 @@
 import type {
 	Action,
-	Card,
-	CardId,
+	DealAction,
+	DeclareTurupAction,
 	GameEvent,
 	GameEventType,
 	GameMode,
 	GameState,
 	GhopteResolutionOrder,
+	PickupTurupCardAction,
+	PlayCardAction,
 	Player,
+	PlayGhopteAction,
 	ScoreState,
 	Suit,
 	Trick,
@@ -30,7 +33,6 @@ export interface CreateGameOptions {
 	readonly mode: GameMode;
 	readonly players: readonly Player[];
 	readonly dealerId: string;
-	readonly seed?: number;
 	readonly ghopteResolutionOrder?: GhopteResolutionOrder;
 }
 
@@ -57,7 +59,6 @@ export class Game {
 			mode: options.mode,
 			players: options.players,
 			dealerId: options.dealerId,
-			seed: options.seed,
 			ghopteResolutionOrder: options.ghopteResolutionOrder ?? GHOPTE_RESOLUTION_ORDER.DEALER_LAST,
 		});
 
@@ -150,62 +151,26 @@ export class Game {
 
 	// game actions
 
-	public start(deckOrPlayerId?: Card[] | string): ValidationResult {
-		if (typeof deckOrPlayerId === "string") {
-			return this.deal(undefined, deckOrPlayerId);
-		}
-		return this.deal(deckOrPlayerId, this.dealerId);
-	}
-
-	public shuffle(deckOrPlayerId?: Card[] | string, playerId?: string): ValidationResult {
-		let deck: Card[] | undefined;
-		let pId: string | undefined;
-
-		if (Array.isArray(deckOrPlayerId)) {
-			deck = deckOrPlayerId;
-			pId = playerId;
-		} else if (typeof deckOrPlayerId === "string") {
-			pId = deckOrPlayerId;
-		}
-
-		return this.dispatch({
-			type: ACTION_TYPES.SHUFFLE,
-			payload: { deck, playerId: pId },
-		} as any);
-	}
-
-	public deal(deckOrPlayerId?: Card[] | string, playerId?: string): ValidationResult {
-		let deck: Card[] | undefined;
-		let pId: string | undefined;
-
-		if (Array.isArray(deckOrPlayerId)) {
-			deck = deckOrPlayerId;
-			pId = playerId ?? this.dealerId;
-		} else if (typeof deckOrPlayerId === "string") {
-			pId = deckOrPlayerId;
-		} else {
-			pId = this.dealerId;
-		}
-
+	public deal({ deck, playerId }: DealAction["payload"]): ValidationResult {
 		return this.dispatch({
 			type: ACTION_TYPES.DEAL,
-			payload: { deck, playerId: pId },
-		} as any);
+			payload: { deck, playerId },
+		});
 	}
 
-	public declareTurup(payload: { playerId: string; suit: Suit }): ValidationResult {
+	public declareTurup(payload: DeclareTurupAction["payload"]): ValidationResult {
 		return this.dispatch({ type: ACTION_TYPES.DECLARE_TURUP, payload });
 	}
 
-	public pickupTurupCard(payload: { playerId: string; cardId: CardId }): ValidationResult {
+	public pickupTurupCard(payload: PickupTurupCardAction["payload"]): ValidationResult {
 		return this.dispatch({ type: ACTION_TYPES.PICKUP_TURUP_CARD, payload });
 	}
 
-	public submitGhopteCard(payload: { playerId: string; cardId: CardId }): ValidationResult {
+	public submitGhopteCard(payload: PlayGhopteAction["payload"]): ValidationResult {
 		return this.dispatch({ type: ACTION_TYPES.PLAY_GHOPTE, payload });
 	}
 
-	public playCard(payload: { playerId: string; cardId: CardId; stackPosition?: number; stackId?: string }): ValidationResult {
+	public playCard(payload: PlayCardAction["payload"]): ValidationResult {
 		if (this._state.phase === GAME_PHASES.GHOPTE) {
 			return this.submitGhopteCard(payload);
 		}

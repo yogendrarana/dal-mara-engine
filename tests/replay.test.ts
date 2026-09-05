@@ -9,7 +9,6 @@ describe("Serialization & Replay Engine", () => {
 		const game = Game.create({
 			id: "replay-1",
 			mode: "4P",
-			seed: 10101,
 			dealerId: "p1",
 			players: [
 				{ id: "p1", name: "Alice", position: 0, team: "red" },
@@ -18,7 +17,7 @@ describe("Serialization & Replay Engine", () => {
 				{ id: "p4", name: "Dave", position: 3, team: "blue" },
 			],
 		}) as Game;
-		game.start(deck);
+		game.deal({ deck, playerId: "p1" });
 
 		const json = game.serialize();
 		const deserializedGame = Engine.deserialize(json);
@@ -33,7 +32,6 @@ describe("Serialization & Replay Engine", () => {
 		const game = Game.create({
 			id: "replay-2",
 			mode: "4P",
-			seed: 20202,
 			dealerId: "p1",
 			players: [
 				{ id: "p1", name: "Alice", position: 0, team: "red" },
@@ -42,7 +40,7 @@ describe("Serialization & Replay Engine", () => {
 				{ id: "p4", name: "Dave", position: 3, team: "blue" },
 			],
 		}) as Game;
-		game.start(deck);
+		game.deal({ deck, playerId: "p1" });
 
 		for (let i = 0; i < 4; i++) {
 			if (game.isFinished) break;

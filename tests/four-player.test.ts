@@ -9,7 +9,6 @@ describe("4-Player Game Mode", () => {
 		const game = Game.create({
 			id: "game-1",
 			mode: "4P",
-			seed: 99999,
 			dealerId: "p1",
 			players: [
 				{ id: "p1", name: "Alice", position: 0, team: "red" },
@@ -21,8 +20,8 @@ describe("4-Player Game Mode", () => {
 
 		expect(game instanceof Game).toBe(true);
 
-		const startRes = game.start(deck);
-		expect(startRes.success).toBe(true);
+		const dealRes = game.deal({ deck, playerId: "p1" });
+		expect(dealRes.success).toBe(true);
 
 		const hand1 = game.state.hands.p1;
 		const hand2 = game.state.hands.p2;
@@ -52,7 +51,6 @@ describe("4-Player Game Mode", () => {
 		const game = Game.create({
 			id: "game-2",
 			mode: "4P",
-			seed: 42,
 			dealerId: "p1",
 			players: [
 				{ id: "p1", name: "Alice", position: 0, team: "red" },
@@ -61,7 +59,7 @@ describe("4-Player Game Mode", () => {
 				{ id: "p4", name: "Dave", position: 3, team: "blue" },
 			],
 		}) as Game;
-		game.start(deck);
+		game.deal({ deck, playerId: "p1" });
 
 		const turnP = game.currentPlayer;
 		if (!turnP) return;
@@ -99,7 +97,6 @@ describe("4-Player Game Mode", () => {
 		const game = Game.create({
 			id: "game-3",
 			mode: "4P",
-			seed: 100,
 			dealerId: "p1",
 			players: [
 				{ id: "p1", name: "Alice", position: 0, team: "red" },
@@ -108,16 +105,15 @@ describe("4-Player Game Mode", () => {
 				{ id: "p4", name: "Dave", position: 3, team: "blue" },
 			],
 		}) as Game;
-		game.start(deck);
+		game.deal({ deck, playerId: "p1" });
 
 		expect(game.currentTurup).toBeNull();
 	});
 
-	it("should start in DEAL phase and allow dealer to shuffle and deal", () => {
+	it("should start in DEAL phase and allow dealer to deal", () => {
 		const game = Game.create({
-			id: "game-shuffle-deal",
+			id: "game-deal",
 			mode: "4P",
-			seed: 12345,
 			dealerId: "p1",
 			players: [
 				{ id: "p1", name: "Alice", position: 0, team: "red" },
@@ -129,13 +125,10 @@ describe("4-Player Game Mode", () => {
 
 		expect(game.phase).toBe("DEAL");
 
-		const nonDealerShuffle = game.shuffle("p2");
-		expect(nonDealerShuffle.success).toBe(false);
+		const nonDealerDeal = game.deal({ deck, playerId: "p2" });
+		expect(nonDealerDeal.success).toBe(false);
 
-		const shuffleRes = game.shuffle("p1");
-		expect(shuffleRes.success).toBe(true);
-
-		const dealRes = game.deal("p1");
+		const dealRes = game.deal({ deck, playerId: "p1" });
 		expect(dealRes.success).toBe(true);
 		expect(game.phase).not.toBe("DEAL");
 	});

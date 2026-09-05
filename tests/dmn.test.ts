@@ -9,7 +9,6 @@ describe("Dal Mara Notation (DMN) - DMN1 Format", () => {
 		const game = Game.create({
 			id: "dmn-1",
 			mode: "4P",
-			seed: 1234,
 			dealerId: "p1",
 			players: [
 				{ id: "p1", name: "Alice", position: 0, team: "red" },
@@ -18,7 +17,7 @@ describe("Dal Mara Notation (DMN) - DMN1 Format", () => {
 				{ id: "p4", name: "Dave", position: 3, team: "blue" },
 			],
 		}) as Game;
-		game.start(deck);
+		game.deal({ deck, playerId: "p1" });
 
 		const dmnStr = game.toDMN();
 		expect(dmnStr.startsWith("DMN1 4 ")).toBe(true);
@@ -34,7 +33,6 @@ describe("Dal Mara Notation (DMN) - DMN1 Format", () => {
 		const game = Game.create({
 			id: "dmn-2",
 			mode: "4P",
-			seed: 555,
 			dealerId: "p1",
 			players: [
 				{ id: "p1", name: "Alice", position: 0, team: "red" },
@@ -43,7 +41,7 @@ describe("Dal Mara Notation (DMN) - DMN1 Format", () => {
 				{ id: "p4", name: "Dave", position: 3, team: "blue" },
 			],
 		}) as Game;
-		game.start(deck);
+		game.deal({ deck, playerId: "p1" });
 
 		const turnP = game.currentPlayer;
 		if (turnP) {
@@ -69,14 +67,13 @@ describe("Dal Mara Notation (DMN) - DMN1 Format", () => {
 		const game = Game.create({
 			id: "dmn-3",
 			mode: "2P",
-			seed: 888,
 			dealerId: "p1",
 			players: [
 				{ id: "p1", name: "Alice", position: 0, team: "p1" },
 				{ id: "p2", name: "Bob", position: 1, team: "p2" },
 			],
 		}) as Game;
-		game.start(deck);
+		game.deal({ deck, playerId: "p1" });
 
 		const currP = game.currentPlayer;
 		if (currP) {

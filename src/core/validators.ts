@@ -13,7 +13,6 @@ export function validateCreateGame(options: {
 	mode: GameMode;
 	players: readonly Player[];
 	dealerId: string;
-	seed?: number;
 	ghopteResolutionOrder?: GhopteResolutionOrder;
 }): ValidationResult {
 	if (!options.id || typeof options.id !== "string" || options.id.trim() === "") {
@@ -77,9 +76,9 @@ export function validateCreateGame(options: {
 			return createValidationError(ENGINE_ERROR_CODES.INVALID_PLAYERS, "All players must have a valid non-empty, string team");
 		}
 
-		const p0 = options.players.find((p) => p.position === 0)!;
-		const p1 = options.players.find((p) => p.position === 1)!;
-		const p2 = options.players.find((p) => p.position === 2)!;
+		const p0 = options.players.find((p) => p.position === 0);
+		const p1 = options.players.find((p) => p.position === 1);
+		const p2 = options.players.find((p) => p.position === 2);
 		const p3 = options.players.find((p) => p.position === 3);
 
 		const t0 = p0.team;
@@ -133,24 +132,18 @@ export function validateCreateGame(options: {
  */
 export function validateAction(state: GameState, action: Action): ValidationResult {
 	switch (action.type) {
-		case ACTION_TYPES.SHUFFLE: {
-			if (state.phase !== GAME_PHASES.DEAL) {
-				return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "Cannot shuffle deck outside DEAL phase");
-			}
-
-			if (action.payload?.playerId && action.payload.playerId !== state.dealerId) {
-				return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Only the dealer can shuffle the deck");
-			}
-
-			return { success: true };
-		}
-
 		case ACTION_TYPES.DEAL: {
+			const { deck, playerId } = action.payload;
+
 			if (state.phase !== GAME_PHASES.DEAL) {
 				return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "Cannot deal cards outside DEAL phase");
 			}
 
-			if (action.payload?.playerId && action.payload.playerId !== state.dealerId) {
+			if (deck?.length !== 52) {
+				return createValidationError(ENGINE_ERROR_CODES.INVALID_DECK, "Deck must be 52 cards long to deal");
+			}
+
+			if (playerId !== state.dealerId) {
 				return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Only the dealer can deal cards");
 			}
 

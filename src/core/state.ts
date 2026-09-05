@@ -7,10 +7,9 @@ export function createInitialState(options: {
 	mode: GameMode;
 	players: readonly Player[];
 	dealerId: string;
-	seed?: number;
 	ghopteResolutionOrder: GhopteResolutionOrder;
 }): GameState {
-	const { id, mode, players, dealerId, seed = Date.now(), ghopteResolutionOrder } = options;
+	const { id, mode, players, dealerId, ghopteResolutionOrder } = options;
 
 	const orderedPlayers: Player[] = [...players].sort((a, b) => a.position - b.position);
 
@@ -23,7 +22,7 @@ export function createInitialState(options: {
 		id,
 		mode,
 		phase: GAME_PHASES.DEAL,
-		settings: { mode, seed, ghopteResolutionOrder },
+		settings: { mode, ghopteResolutionOrder },
 		players: orderedPlayers,
 		dealerId,
 		currentTurnPlayerId: null,

@@ -20,7 +20,6 @@ export type GhopteResolutionOrder = (typeof GHOPTE_RESOLUTION_ORDER)[keyof typeo
 
 export interface GameSettings {
 	readonly mode: GameMode;
-	readonly seed?: number;
 	readonly ghopteResolutionOrder: GhopteResolutionOrder;
 }
 

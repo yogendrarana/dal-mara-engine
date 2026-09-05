@@ -1,7 +1,6 @@
 // events
 export type GameEventType =
 	| "GameCreated"
-	| "DeckShuffled"
 	| "CardsDealt"
 	| "TurupDeclared"
 	| "TurupCreated"

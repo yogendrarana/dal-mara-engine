@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createDeck, Game } from "../src";
+import { createDeck, shuffleDeck, Game } from "../src";
 
 const deck = createDeck();
 
@@ -8,11 +8,10 @@ describe("Stress & Determinism Testing", () => {
 		const gameCount = 1000;
 		let completedCount = 0;
 
-		for (let seed = 1; seed <= gameCount; seed++) {
+		for (let i = 1; i <= gameCount; i++) {
 			const game = Game.create({
-				id: `stress-4p-${seed}`,
+				id: `stress-4p-${i}`,
 				mode: "4P",
-				seed,
 				dealerId: "p1",
 				players: [
 					{ id: "p1", name: "Alice", position: 0, team: "red" },
@@ -22,8 +21,9 @@ describe("Stress & Determinism Testing", () => {
 				],
 			}) as Game;
 
-			const startRes = game.start(deck);
-			expect(startRes.success).toBe(true);
+			const shuffledDeck = shuffleDeck(deck);
+			const dealRes = game.deal({ deck: shuffledDeck, playerId: "p1" });
+			expect(dealRes.success).toBe(true);
 
 			let maxSafetyMoves = 200;
 			while (!game.isFinished && maxSafetyMoves > 0) {
@@ -58,11 +58,10 @@ describe("Stress & Determinism Testing", () => {
 		const gameCount = 1000;
 		let completedCount = 0;
 
-		for (let seed = 1; seed <= gameCount; seed++) {
+		for (let i = 1; i <= gameCount; i++) {
 			const game = Game.create({
-				id: `stress-2p-${seed}`,
+				id: `stress-2p-${i}`,
 				mode: "2P",
-				seed,
 				dealerId: "p1",
 				players: [
 					{ id: "p1", name: "Alice", position: 0, team: "p1" },
@@ -70,14 +69,15 @@ describe("Stress & Determinism Testing", () => {
 				],
 			}) as Game;
 
-			const startRes = game.start(deck);
-			expect(startRes.success).toBe(true);
+			const shuffledDeck = shuffleDeck(deck);
+			const dealRes = game.deal({ deck: shuffledDeck, playerId: "p1" });
+			expect(dealRes.success).toBe(true);
 
 			const declP = game.currentPlayer;
 			if (!declP) break;
 
 			const suits = ["spades", "hearts", "diamonds", "clubs"] as const;
-			const suitToDeclare = suits[seed % 4] ?? "spades";
+			const suitToDeclare = suits[i % 4] ?? "spades";
 			game.declareTurup({ playerId: declP.id, suit: suitToDeclare });
 
 			let maxSafetyMoves = 300;

@@ -8,7 +8,6 @@ describe("2-Player Game Mode", () => {
 		const game = Game.create({
 			id: "game-2p",
 			mode: "2P",
-			seed: 777,
 			dealerId: "p1",
 			players: [
 				{ id: "p1", name: "Alice", position: 0, team: "p1" },
@@ -16,8 +15,8 @@ describe("2-Player Game Mode", () => {
 			],
 		}) as Game;
 
-		const startRes = game.start(deck);
-		expect(startRes.success).toBe(true);
+		const dealRes = game.deal({ deck, playerId: "p1" });
+		expect(dealRes.success).toBe(true);
 		expect(game.phase).toBe("TURUP_DECLARATION");
 
 		const declP = game.currentPlayer;
