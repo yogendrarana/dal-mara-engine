@@ -1,4 +1,5 @@
 import type { Card, GameState } from "../types/index";
+import { parseCard } from "./card";
 import { GAME_MODES, GAME_PHASES, RANKS } from "./const";
 
 export interface LegalPlayableCard {
@@ -25,7 +26,10 @@ export function getLegalMoves4P(state: GameState, playerId: string): LegalPlayab
 
 		// If current player is the Ghopte declarer, they play their Ghopte 10
 		if (activeGhopte && activeGhopte.declarerId === playerId) {
-			const ghopteCard = hand.find((c) => c.suit === activeGhopte.suit && c.rank === RANKS.TEN);
+			const ghopteCard = hand.find((c) => {
+				const details = parseCard(c);
+				return details.suit === activeGhopte.suit && details.rank === RANKS.TEN;
+			});
 			if (ghopteCard) {
 				return [{ card: ghopteCard }];
 			}
@@ -34,10 +38,10 @@ export function getLegalMoves4P(state: GameState, playerId: string): LegalPlayab
 		// Find any pending Ghopte cards owned by this player for future Ghopte rounds
 		const pendingOwnGhopteIds = state.ghopteState.ghoptes
 			.filter((g) => g.declarerId === playerId && !g.resolved)
-			.map((g) => g.tenCard.id);
+			.map((g) => g.tenCard);
 
 		// Other players are guessing the face-down Ghopte card: any card from hand EXCEPT their own pending Ghopte 10s
-		const guessingMoves = availableCards.filter((item) => !pendingOwnGhopteIds.includes(item.card.id));
+		const guessingMoves = availableCards.filter((item) => !pendingOwnGhopteIds.includes(item.card));
 
 		return guessingMoves.length > 0 ? guessingMoves : availableCards;
 	}
@@ -48,7 +52,7 @@ export function getLegalMoves4P(state: GameState, playerId: string): LegalPlayab
 		return availableCards;
 	}
 
-	const matchingLeadSuit = availableCards.filter((item) => item.card.suit === leadSuit);
+	const matchingLeadSuit = availableCards.filter((item) => parseCard(item.card).suit === leadSuit);
 
 	if (matchingLeadSuit.length > 0) {
 		return matchingLeadSuit;
@@ -93,7 +97,7 @@ export function getLegalMoves2P(state: GameState, playerId: string): LegalPlayab
 		return availableCards;
 	}
 
-	const matchingLeadSuit = availableCards.filter((item) => item.card.suit === leadSuit);
+	const matchingLeadSuit = availableCards.filter((item) => parseCard(item.card).suit === leadSuit);
 
 	if (matchingLeadSuit.length > 0) {
 		return matchingLeadSuit;

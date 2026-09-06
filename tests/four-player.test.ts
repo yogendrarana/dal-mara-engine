@@ -1,5 +1,5 @@
 import { createDeck } from "../src/core/deck";
-import { Game } from "../src";
+import { Game, parseCard } from "../src";
 import { describe, expect, it } from "vitest";
 
 const deck = createDeck();
@@ -68,7 +68,7 @@ describe("4-Player Game Mode", () => {
 		const leadCard = hand[0];
 		if (!leadCard) return;
 
-		const playRes = game.playCard({ playerId: turnP.id, cardId: leadCard.id });
+		const playRes = game.playCard({ playerId: turnP.id, card: leadCard });
 		expect(playRes.success).toBe(true);
 
 		const nextP = game.currentPlayer;
@@ -78,13 +78,13 @@ describe("4-Player Game Mode", () => {
 		const leadSuit = game.currentTrick.leadSuit;
 		if (!leadSuit) return;
 
-		const matchingCard = nextHand.find((c) => c.suit === leadSuit);
-		const nonMatchingCard = nextHand.find((c) => c.suit !== leadSuit);
+		const matchingCard = nextHand.find((c) => parseCard(c).suit === leadSuit);
+		const nonMatchingCard = nextHand.find((c) => parseCard(c).suit !== leadSuit);
 
 		if (matchingCard && nonMatchingCard) {
 			const illegalRes = game.playCard({
 				playerId: nextP.id,
-				cardId: nonMatchingCard.id,
+				card: nonMatchingCard,
 			});
 			expect(illegalRes.success).toBe(false);
 			if (!illegalRes.success) {

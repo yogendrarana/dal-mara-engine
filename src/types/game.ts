@@ -34,7 +34,6 @@ export interface GhopteState {
 }
 
 export interface PlayerStack2P {
-	readonly id: string;
 	readonly position: number;
 	readonly hiddenCards: readonly Card[];
 	readonly faceUpCard: Card | null;
@@ -55,9 +54,14 @@ export interface GameState {
 	readonly id: string;
 	readonly mode: GameMode;
 	readonly phase: GamePhase;
+
+	// @TODO: no need for settings, as it only inclues mode. we can remove it
 	readonly settings: GameSettings;
 	readonly players: readonly Player[];
+
+	// @TODO: dealer id shoul be number
 	readonly dealerId: string;
+
 	readonly currentTurnPlayerId: string | null;
 
 	// 13 card hand (4P) and 6 card hand (2P)

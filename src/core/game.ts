@@ -238,7 +238,7 @@ export class Game {
 			case ACTION_TYPES.PLAY_CARD:
 				this.eventDispatcher.emit("CardPlayed", {
 					playerId: action.payload.playerId,
-					cardId: action.payload.cardId,
+					card: action.payload.card,
 				});
 
 				if (prevTurup !== this._state.currentTurup && this._state.currentTurup) {

@@ -1,4 +1,4 @@
-import { compareCardRanks } from "../card";
+import { compareCardRanks, parseCard } from "../card";
 import type { Card, Player, PlayerStack2P, Suit, Trick } from "../../types/index";
 
 /**
@@ -48,11 +48,12 @@ export function dealTwoPlayer({
 
 const buildPlayerStacks = (stacks: Card[][]): PlayerStack2P[] => {
 	return stacks.map((stackCards, sIdx) => {
+		// @TODO: dont hardode indx, we can use slice(0, -1) and slice(-1)
+		// This way in future, if we decide to have 5 stack with 4 cards in each stack, this functions works just fine
 		const hiddenCards = stackCards.slice(0, 4);
 		const faceUpCard = stackCards[4] ?? null;
 
 		return {
-			id: `stack-${sIdx}`,
 			position: sIdx,
 			hiddenCards,
 			faceUpCard,
@@ -69,6 +70,7 @@ export function create2PStacks({
 	players: readonly Player[];
 	dealerPosition: number;
 }): Record<string, PlayerStack2P[]> {
+	// @TODO: validate remainingDeck has exactly 52 - 6 - 6 cards beacse 6 cards for 2 players have alreaddy been dealt for hand
 	const nonDealerPosition = (dealerPosition + 1) % 2;
 
 	const dealer = players[dealerPosition];
@@ -113,10 +115,10 @@ export function validate2PFollowSuit({
 	leadSuit: Suit | null;
 }): boolean {
 	if (!leadSuit) return true;
-	if (cardToPlay.suit === leadSuit) return true;
+	if (parseCard(cardToPlay).suit === leadSuit) return true;
 
-	const hasLeadSuitInHand = hand.some((c) => c.suit === leadSuit);
-	const hasLeadSuitInStacks = stacks.some((s) => s.faceUpCard && s.faceUpCard.suit === leadSuit);
+	const hasLeadSuitInHand = hand.some((c) => parseCard(c).suit === leadSuit);
+	const hasLeadSuitInStacks = stacks.some((s) => s.faceUpCard && parseCard(s.faceUpCard).suit === leadSuit);
 
 	return !hasLeadSuitInHand && !hasLeadSuitInStacks;
 }
@@ -133,26 +135,28 @@ export function resolve2PTrickWinner(options: { trick: Trick; currentTurup: Suit
 		throw new Error("Trick requires 2 cards to resolve winner");
 	}
 
-	const leadSuit = trick.leadSuit ?? card1.card.suit;
+	const card1Suit = parseCard(card1.card).suit;
+	const card2Suit = parseCard(card2.card).suit;
+	const leadSuit = trick.leadSuit ?? card1Suit;
 
-	if (card1.card.suit === currentTurup && card2.card.suit !== currentTurup) {
+	if (card1Suit === currentTurup && card2Suit !== currentTurup) {
 		return card1.playerId;
 	}
 
-	if (card2.card.suit === currentTurup && card1.card.suit !== currentTurup) {
+	if (card2Suit === currentTurup && card1Suit !== currentTurup) {
 		return card2.playerId;
 	}
 
-	if (card1.card.suit === currentTurup && card2.card.suit === currentTurup) {
+	if (card1Suit === currentTurup && card2Suit === currentTurup) {
 		return compareCardRanks(card1.card, card2.card) >= 0 ? card1.playerId : card2.playerId;
 	}
 
 	// Neither is Turup
-	if (card2.card.suit === leadSuit && card1.card.suit === leadSuit) {
+	if (card2Suit === leadSuit && card1Suit === leadSuit) {
 		return compareCardRanks(card1.card, card2.card) >= 0 ? card1.playerId : card2.playerId;
 	}
 
-	if (card1.card.suit === leadSuit && card2.card.suit !== leadSuit) {
+	if (card1Suit === leadSuit && card2Suit !== leadSuit) {
 		return card1.playerId;
 	}
 

@@ -3,7 +3,7 @@ export type PlayerPosition = 0 | 1 | 2 | 3;
 
 export interface Player {
 	readonly id: string;
-	readonly name?: string;
 	readonly position: PlayerPosition;
 	readonly team: string;
+	readonly name?: string;
 }

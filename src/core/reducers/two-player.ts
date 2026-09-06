@@ -1,6 +1,7 @@
 import { createInitialScoreState, evaluateGameWinner2P, isGameFinished2P, updateScoreOnTrickWon } from "../scoring/scoring";
 
 import { createDeck, shuffleDeck } from "../deck";
+import { parseCard } from "../card";
 import { ACTION_TYPES, ENGINE_ERROR_CODES, GAME_PHASES } from "../const";
 import type { Action, Card, GameState, PlayedCard, Trick } from "../../types/index";
 import { create2PStacks, dealTwoPlayer, resolve2PTrickWinner } from "../rules/two-player";
@@ -71,14 +72,14 @@ export function gameReducer2P(state: GameState, action: Action): GameState {
 		}
 
 		case ACTION_TYPES.PICKUP_TURUP_CARD: {
-			const { playerId, cardId } = action.payload;
+			const { playerId, card } = action.payload;
 
 			if (!state.currentTurup) return state;
 
 			const playerStacks = state.stacks2P[playerId];
 			if (!playerStacks) return state;
 
-			const targetStack = playerStacks.find((s) => s.faceUpCard?.id === cardId && s.faceUpCard?.suit === state.currentTurup);
+			const targetStack = playerStacks.find((s) => s.faceUpCard === card && parseCard(s.faceUpCard).suit === state.currentTurup);
 			if (!targetStack) return state;
 
 			const targetCard = targetStack.faceUpCard;
@@ -91,7 +92,9 @@ export function gameReducer2P(state: GameState, action: Action): GameState {
 			const nextFaceUp = newHidden.pop() ?? null;
 
 			const newPlayerStacks = [...playerStacks];
-			const targetIndex = newPlayerStacks.findIndex((s) => s.position === targetStack.position && s.id === targetStack.id);
+			// @TODO: can we use position of the stack to identify it? If yes, using index is unnecessary.
+			// Also, in this file, everywhere we are using target stack index instead of position. Let's change that.
+			const targetIndex = newPlayerStacks.findIndex((s) => s.position === targetStack.position);
 
 			newPlayerStacks[targetIndex] = {
 				...targetStack,
@@ -114,7 +117,7 @@ export function gameReducer2P(state: GameState, action: Action): GameState {
 		}
 
 		case ACTION_TYPES.PLAY_CARD: {
-			const { playerId, cardId } = action.payload;
+			const { playerId, card } = action.payload;
 
 			let playedCardObj: Card | null = null;
 			const updatedHands = { ...state.hands };
@@ -122,10 +125,10 @@ export function gameReducer2P(state: GameState, action: Action): GameState {
 			const playerStacks = [...(updatedStacks[playerId] ?? [])];
 
 			// 1. Play from stack if card belongs to stack
-			const targetStackIndex = playerStacks.findIndex((s) => s.faceUpCard?.id === cardId);
+			const targetStackIndex = playerStacks.findIndex((s) => s.faceUpCard === card);
 			if (targetStackIndex >= 0 && targetStackIndex < playerStacks.length) {
 				const stack = playerStacks[targetStackIndex];
-				if (stack?.faceUpCard && stack.faceUpCard.id === cardId) {
+				if (stack?.faceUpCard && stack.faceUpCard === card) {
 					playedCardObj = stack.faceUpCard;
 					const newHidden = [...stack.hiddenCards];
 					const nextFaceUp = newHidden.pop() ?? null;
@@ -143,10 +146,10 @@ export function gameReducer2P(state: GameState, action: Action): GameState {
 			// 2. Play from hand if not played from stack
 			if (!playedCardObj) {
 				const hand = updatedHands[playerId] ?? [];
-				playedCardObj = hand.find((c) => c.id === cardId) ?? null;
+				playedCardObj = hand.find((c) => c === card) ?? null;
 
 				if (playedCardObj) {
-					updatedHands[playerId] = hand.filter((c) => c.id !== cardId);
+					updatedHands[playerId] = hand.filter((c) => c !== card);
 				}
 			}
 
@@ -160,7 +163,7 @@ export function gameReducer2P(state: GameState, action: Action): GameState {
 			};
 
 			const isLead = state.currentTrick.cards.length === 0;
-			const currentTrickLeadSuit = isLead ? playedCardObj.suit : state.currentTrick.leadSuit;
+			const currentTrickLeadSuit = isLead ? parseCard(playedCardObj).suit : state.currentTrick.leadSuit;
 
 			const currentTrickCards = [...state.currentTrick.cards, playedCardItem];
 			const isTrickComplete = currentTrickCards.length === 2;

@@ -48,7 +48,7 @@ describe("Serialization & Replay Engine", () => {
 			const legalMoves = game.getLegalMoves(turnP.id);
 			const move = legalMoves[0];
 			if (move) {
-				game.playCard({ playerId: turnP.id, cardId: move.card.id });
+				game.playCard({ playerId: turnP.id, card: move.card });
 			}
 		}
 

@@ -1,4 +1,4 @@
-import type { Card, CardId, Suit } from "./card";
+import type { Card, Suit } from "./card";
 import type { ACTION_TYPES } from "../core/const";
 
 export type ActionType = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
@@ -25,7 +25,7 @@ export type PickupTurupCardAction = {
 	type: typeof ACTION_TYPES.PICKUP_TURUP_CARD;
 	payload: {
 		playerId: string;
-		cardId: CardId;
+		card: Card;
 	};
 };
 
@@ -33,7 +33,7 @@ export type PlayCardAction = {
 	type: typeof ACTION_TYPES.PLAY_CARD;
 	payload: {
 		playerId: string;
-		cardId: CardId;
+		card: Card;
 	};
 };
 
@@ -41,7 +41,7 @@ export type PlayGhopteAction = {
 	type: typeof ACTION_TYPES.PLAY_GHOPTE;
 	payload: {
 		playerId: string;
-		cardId: CardId;
+		card: Card;
 	};
 };
 

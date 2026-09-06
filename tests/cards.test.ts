@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { compareCardRanks, createCard, createDeck } from "../src";
-import { parseCardId } from "../src/core/card";
+import { compareCardRanks, createCard, createDeck, parseCard } from "../src";
 
 describe("Card & Deck System", () => {
 	it("should generate 52 unique cards in a standard deck", () => {
 		const deck = createDeck();
 		expect(deck.length).toBe(52);
-		const cardIds = new Set(deck.map((c) => c.id));
+		const cardIds = new Set(deck);
 		expect(cardIds.size).toBe(52);
 	});
 
@@ -22,9 +21,9 @@ describe("Card & Deck System", () => {
 	});
 
 	it("should parse card IDs correctly", () => {
-		const card = parseCardId("10s");
-		expect(card).not.toBeNull();
-		expect(card?.rank).toBe("10");
-		expect(card?.suit).toBe("spades");
+		const card = parseCard("10s");
+		expect(card).toBeDefined();
+		expect(card.rank).toBe("10");
+		expect(card.suit).toBe("spades");
 	});
 });

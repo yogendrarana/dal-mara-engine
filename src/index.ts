@@ -10,7 +10,9 @@ export { createDeck, shuffleDeck } from "./core/deck";
 export {
 	createCard,
 	compareCardRanks,
-	parseCardId,
+	parseCard,
+	getCardSuit,
+	getCardRank,
 } from "./core/card";
 
 export { DalMaraError, createValidationError } from "./core/errors";

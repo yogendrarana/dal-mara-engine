@@ -40,8 +40,7 @@ describe("Stress & Determinism Testing", () => {
 
 				const playRes = game.playCard({
 					playerId: turnP.id,
-					cardId: move.card.id,
-					stackPosition: move.stackPosition,
+					card: move.card,
 				});
 				expect(playRes.success).toBe(true);
 			}
@@ -95,8 +94,7 @@ describe("Stress & Determinism Testing", () => {
 
 				const playRes = game.playCard({
 					playerId: turnP.id,
-					cardId: move.card.id,
-					stackPosition: move.stackPosition,
+					card: move.card,
 				});
 				expect(playRes.success).toBe(true);
 			}

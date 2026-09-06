@@ -86,7 +86,7 @@ if (activePlayer) {
   // 6. Play a card
   game.playCard({
     playerId: activePlayer.id,
-    cardId: legalMoves[0].card.id,
+    card: legalMoves[0].card,
   });
 }
 ```
@@ -213,13 +213,13 @@ const deck = shuffleDeck(createDeck());
 const result = game.deal({ deck, playerId: "p1" });
 ```
 
-#### `game.playCard({ playerId, cardId })`
+#### `game.playCard({ playerId, card })`
 Plays a card for the active turn player. In 2P mode, automatically plays from hand or face-up stack. During the `GHOPTE` phase, routes to Ghopte card submission.
 
 ```ts
 const result = game.playCard({
   playerId: "p2",
-  cardId: "10s",
+  card: "10s",
 });
 ```
 
@@ -233,13 +233,13 @@ const result = game.declareTurup({
 });
 ```
 
-#### `game.pickupTurupCard({ playerId, cardId })` *(2P mode only)*
+#### `game.pickupTurupCard({ playerId, card })` *(2P mode only)*
 Picks up a face-up Turup card from the player's stacks into their hand.
 
 ```ts
 const result = game.pickupTurupCard({
   playerId: "p1",
-  cardId: "Kh", // Must be of the declared Turup suit
+  card: "Kh", // Must be of the declared Turup suit
 });
 ```
 
@@ -280,21 +280,25 @@ import {
   shuffleDeck,
   createCard,
   compareCardRanks,
-  parseCardId,
+  parseCard,
+  getCardSuit,
+  getCardRank,
 } from "dal-mara-engine";
 
-// Generate standard 52-card deck
+// Generate standard 52-card deck (Array of string cards: "2s", "10h", "Ac", ...)
 const deck = createDeck();
 
 // Shuffle without mutating the original array
 const shuffled = shuffleDeck(deck);
 
-// Parse card ID string to Card object
-const card = parseCardId("10s"); // { id: "10s", suit: "spades", rank: "10" }
+// Parse card string to its suit and rank
+const details = parseCard("10s"); // { suit: "spades", rank: "10" }
+const suit = getCardSuit("10s");  // "spades"
+const rank = getCardRank("10s");  // "10"
 
 // Compare card ranks (positive if cardA > cardB)
-const ace = createCard("hearts", "A");
-const ten = createCard("spades", "10");
+const ace = "Ah";
+const ten = "10s";
 const comparison = compareCardRanks(ace, ten); // > 0
 ```
 
@@ -311,7 +315,7 @@ const unsubscribeStarted = game.on("TurnStarted", (event) => {
 });
 
 const unsubscribeCardPlayed = game.on("CardPlayed", (event) => {
-  console.log("Card played:", event.payload.cardId, "by", event.payload.playerId);
+  console.log("Card played:", event.payload.card, "by", event.payload.playerId);
 });
 
 const unsubscribeTurup = game.on("TurupCreated", (event) => {
@@ -336,29 +340,45 @@ const unsubscribeAll = game.onAny((event) => {
 | `GhopteStarted` | Game entered Ghopte resolution phase |
 | `GameFinished` | Game finished, winner evaluated |
 
----
-
 ### 6. Dal Mara Notation (DMN)
 
-Dal Mara Notation (`DMN1`) is a compact, space-separated snapshot format (similar to chess FEN) designed for network transmission and instant game state restoration.
+Dal Mara Notation (`DMN1`) is a self-contained game state snapshot format (similar to chess FEN) designed for network transmission and instant game state reconstruction. Every DMN string encodes the complete game state — including player hands — so a full `Game` can be reconstructed without any database lookup.
 
 ```ts
 import { fromDMN, Game } from "dal-mara-engine";
 
 // Export current snapshot to DMN1 string
 const dmnString = game.toDMN();
-// Example: "DMN1 4 0 1 1 0 1 0 0 0 AS"
 
-// Restore game instance from DMN1 string (or via Game.fromDMN)
+// Reconstruct a full playable Game from any DMN snapshot
 const restoredGame = fromDMN(dmnString);
+// or: Game.fromDMN(dmnString)
 ```
 
-**DMN1 Token Structure**:
+**DMN1 Format**:
 ```
-DMN1 <Mode> <DealerPosition> <Trick> <TrickPlay> <TrickLeaderPosition> <NextTrickLeaderPosition> <PlayedBy> <IsGhopte> <IsTurup> <CardPlayed>
+DMN1 G:<GameInfo> H:<Hands> M:<MoveInfo> T:<TrickInfo> C:<CardInfo>
 ```
 
----
+| Section | Format | Description |
+|---------|--------|-------------|
+| **G** | `<Mode>,<Dealer>,<TrumpSuit>` | Game mode (`4P`/`2P`), dealer position, trump suit (`s`/`h`/`d`/`c`/`-`) |
+| **H** | `[P0:<Cards>],[P1:<Cards>],...` | Current remaining cards per player (engine `Card` string format) |
+| **M** | `<MoveNumber>,<TrickNumber>,<TrickPlay>` | Total cards played, current trick number, cards played in trick |
+| **T** | `<TrickLeader>,<NextTrickLeader>,<IsGhopte>` | Trick leader position, next player position, ghopte flag |
+| **C** | `<Card>,<PlayedBy>,<IsGhopte>,<IsTurup>,[<TrickCards>]` | Last played card, who played it, flags, all cards in current trick |
+
+**Example** (initial state after deal):
+```
+DMN1 G:4P,0,- H:[P0:2s,3s,...],[P1:...],[P2:...],[P3:...] M:0,0,0 T:1,-,0 C:-,-,0,0,[]
+```
+
+**Example** (mid-game, trick 7):
+```
+DMN1 G:4P,0,s H:[P0:6c,10h],[P1:3s,7d],... M:27,7,3 T:1,-,0 C:10s,3,0,1,[7h,Qs,10s]
+```
+
+A 4-player game generates **53 snapshots**: 1 initial (after deal) + 52 card plays.
 
 ### 7. Serialization & Replay Engine
 
@@ -395,7 +415,7 @@ All validation checks return `{ success: false, error: DalMaraError }` instead o
 ```ts
 import { ENGINE_ERROR_CODES } from "dal-mara-engine";
 
-const result = game.playCard({ playerId: "p1", cardId: "2s" });
+const result = game.playCard({ playerId: "p1", card: "2s" });
 if (!result.success) {
   switch (result.error.code) {
     case ENGINE_ERROR_CODES.MUST_FOLLOW_SUIT:

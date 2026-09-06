@@ -1,6 +1,7 @@
 import { ACTION_TYPES, ENGINE_ERROR_CODES, GAME_MODES, GAME_PHASES, RANKS } from "./const";
 
 import { createValidationError } from "./errors";
+import { parseCard } from "./card";
 import { validateFollowSuit } from "./rules/four-player";
 import { validate2PFollowSuit } from "./rules/two-player";
 import type { Action, Card, GameMode, GameState, Player, ValidationResult } from "../types/index";
@@ -169,7 +170,7 @@ export function validateAction(state: GameState, action: Action): ValidationResu
 		}
 
 		case ACTION_TYPES.PICKUP_TURUP_CARD: {
-			const { cardId } = action.payload;
+			const { card } = action.payload;
 			if (state.mode !== GAME_MODES.TWO_PLAYER) {
 				return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Pickup Turup action is only valid in 2-Player mode");
 			}
@@ -179,13 +180,13 @@ export function validateAction(state: GameState, action: Action): ValidationResu
 				return createValidationError(ENGINE_ERROR_CODES.STACK_NOT_FOUND, "Player stacks not found");
 			}
 
-			const targetStack = stacks.find((s) => s.faceUpCard?.id === cardId);
+			const targetStack = stacks.find((s) => s.faceUpCard === card);
 
 			if (!targetStack) {
 				return createValidationError(ENGINE_ERROR_CODES.STACK_NOT_FOUND, "Target stack not found");
 			}
 
-			if (!targetStack?.faceUpCard || targetStack.faceUpCard.suit !== state.currentTurup) {
+			if (!targetStack?.faceUpCard || parseCard(targetStack.faceUpCard).suit !== state.currentTurup) {
 				return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Target stack card is not face up or is not Turup suit");
 			}
 
@@ -193,7 +194,7 @@ export function validateAction(state: GameState, action: Action): ValidationResu
 		}
 
 		case ACTION_TYPES.PLAY_GHOPTE: {
-			const { playerId, cardId } = action.payload;
+			const { playerId, card } = action.payload;
 
 			if (state.mode !== GAME_MODES.FOUR_PLAYER) {
 				return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Ghopte is only valid in 4-Player mode");
@@ -208,10 +209,10 @@ export function validateAction(state: GameState, action: Action): ValidationResu
 			}
 
 			const hand = state.hands[playerId] ?? [];
-			const cardToPlay = hand.find((c) => c.id === cardId) ?? null;
+			const cardToPlay = hand.find((c) => c === card) ?? null;
 
 			if (!cardToPlay) {
-				return createValidationError(ENGINE_ERROR_CODES.CARD_NOT_OWNED, `Player does not own card ${cardId}`);
+				return createValidationError(ENGINE_ERROR_CODES.CARD_NOT_OWNED, `Player does not own card ${card}`);
 			}
 
 			if (state.ghopteState) {
@@ -225,7 +226,8 @@ export function validateAction(state: GameState, action: Action): ValidationResu
 				const isPlayerGhopteDeclarer = activeGhopte.declarerId === playerId;
 
 				if (isPlayerGhopteDeclarer) {
-					if (cardToPlay.suit !== activeGhopte.suit || cardToPlay.rank !== RANKS.TEN) {
+					const cardDetails = parseCard(cardToPlay);
+					if (cardDetails.suit !== activeGhopte.suit || cardDetails.rank !== RANKS.TEN) {
 						return createValidationError(
 							ENGINE_ERROR_CODES.INVALID_GHOPTE_SUBMISSION,
 							"Declarer must play the declared Ghopte 10 card",
@@ -236,7 +238,7 @@ export function validateAction(state: GameState, action: Action): ValidationResu
 				if (!isPlayerGhopteDeclarer) {
 					// player cannot throw their own pending Ghopte 10 for another player's Ghopte
 					const isPendingOwnGhopte = state.ghopteState.ghoptes.some(
-						(g) => g.declarerId === playerId && !g.resolved && g.tenCard.id === cardToPlay.id,
+						(g) => g.declarerId === playerId && !g.resolved && g.tenCard === cardToPlay,
 					);
 
 					if (isPendingOwnGhopte) {
@@ -252,7 +254,7 @@ export function validateAction(state: GameState, action: Action): ValidationResu
 		}
 
 		case ACTION_TYPES.PLAY_CARD: {
-			const { playerId, cardId } = action.payload;
+			const { playerId, card } = action.payload;
 
 			if (state?.ghopteState?.ghoptes.some((g) => !g.resolved)) {
 				return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "Cannot play card while there are unresolved Ghoptes");
@@ -273,21 +275,21 @@ export function validateAction(state: GameState, action: Action): ValidationResu
 
 			if (state.mode === GAME_MODES.TWO_PLAYER) {
 				// first, search the card in hand
-				cardToPlay = hand.find((c) => c.id === cardId) ?? null;
+				cardToPlay = hand.find((c) => c === card) ?? null;
 
 				// if card is not found the search among the stack
 				if (!cardToPlay) {
-					const matchingStack = stacks.find((s) => s.faceUpCard?.id === cardId);
+					const matchingStack = stacks.find((s) => s.faceUpCard === card);
 					if (matchingStack?.faceUpCard) {
 						cardToPlay = matchingStack.faceUpCard;
 					}
 				}
 			} else {
-				cardToPlay = hand.find((c) => c.id === cardId) ?? null;
+				cardToPlay = hand.find((c) => c === card) ?? null;
 			}
 
 			if (!cardToPlay) {
-				return createValidationError(ENGINE_ERROR_CODES.CARD_NOT_OWNED, `Player does not own or cannot access card ${cardId}`);
+				return createValidationError(ENGINE_ERROR_CODES.CARD_NOT_OWNED, `Player does not own or cannot access card ${card}`);
 			}
 
 			// follow-suit validation for standard PLAYING phase

@@ -32,7 +32,6 @@ describe("2-Player Game Mode", () => {
 			const p2Stacks = game.state.stacks2P.p2;
 			expect(p1Stacks?.length).toBe(4);
 			expect(p2Stacks?.length).toBe(4);
-			expect(p1Stacks?.[0]?.id).toBe("stack-0");
 			expect(p1Stacks?.[0]?.position).toBe(0);
 		}
 	});

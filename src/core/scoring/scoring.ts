@@ -1,6 +1,7 @@
 export * from "./two-player";
 export * from "./four-player";
 import { RANKS } from "../const";
+import { getCardRank } from "../card";
 import type { Card, CapturedTrickRecord, ScoreState } from "../../types/index";
 
 export function createInitialScoreState(): ScoreState {
@@ -12,7 +13,7 @@ export function createInitialScoreState(): ScoreState {
 }
 
 export function countTensInCards(cards: readonly Card[]): number {
-	return cards.filter((c) => c.rank === RANKS.TEN).length;
+	return cards.filter((c) => getCardRank(c) === RANKS.TEN).length;
 }
 
 export function updateScoreOnTrickWon(options: {

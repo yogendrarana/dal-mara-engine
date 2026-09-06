@@ -1,4 +1,5 @@
 import { createDeck, shuffleDeck } from "../deck";
+import { parseCard } from "../card";
 import { DalMaraError } from "../errors";
 import { ACTION_TYPES, ENGINE_ERROR_CODES, GAME_PHASES } from "../const";
 import type { Action, GameState, PlayedCard, Trick } from "../../types/index";
@@ -64,17 +65,17 @@ export function gameReducer4P(state: GameState, action: Action): GameState {
 		}
 
 		case ACTION_TYPES.PLAY_GHOPTE: {
-			const { playerId, cardId } = action.payload;
+			const { playerId, card } = action.payload;
 
 			const hand = state.hands[playerId];
 			if (!hand) return state;
 
-			const playedCardObj = hand.find((c) => c.id === cardId);
+			const playedCardObj = hand.find((c) => c === card);
 			if (!playedCardObj) return state;
 
 			const updatedHands = {
 				...state.hands,
-				[playerId]: hand.filter((c) => c.id !== cardId),
+				[playerId]: hand.filter((c) => c !== card),
 			};
 
 			const playedCardItem: PlayedCard = {
@@ -205,17 +206,17 @@ export function gameReducer4P(state: GameState, action: Action): GameState {
 		}
 
 		case ACTION_TYPES.PLAY_CARD: {
-			const { playerId, cardId } = action.payload;
+			const { playerId, card } = action.payload;
 
 			const hand = state.hands[playerId];
 			if (!hand) return state;
 
-			const playedCardObj = hand.find((c) => c.id === cardId);
+			const playedCardObj = hand.find((c) => c === card);
 			if (!playedCardObj) return state;
 
 			const updatedHands = {
 				...state.hands,
-				[playerId]: hand.filter((c) => c.id !== cardId),
+				[playerId]: hand.filter((c) => c !== card),
 			};
 
 			const playedCardItem: PlayedCard = {
@@ -224,27 +225,28 @@ export function gameReducer4P(state: GameState, action: Action): GameState {
 				playOrder: state.currentTrick.cards.length + 1,
 			};
 
+			const cardSuit = parseCard(playedCardObj).suit;
 			const isLead = state.currentTrick.cards.length === 0;
-			const currentTrickLeadSuit = isLead ? playedCardObj.suit : state.currentTrick.leadSuit;
+			const currentTrickLeadSuit = isLead ? cardSuit : state.currentTrick.leadSuit;
 
 			let newTurup = state.currentTurup;
 
 			// Turup Creation & Override Logic (within the same trick):
-			const trickHasOffSuitCard = state.currentTrick.cards.some((pc) => pc.card.suit !== state.currentTrick.leadSuit);
+			const trickHasOffSuitCard = state.currentTrick.cards.some((pc) => parseCard(pc.card).suit !== state.currentTrick.leadSuit);
 			const turupFromPastTrick = state.currentTurup !== null && !trickHasOffSuitCard;
 
 			if (!turupFromPastTrick) {
-				const isOffSuit = playedCardObj.suit !== currentTrickLeadSuit;
+				const isOffSuit = cardSuit !== currentTrickLeadSuit;
 				if (isOffSuit) {
 					if (!newTurup) {
 						// First time turup is created in this trick
-						newTurup = playedCardObj.suit;
-					} else if (newTurup !== playedCardObj.suit) {
+						newTurup = cardSuit;
+					} else if (newTurup !== cardSuit) {
 						// Turup was created in this same trick. Check if player can override it.
 						const playerHand = updatedHands[playerId] ?? [];
-						const hasExistingTurupInHand = playerHand.some((c) => c.suit === newTurup);
+						const hasExistingTurupInHand = playerHand.some((c) => parseCard(c).suit === newTurup);
 						if (!hasExistingTurupInHand) {
-							newTurup = playedCardObj.suit;
+							newTurup = cardSuit;
 						}
 					}
 				}

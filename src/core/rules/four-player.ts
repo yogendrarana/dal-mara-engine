@@ -1,4 +1,4 @@
-import { compareCardRanks } from "../card";
+import { compareCardRanks, parseCard } from "../card";
 import { RANKS, SUITS } from "../const";
 import type { Card, GhopteInfo, GhopteState, PlayedCard, Player, PlayerPosition, Suit, Trick } from "../../types/index";
 
@@ -159,14 +159,14 @@ export function detectGhopte({
 		};
 
 		for (const card of hand) {
-			suitCounts[card.suit].push(card);
+			suitCounts[parseCard(card).suit].push(card);
 		}
 
 		for (const [suit, cards] of Object.entries(suitCounts)) {
 			if (cards.length === 1) {
 				const card = cards[0];
 
-				if (card && card.rank === RANKS.TEN) {
+				if (card && parseCard(card).rank === RANKS.TEN) {
 					allGhoptes.push({
 						order: allGhoptes.length,
 						declarerId: player.id,
@@ -202,9 +202,9 @@ export function validateFollowSuit({
 	leadSuit: Suit | null;
 }): boolean {
 	if (!leadSuit) return true;
-	if (cardToPlay.suit === leadSuit) return true;
+	if (parseCard(cardToPlay).suit === leadSuit) return true;
 
-	const hasLeadSuit = hand.some((c) => c.suit === leadSuit);
+	const hasLeadSuit = hand.some((c) => parseCard(c).suit === leadSuit);
 	return !hasLeadSuit;
 }
 
@@ -227,8 +227,8 @@ export function resolve4PTrickWinner(options: { trick: Trick; currentTurup: Suit
 		const current = trick.cards[i];
 		if (!current) continue;
 
-		const currentCardSuit = current.card.suit;
-		const winningCardSuit = winningPlayedCard.card.suit;
+		const currentCardSuit = parseCard(current.card).suit;
+		const winningCardSuit = parseCard(winningPlayedCard.card).suit;
 
 		if (currentTurup) {
 			if (currentCardSuit === currentTurup) {
