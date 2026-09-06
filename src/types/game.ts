@@ -1,4 +1,4 @@
-import type { Player } from "./player";
+import type { Player, PlayerPosition } from "./player";
 import type { Action } from "./action";
 import type { Card, PlayedCard, Suit } from "./card";
 
@@ -53,8 +53,7 @@ export interface GameState {
 
 	readonly players: readonly Player[];
 
-	// @TODO: dealer id shoul be number
-	readonly dealerId: string;
+	readonly dealerPosition: PlayerPosition;
 
 	readonly currentTurnPlayerId: string | null;
 

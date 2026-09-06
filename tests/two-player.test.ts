@@ -8,7 +8,7 @@ describe("2-Player Game Mode", () => {
 		const game = Game.create({
 			id: "game-2p",
 			mode: "2P",
-			dealerId: "p1",
+			dealerPosition: 0,
 			players: [
 				{ id: "p1", name: "Alice", position: 0, team: "p1" },
 				{ id: "p2", name: "Bob", position: 1, team: "p2" },

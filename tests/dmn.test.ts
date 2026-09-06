@@ -7,7 +7,7 @@ const make4PGame = () =>
 	Game.create({
 		id: "dmn-test",
 		mode: "4P",
-		dealerId: "p1",
+		dealerPosition: 0,
 		players: [
 			{ id: "p1", name: "Alice", position: 0, team: "red" },
 			{ id: "p2", name: "Bob", position: 1, team: "blue" },
@@ -181,7 +181,7 @@ describe("Dal Mara Notation (DMN) - DMN1 Snapshot Format", () => {
 		const game = Game.create({
 			id: "dmn-2p",
 			mode: "2P",
-			dealerId: "p1",
+			dealerPosition: 0,
 			players: [
 				{ id: "p1", name: "Alice", position: 0, team: "p1" },
 				{ id: "p2", name: "Bob", position: 1, team: "p2" },
@@ -243,7 +243,7 @@ describe("Dal Mara Notation (DMN) - DMN1 Snapshot Format", () => {
 		const game = Game.create({
 			id: "dmn-turup",
 			mode: "2P",
-			dealerId: "p1",
+			dealerPosition: 0,
 			players: [
 				{ id: "p1", name: "Alice", position: 0, team: "p1" },
 				{ id: "p2", name: "Bob", position: 1, team: "p2" },
@@ -267,7 +267,7 @@ describe("Dal Mara Notation (DMN) - DMN1 Snapshot Format", () => {
 		const game = Game.create({
 			id: "dmn-2p-roundtrip",
 			mode: "2P",
-			dealerId: "p1",
+			dealerPosition: 0,
 			players: [
 				{ id: "p1", name: "Alice", position: 0, team: "p1" },
 				{ id: "p2", name: "Bob", position: 1, team: "p2" },
@@ -289,7 +289,7 @@ describe("Dal Mara Notation (DMN) - DMN1 Snapshot Format", () => {
 		const game = Game.create({
 			id: "dmn-2p-play",
 			mode: "2P",
-			dealerId: "p1",
+			dealerPosition: 0,
 			players: [
 				{ id: "p1", name: "Alice", position: 0, team: "p1" },
 				{ id: "p2", name: "Bob", position: 1, team: "p2" },

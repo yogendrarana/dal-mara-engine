@@ -8,7 +8,7 @@ describe("Serialization & Replay Engine", () => {
 		const game = Game.create({
 			id: "replay-1",
 			mode: "4P",
-			dealerId: "p1",
+			dealerPosition: 0,
 			players: [
 				{ id: "p1", name: "Alice", position: 0, team: "red" },
 				{ id: "p2", name: "Bob", position: 1, team: "blue" },
@@ -31,7 +31,7 @@ describe("Serialization & Replay Engine", () => {
 		const game = Game.create({
 			id: "replay-2",
 			mode: "4P",
-			dealerId: "p1",
+			dealerPosition: 0,
 			players: [
 				{ id: "p1", name: "Alice", position: 0, team: "red" },
 				{ id: "p2", name: "Bob", position: 1, team: "blue" },

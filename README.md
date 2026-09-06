@@ -57,7 +57,7 @@ import { Game, createDeck, shuffleDeck } from "dal-mara-engine";
 const game = Game.create({
   id: "match-101",
   mode: "4P",
-  dealerId: "p1",
+  dealerPosition: 0,
   players: [
     { id: "p1", name: "Alice", position: 0, team: "red" },
     { id: "p2", name: "Bob", position: 1, team: "blue" },
@@ -185,7 +185,7 @@ import { Game } from "dal-mara-engine";
 const game = Game.create({
   id: "game-1",
   mode: "4P", // "4P" | "2P"
-  dealerId: "p1",
+  dealerPosition: 0,
   players: [
     { id: "p1", name: "Alice", position: 0, team: "red" },
     { id: "p2", name: "Bob", position: 1, team: "blue" },
@@ -260,7 +260,7 @@ game.id;                  // string: Game identifier
 game.mode;                // "4P" | "2P"
 game.phase;               // "DEAL" | "TURUP_DECLARATION" | "GHOPTE" | "PLAYING" | "END"
 game.players;             // readonly Player[]
-game.dealerId;            // string
+game.dealerPosition;      // PlayerPosition: 0 to 3 for 4P, 0 to 1 for 2P
 game.currentPlayer;       // Player | null
 game.currentTrick;        // Trick: { trickNumber, leadSuit, cards, winnerId }
 game.currentTurup;        // Suit | null

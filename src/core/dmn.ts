@@ -55,7 +55,7 @@ export interface DMNState {
 	readonly version: string;
 	// G section
 	readonly mode: GameMode;
-	readonly dealerPosition: number;
+	readonly dealerPosition: PlayerPosition;
 	readonly trumpSuit: Suit | null;
 	// H section
 	readonly hands: Record<string, readonly Card[]>;
@@ -112,8 +112,7 @@ export function exportToDMN(state: GameState): string {
 
 	// --- G section: Game info ---
 	const modeToken = state.mode === GAME_MODES.FOUR_PLAYER ? "4P" : "2P";
-	const dealer = state.players.find((p) => p.id === state.dealerId);
-	const dealerPos = dealer ? String(dealer.position) : "0";
+	const dealerPos = String(state.dealerPosition);
 	const trumpToken = suitToDMN(state.currentTurup);
 	const gSection = `G:${modeToken},${dealerPos},${trumpToken}`;
 
@@ -339,7 +338,7 @@ export function importFromDMN(dmnString: string): Partial<GameState> & { dmn: DM
 	const gValue = parseSectionValue(sections, "G");
 	const gParts = gValue.split(",");
 	const mode: GameMode = gParts[0] === "2P" ? GAME_MODES.TWO_PLAYER : GAME_MODES.FOUR_PLAYER;
-	const dealerPosition = parseInt(gParts[1] ?? "0", 10);
+	const dealerPosition = parseInt(gParts[1] ?? "0", 10) as PlayerPosition;
 	const trumpSuit = dmnToSuit(gParts[2] ?? "-");
 
 	// --- H section ---
@@ -414,7 +413,6 @@ export function importFromDMN(dmnString: string): Partial<GameState> & { dmn: DM
 		}
 	}
 
-	const dealerId = players[dealerPosition]?.id ?? "p1";
 	const currentTurnPlayerId = nextTrickLeader !== null ? (players[nextTrickLeader]?.id ?? null) : null;
 
 	// --- Determine phase ---
@@ -472,7 +470,7 @@ export function importFromDMN(dmnString: string): Partial<GameState> & { dmn: DM
 	return {
 		mode,
 		phase,
-		dealerId,
+		dealerPosition,
 		currentTurnPlayerId,
 		players,
 		hands,
@@ -493,14 +491,14 @@ export function fromDMN(dmnString: string): Game | ValidationResult {
 
 	const mode = partialState.mode ?? GAME_MODES.FOUR_PLAYER;
 	const players = partialState.players ?? [];
-	const dealerId = partialState.dealerId ?? "p1";
+	const dealerPosition = (partialState.dealerPosition ?? partialState.dmn?.dealerPosition ?? 0) as PlayerPosition;
 
 	const fullState: GameState = {
 		id: partialState.id ?? "game-dmn",
 		mode,
 		phase: partialState.phase ?? GAME_PHASES.PLAYING,
 		players,
-		dealerId,
+		dealerPosition,
 		currentTurnPlayerId: partialState.currentTurnPlayerId ?? null,
 		hands: partialState.hands ?? {},
 		stacks2P: partialState.stacks2P ?? {},

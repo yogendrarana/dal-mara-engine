@@ -1,4 +1,4 @@
-import type { Action, GameMode, GameState, Player } from "../types/index";
+import type { Action, GameMode, GameState, Player, PlayerPosition } from "../types/index";
 import { DalMaraError } from "./errors";
 import { validateAction } from "./validators";
 import { createInitialState } from "./state";
@@ -10,6 +10,7 @@ export interface ReplayData {
 	readonly version: string;
 	readonly gameId: string;
 	readonly mode: GameMode;
+	readonly dealerPosition?: PlayerPosition;
 	readonly players: readonly Player[];
 	readonly actions: readonly Action[];
 }
@@ -19,6 +20,7 @@ export function exportReplay(state: GameState): ReplayData {
 		version: "1.0",
 		gameId: state.id,
 		mode: state.mode,
+		dealerPosition: state.dealerPosition,
 		players: state.players,
 		actions: state.actionHistory,
 	};
@@ -29,17 +31,17 @@ export function playReplay(replay: ReplayData): GameState {
 		throw new DalMaraError("Invalid replay data: missing players or actions", "INVALID_REPLAY");
 	}
 
-	const dealerId = replay.players[0]?.id ?? "p1";
+	const dealerPosition = replay.dealerPosition ?? ((replay.players[0]?.position ?? 0) as PlayerPosition);
 
 	// 1. Recreate initial state using createInitialState
 	let state = createInitialState({
 		id: replay.gameId,
 		mode: replay.mode,
-		dealerId,
+		dealerPosition,
 		players: replay.players.map((p, idx) => ({
 			id: p.id,
 			name: p.name,
-			position: p.position ?? idx,
+			position: (p.position ?? idx) as PlayerPosition,
 			team: p.team ?? (idx % 2 === 0 ? "team1" : "team2"),
 		})),
 	});

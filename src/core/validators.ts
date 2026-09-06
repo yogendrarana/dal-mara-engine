@@ -4,7 +4,7 @@ import { createValidationError } from "./errors";
 import { parseCard } from "./card";
 import { validateFollowSuit } from "./rules/four-player";
 import { validate2PFollowSuit } from "./rules/two-player";
-import type { Action, Card, GameMode, GameState, Player, ValidationResult } from "../types/index";
+import type { Action, Card, GameMode, GameState, Player, PlayerPosition, ValidationResult } from "../types/index";
 
 /**
  * Validate game creation options.
@@ -13,7 +13,7 @@ export function validateCreateGame(options: {
 	id: string;
 	mode: GameMode;
 	players: readonly Player[];
-	dealerId: string;
+	dealerPosition: PlayerPosition;
 }): ValidationResult {
 	if (!options.id || typeof options.id !== "string" || options.id.trim() === "") {
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_GAME_ID, "Game id is required to create a game");
@@ -112,15 +112,11 @@ export function validateCreateGame(options: {
 		}
 	}
 
-	// validate dealerId
-	if (!options.dealerId || typeof options.dealerId !== "string") {
-		return createValidationError(ENGINE_ERROR_CODES.INVALID_DEALER, "dealerId is required to create a game");
-	}
-
-	if (!playerIds.has(options.dealerId)) {
+	// validate dealerPosition
+	if (typeof options.dealerPosition !== "number" || !positions.has(options.dealerPosition)) {
 		return createValidationError(
 			ENGINE_ERROR_CODES.INVALID_DEALER,
-			`dealerId '${options.dealerId}' does not match any player in the game`,
+			`dealerPosition must be a valid occupied player position (0 to ${expectedCount - 1})`,
 		);
 	}
 
@@ -143,7 +139,8 @@ export function validateAction(state: GameState, action: Action): ValidationResu
 				return createValidationError(ENGINE_ERROR_CODES.INVALID_DECK, "Deck must be 52 cards long to deal");
 			}
 
-			if (playerId !== state.dealerId) {
+			const dealer = state.players.find((p) => p.position === state.dealerPosition);
+			if (playerId !== dealer?.id) {
 				return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Only the dealer can deal cards");
 			}
 

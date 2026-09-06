@@ -1,14 +1,14 @@
 import { GAME_PHASES } from "./const";
 import { createInitialScoreState } from "./scoring/scoring";
-import type { GameMode, GameState, Player, ScoreState } from "../types/index";
+import type { GameMode, GameState, Player, PlayerPosition, ScoreState } from "../types/index";
 
 export function createInitialState(options: {
 	id: string;
 	mode: GameMode;
 	players: readonly Player[];
-	dealerId: string;
+	dealerPosition: PlayerPosition;
 }): GameState {
-	const { id, mode, players, dealerId } = options;
+	const { id, mode, players, dealerPosition } = options;
 
 	const orderedPlayers: Player[] = [...players].sort((a, b) => a.position - b.position);
 
@@ -22,7 +22,7 @@ export function createInitialState(options: {
 		mode,
 		phase: GAME_PHASES.DEAL,
 		players: orderedPlayers,
-		dealerId,
+		dealerPosition,
 		currentTurnPlayerId: null,
 		hands: {},
 		stacks2P: {},

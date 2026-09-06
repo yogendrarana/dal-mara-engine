@@ -9,7 +9,7 @@ import { createInitialScoreState, evaluateGameWinner4P, isGameFinished4P, update
 export function gameReducer4P(state: GameState, action: Action): GameState {
 	const nextActionHistory = [...state.actionHistory, action];
 
-	const dealer = state.players.find((p) => p.id === state.dealerId);
+	const dealer = state.players.find((p) => p.position === state.dealerPosition);
 	if (!dealer) {
 		throw new DalMaraError("Cannot find the dealer in the player list.", ENGINE_ERROR_CODES.INVALID_DEALER);
 	}

@@ -9,7 +9,7 @@ describe("4-Player Game Mode", () => {
 		const game = Game.create({
 			id: "game-1",
 			mode: "4P",
-			dealerId: "p1",
+			dealerPosition: 0,
 			players: [
 				{ id: "p1", name: "Alice", position: 0, team: "red" },
 				{ id: "p2", name: "Bob", position: 1, team: "blue" },
@@ -38,7 +38,7 @@ describe("4-Player Game Mode", () => {
 		const result = Game.create({
 			id: "game-err",
 			mode: "4P",
-			dealerId: "p1",
+			dealerPosition: 0,
 			players: [
 				{ id: "p1", name: "Alice", position: 0, team: "red" },
 				{ id: "p2", name: "Bob", position: 1, team: "blue" },
@@ -51,7 +51,7 @@ describe("4-Player Game Mode", () => {
 		const game = Game.create({
 			id: "game-2",
 			mode: "4P",
-			dealerId: "p1",
+			dealerPosition: 0,
 			players: [
 				{ id: "p1", name: "Alice", position: 0, team: "red" },
 				{ id: "p2", name: "Bob", position: 1, team: "blue" },
@@ -97,7 +97,7 @@ describe("4-Player Game Mode", () => {
 		const game = Game.create({
 			id: "game-3",
 			mode: "4P",
-			dealerId: "p1",
+			dealerPosition: 0,
 			players: [
 				{ id: "p1", name: "Alice", position: 0, team: "red" },
 				{ id: "p2", name: "Bob", position: 1, team: "blue" },
@@ -114,7 +114,7 @@ describe("4-Player Game Mode", () => {
 		const game = Game.create({
 			id: "game-deal",
 			mode: "4P",
-			dealerId: "p1",
+			dealerPosition: 0,
 			players: [
 				{ id: "p1", name: "Alice", position: 0, team: "red" },
 				{ id: "p2", name: "Bob", position: 1, team: "blue" },

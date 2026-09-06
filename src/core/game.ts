@@ -9,6 +9,7 @@ import type {
 	PickupTurupCardAction,
 	PlayCardAction,
 	Player,
+	PlayerPosition,
 	PlayGhopteAction,
 	ScoreState,
 	Suit,
@@ -31,7 +32,7 @@ export interface CreateGameOptions {
 	readonly id: string;
 	readonly mode: GameMode;
 	readonly players: readonly Player[];
-	readonly dealerId: string;
+	readonly dealerPosition: PlayerPosition;
 }
 
 export class Game {
@@ -56,7 +57,7 @@ export class Game {
 			id: options.id,
 			mode: options.mode,
 			players: options.players,
-			dealerId: options.dealerId,
+			dealerPosition: options.dealerPosition,
 		});
 
 		return new Game(initialState);
@@ -98,8 +99,8 @@ export class Game {
 		return this._state.players;
 	}
 
-	public get dealerId(): string {
-		return this._state.dealerId;
+	public get dealerPosition(): PlayerPosition {
+		return this._state.dealerPosition;
 	}
 
 	public get currentPlayer(): Player | null {
