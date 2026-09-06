@@ -21,7 +21,6 @@ export function createInitialState(options: {
 		id,
 		mode,
 		phase: GAME_PHASES.DEAL,
-		settings: { mode },
 		players: orderedPlayers,
 		dealerId,
 		currentTurnPlayerId: null,

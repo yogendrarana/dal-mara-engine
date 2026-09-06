@@ -499,7 +499,6 @@ export function fromDMN(dmnString: string): Game | ValidationResult {
 		id: partialState.id ?? "game-dmn",
 		mode,
 		phase: partialState.phase ?? GAME_PHASES.PLAYING,
-		settings: { mode },
 		players,
 		dealerId,
 		currentTurnPlayerId: partialState.currentTurnPlayerId ?? null,

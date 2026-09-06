@@ -16,10 +16,6 @@ export interface Trick {
 	readonly winnerId: string | null;
 }
 
-export interface GameSettings {
-	readonly mode: GameMode;
-}
-
 export interface GhopteInfo {
 	readonly declarerId: string;
 	readonly suit: Suit;
@@ -55,8 +51,6 @@ export interface GameState {
 	readonly mode: GameMode;
 	readonly phase: GamePhase;
 
-	// @TODO: no need for settings, as it only inclues mode. we can remove it
-	readonly settings: GameSettings;
 	readonly players: readonly Player[];
 
 	// @TODO: dealer id shoul be number
