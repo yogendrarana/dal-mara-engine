@@ -175,80 +175,27 @@ export class Game {
 
 	// game actions
 
-	public deal(payload: { deck: readonly Card[]; playerPosition?: PlayerPosition; playerId?: string }): ValidationResult {
-		let playerPosition = payload.playerPosition;
-		if (playerPosition === undefined && payload.playerId) {
-			const player = this._state.players.find((p) => p.id === payload.playerId);
-			playerPosition = player ? player.position : (999 as unknown as PlayerPosition);
-		}
-		if (playerPosition === undefined) {
-			playerPosition = this._state.game.dealerPosition;
-		}
-		return this.dispatch({
-			type: ACTION_TYPES.DEAL,
-			payload: { deck: payload.deck, playerPosition },
-		});
+	public deal(payload: DealAction["payload"]): ValidationResult {
+		return this.dispatch({ type: ACTION_TYPES.DEAL, payload });
 	}
 
-	public declareTurup(payload: { playerPosition?: PlayerPosition; playerId?: string; suit: Suit }): ValidationResult {
-		let playerPosition = payload.playerPosition;
-		if (playerPosition === undefined && payload.playerId) {
-			const player = this._state.players.find((p) => p.id === payload.playerId);
-			playerPosition = player ? player.position : (999 as unknown as PlayerPosition);
-		}
-		if (playerPosition === undefined) {
-			playerPosition = this.currentPlayer?.position ?? 0;
-		}
-		return this.dispatch({
-			type: ACTION_TYPES.DECLARE_TURUP,
-			payload: { playerPosition, suit: payload.suit },
-		});
+	public declareTurup(payload: DeclareTurupAction["payload"]): ValidationResult {
+		return this.dispatch({ type: ACTION_TYPES.DECLARE_TURUP, payload });
 	}
 
-	public pickupTurupCard(payload: { playerPosition?: PlayerPosition; playerId?: string; card: Card }): ValidationResult {
-		let playerPosition = payload.playerPosition;
-		if (playerPosition === undefined && payload.playerId) {
-			const player = this._state.players.find((p) => p.id === payload.playerId);
-			playerPosition = player ? player.position : (999 as unknown as PlayerPosition);
-		}
-		if (playerPosition === undefined) {
-			playerPosition = this.currentPlayer?.position ?? 0;
-		}
-		return this.dispatch({
-			type: ACTION_TYPES.PICKUP_TURUP_CARD,
-			payload: { playerPosition, card: payload.card },
-		});
+	public pickupTurupCard(payload: PickupTurupCardAction["payload"]): ValidationResult {
+		return this.dispatch({ type: ACTION_TYPES.PICKUP_TURUP_CARD, payload });
 	}
 
-	public submitGhopteCard(payload: { playerPosition?: PlayerPosition; playerId?: string; card: Card }): ValidationResult {
-		let playerPosition = payload.playerPosition;
-		if (playerPosition === undefined && payload.playerId) {
-			const player = this._state.players.find((p) => p.id === payload.playerId);
-			playerPosition = player ? player.position : (999 as unknown as PlayerPosition);
-		}
-		if (playerPosition === undefined) {
-			playerPosition = this.currentPlayer?.position ?? 0;
-		}
-		return this.dispatch({
-			type: ACTION_TYPES.PLAY_GHOPTE,
-			payload: { playerPosition, card: payload.card },
-		});
+	public submitGhopteCard(payload: PlayGhopteAction["payload"]): ValidationResult {
+		return this.dispatch({ type: ACTION_TYPES.PLAY_GHOPTE, payload });
 	}
 
-	public playCard(payload: { playerPosition?: PlayerPosition; playerId?: string; card: Card }): ValidationResult {
-		let playerPosition = payload.playerPosition;
-		if (playerPosition === undefined && payload.playerId) {
-			const player = this._state.players.find((p) => p.id === payload.playerId);
-			playerPosition = player ? player.position : (999 as unknown as PlayerPosition);
-		}
-		if (playerPosition === undefined) {
-			playerPosition = this.currentPlayer?.position ?? 0;
-		}
-		const actionPayload: PlayCardAction["payload"] = { playerPosition, card: payload.card };
+	public playCard(payload: PlayCardAction["payload"]): ValidationResult {
 		if (this._state.game.phase === GAME_PHASES.GHOPTE) {
-			return this.submitGhopteCard(actionPayload);
+			return this.submitGhopteCard(payload);
 		}
-		return this.dispatch({ type: ACTION_TYPES.PLAY_CARD, payload: actionPayload });
+		return this.dispatch({ type: ACTION_TYPES.PLAY_CARD, payload });
 	}
 
 	// dispatch
