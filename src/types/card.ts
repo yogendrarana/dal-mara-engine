@@ -12,9 +12,3 @@ export interface CardDetails {
 	readonly suit: Suit;
 	readonly rank: Rank;
 }
-
-export interface PlayedCard {
-	readonly card: Card;
-	readonly playerId: string;
-	readonly playOrder: number;
-}

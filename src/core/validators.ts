@@ -4,6 +4,7 @@ import { createValidationError } from "./errors";
 import { parseCard } from "./card";
 import { validateFollowSuit } from "./rules/four-player";
 import { validate2PFollowSuit } from "./rules/two-player";
+import { getCurrentTurnPlayer } from "./turn";
 import type { Action, Card, GameMode, GameState, Player, PlayerPosition, ValidationResult } from "../types/index";
 
 /**
@@ -127,11 +128,13 @@ export function validateCreateGame(options: {
  * Validate actions during game lifecycle.
  */
 export function validateAction(state: GameState, action: Action): ValidationResult {
+	const currentTurnPlayer = getCurrentTurnPlayer(state);
+
 	switch (action.type) {
 		case ACTION_TYPES.DEAL: {
 			const { deck, playerId } = action.payload;
 
-			if (state.phase !== GAME_PHASES.DEAL) {
+			if (state.game.phase !== GAME_PHASES.DEAL) {
 				return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "Cannot deal cards outside DEAL phase");
 			}
 
@@ -139,7 +142,7 @@ export function validateAction(state: GameState, action: Action): ValidationResu
 				return createValidationError(ENGINE_ERROR_CODES.INVALID_DECK, "Deck must be 52 cards long to deal");
 			}
 
-			const dealer = state.players.find((p) => p.position === state.dealerPosition);
+			const dealer = state.players.find((p) => p.position === state.game.dealerPosition);
 			if (playerId !== dealer?.id) {
 				return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Only the dealer can deal cards");
 			}
@@ -148,18 +151,18 @@ export function validateAction(state: GameState, action: Action): ValidationResu
 		}
 
 		case ACTION_TYPES.DECLARE_TURUP: {
-			if (state.mode !== GAME_MODES.TWO_PLAYER) {
+			if (state.game.mode !== GAME_MODES.TWO_PLAYER) {
 				return createValidationError(
 					ENGINE_ERROR_CODES.INVALID_ACTION,
 					"Turup declaration action is only valid in 2-Player mode",
 				);
 			}
 
-			if (state.phase !== GAME_PHASES.TURUP_DECLARATION) {
+			if (state.game.phase !== GAME_PHASES.TURUP_DECLARATION) {
 				return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "Cannot declare Turup outside TURUP_DECLARATION phase");
 			}
 
-			if (state.currentTurnPlayerId !== action.payload.playerId) {
+			if (currentTurnPlayer?.id !== action.payload.playerId) {
 				return createValidationError(ENGINE_ERROR_CODES.NOT_PLAYER_TURN, "It is not your turn to declare Turup");
 			}
 
@@ -168,7 +171,7 @@ export function validateAction(state: GameState, action: Action): ValidationResu
 
 		case ACTION_TYPES.PICKUP_TURUP_CARD: {
 			const { card } = action.payload;
-			if (state.mode !== GAME_MODES.TWO_PLAYER) {
+			if (state.game.mode !== GAME_MODES.TWO_PLAYER) {
 				return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Pickup Turup action is only valid in 2-Player mode");
 			}
 
@@ -183,7 +186,7 @@ export function validateAction(state: GameState, action: Action): ValidationResu
 				return createValidationError(ENGINE_ERROR_CODES.STACK_NOT_FOUND, "Target stack not found");
 			}
 
-			if (!targetStack?.faceUpCard || parseCard(targetStack.faceUpCard).suit !== state.currentTurup) {
+			if (!targetStack?.faceUpCard || parseCard(targetStack.faceUpCard).suit !== state.game.turup) {
 				return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Target stack card is not face up or is not Turup suit");
 			}
 
@@ -193,15 +196,15 @@ export function validateAction(state: GameState, action: Action): ValidationResu
 		case ACTION_TYPES.PLAY_GHOPTE: {
 			const { playerId, card } = action.payload;
 
-			if (state.mode !== GAME_MODES.FOUR_PLAYER) {
+			if (state.game.mode !== GAME_MODES.FOUR_PLAYER) {
 				return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Ghopte is only valid in 4-Player mode");
 			}
 
-			if (state.phase !== GAME_PHASES.GHOPTE) {
+			if (state.game.phase !== GAME_PHASES.GHOPTE) {
 				return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "PLAY_GHOPTE action is only valid during GHOPTE phase");
 			}
 
-			if (state.currentTurnPlayerId !== playerId) {
+			if (currentTurnPlayer?.id !== playerId) {
 				return createValidationError(ENGINE_ERROR_CODES.NOT_PLAYER_TURN, `Not turn for player ${playerId}`);
 			}
 
@@ -220,7 +223,8 @@ export function validateAction(state: GameState, action: Action): ValidationResu
 					return createValidationError(ENGINE_ERROR_CODES.INVALID_GHOPTE_SUBMISSION, "Active ghopte is not found.");
 				}
 
-				const isPlayerGhopteDeclarer = activeGhopte.declarerId === playerId;
+				const player = state.players.find((p) => p.id === playerId);
+				const isPlayerGhopteDeclarer = activeGhopte.declarerPosition === player?.position;
 
 				if (isPlayerGhopteDeclarer) {
 					const cardDetails = parseCard(cardToPlay);
@@ -235,7 +239,7 @@ export function validateAction(state: GameState, action: Action): ValidationResu
 				if (!isPlayerGhopteDeclarer) {
 					// player cannot throw their own pending Ghopte 10 for another player's Ghopte
 					const isPendingOwnGhopte = state.ghopteState.ghoptes.some(
-						(g) => g.declarerId === playerId && !g.resolved && g.tenCard === cardToPlay,
+						(g) => g.declarerPosition === player?.position && !g.resolved && g.tenCard === cardToPlay,
 					);
 
 					if (isPendingOwnGhopte) {
@@ -257,11 +261,11 @@ export function validateAction(state: GameState, action: Action): ValidationResu
 				return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "Cannot play card while there are unresolved Ghoptes");
 			}
 
-			if (state.phase !== GAME_PHASES.PLAYING) {
+			if (state.game.phase !== GAME_PHASES.PLAYING) {
 				return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "Cannot play cards outside PLAYING phase");
 			}
 
-			if (state.currentTurnPlayerId !== playerId) {
+			if (currentTurnPlayer?.id !== playerId) {
 				return createValidationError(ENGINE_ERROR_CODES.NOT_PLAYER_TURN, `Not turn for player ${playerId}`);
 			}
 
@@ -270,7 +274,7 @@ export function validateAction(state: GameState, action: Action): ValidationResu
 
 			let cardToPlay: Card | null = null;
 
-			if (state.mode === GAME_MODES.TWO_PLAYER) {
+			if (state.game.mode === GAME_MODES.TWO_PLAYER) {
 				// first, search the card in hand
 				cardToPlay = hand.find((c) => c === card) ?? null;
 
@@ -290,9 +294,9 @@ export function validateAction(state: GameState, action: Action): ValidationResu
 			}
 
 			// follow-suit validation for standard PLAYING phase
-			const leadSuit = state.currentTrick.leadSuit;
+			const leadSuit = state.trick.leadSuit;
 
-			if (state.mode === GAME_MODES.FOUR_PLAYER) {
+			if (state.game.mode === GAME_MODES.FOUR_PLAYER) {
 				const followsSuit = validateFollowSuit({ hand, cardToPlay, leadSuit });
 
 				if (!followsSuit) {
@@ -303,7 +307,7 @@ export function validateAction(state: GameState, action: Action): ValidationResu
 				}
 			}
 
-			if (state.mode === GAME_MODES.TWO_PLAYER) {
+			if (state.game.mode === GAME_MODES.TWO_PLAYER) {
 				const followsSuit = validate2PFollowSuit({
 					hand,
 					stacks,

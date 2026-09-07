@@ -262,7 +262,7 @@ game.phase;               // "DEAL" | "TURUP_DECLARATION" | "GHOPTE" | "PLAYING"
 game.players;             // readonly Player[]
 game.dealerPosition;      // PlayerPosition: 0 to 3 for 4P, 0 to 1 for 2P
 game.currentPlayer;       // Player | null
-game.currentTrick;        // Trick: { trickNumber, leadSuit, cards, winnerId }
+game.currentTrick;        // Trick: { number, playNumber, leadSuit, leaderPosition, isGhopte, cards, nextLeaderPosition, winnerPosition }
 game.currentTurup;        // Suit | null
 game.scores;              // Record<string, ScoreState>: captured 10s and tricks
 game.isFinished;          // boolean (true when phase === "END")

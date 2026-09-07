@@ -169,7 +169,7 @@ export function detectGhopte({
 				if (card && parseCard(card).rank === RANKS.TEN) {
 					allGhoptes.push({
 						order: allGhoptes.length,
-						declarerId: player.id,
+						declarerPosition: player.position,
 						suit: suit as Suit,
 						tenCard: card,
 						resolved: false,

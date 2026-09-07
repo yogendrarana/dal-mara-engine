@@ -49,13 +49,13 @@ export function evaluateGameWinner4P(options: {
 
 	for (const p of players) {
 		const pScore = scores[p.id] ?? createInitialScoreState();
-		const pTricks = pScore.capturedTricks ?? pScore.capturedTrickRecords.length;
+		const pTricks = pScore.capturedTricksCount;
 
 		if (p.team === team1) {
-			team1Tens += pScore.capturedTens;
+			team1Tens += pScore.capturedTensCount;
 			team1Tricks += pTricks;
 		} else {
-			team2Tens += pScore.capturedTens;
+			team2Tens += pScore.capturedTensCount;
 			team2Tricks += pTricks;
 		}
 	}

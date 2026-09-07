@@ -1,6 +1,6 @@
 import type { Player, PlayerPosition } from "./player";
 import type { Action } from "./action";
-import type { Card, PlayedCard, Suit } from "./card";
+import type { Card, Suit } from "./card";
 
 import type { GAME_MODES, GAME_PHASES } from "../core/const";
 
@@ -9,15 +9,26 @@ import type { GAME_MODES, GAME_PHASES } from "../core/const";
 export type GameMode = (typeof GAME_MODES)[keyof typeof GAME_MODES];
 export type GamePhase = (typeof GAME_PHASES)[keyof typeof GAME_PHASES];
 
+export interface PlayedCard {
+	readonly card: Card;
+	readonly playerId: string;
+	readonly playOrder: number;
+}
+
 export interface Trick {
-	readonly trickNumber: number;
+	readonly number: number;
+	// 1-4 in a 4P trick, 1-2 in 2P mode
+	readonly playNumber: number;
 	readonly leadSuit: Suit | null;
+	readonly leaderPosition: PlayerPosition;
+	readonly isGhopte: boolean;
 	readonly cards: readonly PlayedCard[];
-	readonly winnerId: string | null;
+	readonly nextLeaderPosition: PlayerPosition | null;
+	readonly winnerPosition: PlayerPosition | null;
 }
 
 export interface GhopteInfo {
-	readonly declarerId: string;
+	readonly declarerPosition: PlayerPosition;
 	readonly suit: Suit;
 	readonly tenCard: Card;
 	readonly order: number;
@@ -35,55 +46,42 @@ export interface PlayerStack2P {
 	readonly faceUpCard: Card | null;
 }
 
-export interface CapturedTrickRecord {
-	readonly trickNumber: number;
-	readonly cards: readonly Card[];
-}
-
 export interface ScoreState {
-	readonly capturedTens: number;
-	readonly capturedTricks: number;
-	readonly capturedTrickRecords: readonly CapturedTrickRecord[];
+	readonly capturedTensCount: number;
+	readonly capturedTricksCount: number;
+	readonly capturedTricks: Trick[];
 }
 
 export interface GameState {
 	readonly id: string;
-	readonly mode: GameMode;
-	readonly phase: GamePhase;
+
+	readonly game: {
+		readonly mode: GameMode;
+		readonly dealerPosition: PlayerPosition;
+		readonly turup: Suit | null;
+		readonly phase: GamePhase;
+	};
 
 	readonly players: readonly Player[];
-
-	readonly dealerPosition: PlayerPosition;
-
-	readonly currentTurnPlayerId: string | null;
-
-	// 13 card hand (4P) and 6 card hand (2P)
 	readonly hands: Record<string, readonly Card[]>;
-
-	// 2-Player specific stacks (4 stacks per player)
 	readonly stacks2P: Record<string, readonly PlayerStack2P[]>;
 
-	// Current trick in progress
-	readonly currentTrick: Trick;
-
-	// Current fixed (2P) or active (4P) Turup
-	readonly currentTurup: Suit | null;
-
-	// Active Ghopte state if in GHOPTE phase
 	readonly ghopteState: GhopteState | null;
 
-	// Scores by player ID (derived team scores for 4P)
-	readonly scores: Record<string, ScoreState>;
+	readonly play: {
+		readonly number: number;
+		readonly card: Card | null;
+		readonly playerPosition: PlayerPosition | null;
+		readonly isGhopte: boolean;
+		readonly isTurup: boolean;
+		readonly makesTurup: boolean;
+	};
 
-	// Trick history for current round
-	readonly trickHistory: readonly Trick[];
+	readonly trick: Trick;
 
-	// Current round number (1 to 13 total rounds)
-	readonly roundNumber: number;
+	readonly scoring: {
+		readonly scores: Record<string, ScoreState>;
+	};
 
-	// Winner team when game finished
-	readonly winnerTeam: string | null;
-
-	// Recorded action history for replay
-	readonly actionHistory: readonly Action[];
+	readonly actions: readonly Action[];
 }

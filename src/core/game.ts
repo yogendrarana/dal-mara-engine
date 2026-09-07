@@ -5,6 +5,7 @@ import type {
 	GameEvent,
 	GameEventType,
 	GameMode,
+	GamePhase,
 	GameState,
 	PickupTurupCardAction,
 	PlayCardAction,
@@ -28,6 +29,9 @@ import { createInitialState } from "./state";
 import { gameReducer4P } from "./reducers/four-player";
 import { gameReducer2P } from "./reducers/two-player";
 
+import { getCurrentTurnPlayer } from "./turn";
+import { evaluateGameWinner4P, evaluateGameWinner2P } from "./scoring/scoring";
+
 export interface CreateGameOptions {
 	readonly id: string;
 	readonly mode: GameMode;
@@ -44,7 +48,7 @@ export class Game {
 	}
 
 	public static create(options: CreateGameOptions | GameState): Game | ValidationResult {
-		if ("phase" in options && "hands" in options) {
+		if ("game" in options && "trick" in options) {
 			return new Game(options as GameState);
 		}
 
@@ -88,11 +92,11 @@ export class Game {
 	}
 
 	public get mode(): GameMode {
-		return this._state.mode;
+		return this._state.game.mode;
 	}
 
-	public get phase(): GameState["phase"] {
-		return this._state.phase;
+	public get phase(): GamePhase {
+		return this._state.game.phase;
 	}
 
 	public get players(): readonly Player[] {
@@ -100,33 +104,41 @@ export class Game {
 	}
 
 	public get dealerPosition(): PlayerPosition {
-		return this._state.dealerPosition;
+		return this._state.game.dealerPosition;
 	}
 
 	public get currentPlayer(): Player | null {
-		if (!this._state.currentTurnPlayerId) return null;
-
-		return this._state.players.find((p) => p.id === this._state.currentTurnPlayerId) ?? null;
+		return getCurrentTurnPlayer(this._state);
 	}
 
 	public get currentTrick(): Trick {
-		return this._state.currentTrick;
+		return this._state.trick;
 	}
 
 	public get currentTurup(): Suit | null {
-		return this._state.currentTurup;
+		return this._state.game.turup;
 	}
 
 	public get scores(): Record<string, ScoreState> {
-		return this._state.scores;
+		return this._state.scoring.scores;
 	}
 
 	public get isFinished(): boolean {
-		return this._state.phase === GAME_PHASES.END;
+		return this._state.game.phase === GAME_PHASES.END;
 	}
 
 	public get winnerTeam(): string | null {
-		return this._state.winnerTeam;
+		if (this._state.game.phase !== GAME_PHASES.END) return null;
+		if (this._state.game.mode === GAME_MODES.FOUR_PLAYER) {
+			return evaluateGameWinner4P({
+				scores: this._state.scoring.scores,
+				players: this._state.players,
+			}).winnerTeam;
+		}
+		return evaluateGameWinner2P({
+			scores: this._state.scoring.scores,
+			players: this._state.players,
+		}).winnerTeam;
 	}
 
 	// event dispatchers
@@ -183,7 +195,7 @@ export class Game {
 	}
 
 	public playCard(payload: PlayCardAction["payload"]): ValidationResult {
-		if (this._state.phase === GAME_PHASES.GHOPTE) {
+		if (this._state.game.phase === GAME_PHASES.GHOPTE) {
 			return this.submitGhopteCard(payload);
 		}
 		return this.dispatch({ type: ACTION_TYPES.PLAY_CARD, payload });
@@ -198,22 +210,22 @@ export class Game {
 			return validation;
 		}
 
-		this._state =
-			this._state.mode === GAME_MODES.FOUR_PLAYER ? gameReducer4P(this._state, action) : gameReducer2P(this._state, action);
+		const prevTurup = this._state.game.turup;
 
-		const prevTurup = this._state.currentTurup;
+		this._state =
+			this._state.game.mode === GAME_MODES.FOUR_PLAYER ? gameReducer4P(this._state, action) : gameReducer2P(this._state, action);
 
 		// emit event notifications to subscribers
 		switch (action.type) {
 			case ACTION_TYPES.DEAL:
-				this.eventDispatcher.emit("CardsDealt", { phase: this._state.phase });
+				this.eventDispatcher.emit("CardsDealt", { phase: this._state.game.phase });
 
-				if (this._state.phase === GAME_PHASES.GHOPTE) {
+				if (this._state.game.phase === GAME_PHASES.GHOPTE) {
 					this.eventDispatcher.emit("GhopteStarted", {
 						ghopteState: this._state.ghopteState,
 					});
 				} else if (
-					(this._state.phase === GAME_PHASES.PLAYING || this._state.phase === GAME_PHASES.TURUP_DECLARATION) &&
+					(this._state.game.phase === GAME_PHASES.PLAYING || this._state.game.phase === GAME_PHASES.TURUP_DECLARATION) &&
 					this.currentPlayer
 				) {
 					this.eventDispatcher.emit("TurnStarted", {
@@ -242,23 +254,23 @@ export class Game {
 					card: action.payload.card,
 				});
 
-				if (prevTurup !== this._state.currentTurup && this._state.currentTurup) {
+				if (prevTurup !== this._state.game.turup && this._state.game.turup) {
 					if (!prevTurup) {
 						this.eventDispatcher.emit("TurupCreated", {
-							suit: this._state.currentTurup,
+							suit: this._state.game.turup,
 						});
 					} else {
 						this.eventDispatcher.emit("TurupChanged", {
 							oldSuit: prevTurup,
-							newSuit: this._state.currentTurup,
+							newSuit: this._state.game.turup,
 						});
 					}
 				}
 
-				if (this._state.phase === GAME_PHASES.END) {
+				if (this._state.game.phase === GAME_PHASES.END) {
 					this.eventDispatcher.emit("GameFinished", {
-						winnerTeam: this._state.winnerTeam,
-						scores: this._state.scores,
+						winnerTeam: this.winnerTeam,
+						scores: this.scores,
 					});
 				} else if (this.currentPlayer) {
 					this.eventDispatcher.emit("TurnStarted", {

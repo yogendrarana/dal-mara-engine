@@ -80,7 +80,7 @@ describe("Dal Mara Notation (DMN) - DMN1 Snapshot Format", () => {
 		const parsed = importFromDMN(game.toDMN());
 
 		expect(parsed.dmn.moveNumber).toBe(0);
-		expect(parsed.dmn.trickNumber).toBe(0);
+		expect(parsed.dmn.number).toBe(0);
 		expect(parsed.dmn.trickPlay).toBe(0);
 	});
 
@@ -110,7 +110,7 @@ describe("Dal Mara Notation (DMN) - DMN1 Snapshot Format", () => {
 
 		// M section: 1 card played, trick 1, 1 card in trick
 		expect(parsed.dmn.moveNumber).toBe(1);
-		expect(parsed.dmn.trickNumber).toBe(1);
+		expect(parsed.dmn.number).toBe(1);
 		expect(parsed.dmn.trickPlay).toBe(1);
 
 		// C section: the played card
@@ -168,8 +168,8 @@ describe("Dal Mara Notation (DMN) - DMN1 Snapshot Format", () => {
 		expect(restored.state.hands).toEqual(game.state.hands);
 
 		// Current trick matches
-		expect(restored.state.currentTrick.cards.length).toBe(game.state.currentTrick.cards.length);
-		expect(restored.state.currentTurup).toBe(game.state.currentTurup);
+		expect(restored.currentTrick.cards.length).toBe(game.currentTrick.cards.length);
+		expect(restored.currentTurup).toBe(game.currentTurup);
 
 		// Game.fromDMN also works
 		const restoredStatic = Game.fromDMN(dmn) as Game;

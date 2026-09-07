@@ -2,14 +2,14 @@ import { createDeck, shuffleDeck } from "../deck";
 import { parseCard } from "../card";
 import { DalMaraError } from "../errors";
 import { ACTION_TYPES, ENGINE_ERROR_CODES, GAME_PHASES } from "../const";
-import type { Action, GameState, PlayedCard, Trick } from "../../types/index";
+import type { Action, GameState, PlayedCard, PlayerPosition, Trick } from "../../types/index";
 import { dealFourPlayer, detectGhopte, getAnticlockwiseNextPosition, resolve4PTrickWinner } from "../rules/four-player";
-import { createInitialScoreState, evaluateGameWinner4P, isGameFinished4P, updateScoreOnTrickWon } from "../scoring/scoring";
+import { createInitialScoreState, isGameFinished4P, updateScoreOnTrickWon } from "../scoring/scoring";
 
 export function gameReducer4P(state: GameState, action: Action): GameState {
-	const nextActionHistory = [...state.actionHistory, action];
+	const nextActions = [...state.actions, action];
 
-	const dealer = state.players.find((p) => p.position === state.dealerPosition);
+	const dealer = state.players.find((p) => p.position === state.game.dealerPosition);
 	if (!dealer) {
 		throw new DalMaraError("Cannot find the dealer in the player list.", ENGINE_ERROR_CODES.INVALID_DEALER);
 	}
@@ -17,7 +17,7 @@ export function gameReducer4P(state: GameState, action: Action): GameState {
 	switch (action.type) {
 		case ACTION_TYPES.DEAL: {
 			const { deck } = action.payload;
-			if (state.phase !== GAME_PHASES.DEAL) return state;
+			if (state.game.phase !== GAME_PHASES.DEAL) return state;
 
 			const finalDeck = deck?.length === 52 ? deck : shuffleDeck(createDeck());
 
@@ -37,30 +37,65 @@ export function gameReducer4P(state: GameState, action: Action): GameState {
 				const activeGhopte = ghopteState.ghoptes[ghopteState.activeIndex];
 				if (!activeGhopte) return state;
 
-				const declarer = state.players.find((p) => p.id === activeGhopte.declarerId);
-				if (!declarer) return state;
-
 				return {
 					...state,
-					phase: GAME_PHASES.GHOPTE,
+					game: {
+						...state.game,
+						phase: GAME_PHASES.GHOPTE,
+					},
 					hands,
 					ghopteState,
-					currentTurnPlayerId: declarer.id,
-					actionHistory: nextActionHistory,
+					play: {
+						number: 0,
+						card: null,
+						playerPosition: activeGhopte.declarerPosition,
+						isGhopte: false,
+						isTurup: false,
+						makesTurup: false,
+					},
+					trick: {
+						number: 1,
+						playNumber: 1,
+						leadSuit: activeGhopte.suit,
+						leaderPosition: activeGhopte.declarerPosition,
+						isGhopte: true,
+						cards: [],
+						nextLeaderPosition: null,
+						winnerPosition: null,
+					},
+					actions: nextActions,
 				};
 			}
 
 			// Normal 4P start (no Ghopte)
-			const firstTurnPos = getAnticlockwiseNextPosition(dealer.position, 4);
-			const firstPlayer = state.players.find((p) => p.position === firstTurnPos);
-			if (!firstPlayer) return state;
+			const firstTurnPos = ((dealer.position + 1) % 4) as PlayerPosition;
 
 			return {
 				...state,
-				phase: GAME_PHASES.PLAYING,
+				game: {
+					...state.game,
+					phase: GAME_PHASES.PLAYING,
+				},
 				hands,
-				currentTurnPlayerId: firstPlayer.id,
-				actionHistory: nextActionHistory,
+				play: {
+					number: 0,
+					card: null,
+					playerPosition: firstTurnPos,
+					isGhopte: false,
+					isTurup: false,
+					makesTurup: false,
+				},
+				trick: {
+					number: 1,
+					playNumber: 1,
+					leadSuit: null,
+					leaderPosition: firstTurnPos,
+					isGhopte: false,
+					cards: [],
+					nextLeaderPosition: null,
+					winnerPosition: null,
+				},
+				actions: nextActions,
 			};
 		}
 
@@ -73,6 +108,10 @@ export function gameReducer4P(state: GameState, action: Action): GameState {
 			const playedCardObj = hand.find((c) => c === card);
 			if (!playedCardObj) return state;
 
+			const currentPlayer = state.players.find((p) => p.id === playerId);
+			if (!currentPlayer) return state;
+			const playerPos = currentPlayer.position;
+
 			const updatedHands = {
 				...state.hands,
 				[playerId]: hand.filter((c) => c !== card),
@@ -81,52 +120,42 @@ export function gameReducer4P(state: GameState, action: Action): GameState {
 			const playedCardItem: PlayedCard = {
 				playerId,
 				card: playedCardObj,
-				playOrder: state.currentTrick.cards.length + 1,
+				playOrder: state.trick.cards.length + 1,
 			};
 
-			if (state.phase !== GAME_PHASES.GHOPTE || !state.ghopteState) return state;
+			if (state.game.phase !== GAME_PHASES.GHOPTE || !state.ghopteState) return state;
 
 			const currentGhopte = state.ghopteState.ghoptes[state.ghopteState.activeIndex];
 			if (!currentGhopte) return state;
 
 			const targetSuit = currentGhopte.suit;
-			const isLead = state.currentTrick.cards.length === 0;
-			const currentTrickLeadSuit = isLead ? targetSuit : state.currentTrick.leadSuit;
+			const isLead = state.trick.cards.length === 0;
+			const currentTrickLeadSuit = isLead ? targetSuit : state.trick.leadSuit;
 
-			const updatedTrickCards = [...state.currentTrick.cards, playedCardItem];
+			const updatedTrickCards = [...state.trick.cards, playedCardItem];
 			const isTrickComplete = updatedTrickCards.length === 4;
+			const newPlayNumber = state.play.number + 1;
 
-			const updatedCurrentTrick: Trick = {
-				trickNumber: state.roundNumber,
+			const currentTrickSnapshot: Trick = {
+				number: state.trick.number,
+				playNumber: updatedTrickCards.length,
 				leadSuit: currentTrickLeadSuit,
+				leaderPosition: state.trick.leaderPosition,
+				isGhopte: true,
 				cards: updatedTrickCards,
-				winnerId: null,
+				nextLeaderPosition: null,
+				winnerPosition: null,
 			};
 
 			if (isTrickComplete) {
 				const winnerId = resolve4PTrickWinner({
-					trick: updatedCurrentTrick,
+					trick: currentTrickSnapshot,
 					currentTurup: null,
 				});
 
 				const winnerPlayer = state.players.find((p) => p.id === winnerId);
 				if (!winnerPlayer) return state;
-
-				const wonCards = updatedTrickCards.map((pc) => pc.card);
-				const currentScore = state.scores[winnerId] ?? createInitialScoreState();
-				const updatedScore = updateScoreOnTrickWon({
-					currentScore,
-					wonCards,
-					trickNumber: state.roundNumber,
-					wonByPlayerId: winnerId,
-				});
-
-				const completedTrick: Trick = {
-					...updatedCurrentTrick,
-					winnerId,
-				};
-
-				const updatedTrickHistory = [...state.trickHistory, completedTrick];
+				const winnerPos = winnerPlayer.position;
 
 				// Mark current Ghopte as resolved
 				const updatedGhoptes = state.ghopteState.ghoptes.map((g, idx) =>
@@ -135,12 +164,29 @@ export function gameReducer4P(state: GameState, action: Action): GameState {
 
 				const nextGhopteIndex = state.ghopteState.activeIndex + 1;
 				const hasMoreGhoptes = nextGhopteIndex < updatedGhoptes.length;
+				const nextLeader = hasMoreGhoptes ? (updatedGhoptes[nextGhopteIndex]?.declarerPosition ?? winnerPos) : winnerPos;
+
+				const completedTrick: Trick = {
+					...currentTrickSnapshot,
+					playNumber: 4,
+					winnerPosition: winnerPos,
+					nextLeaderPosition: nextLeader,
+				};
+
+				const currentScore = state.scoring.scores[winnerId] ?? createInitialScoreState();
+				const updatedScore = updateScoreOnTrickWon({
+					currentScore,
+					trick: completedTrick,
+				});
+
+				const updatedScores = {
+					...state.scoring.scores,
+					[winnerId]: updatedScore,
+				};
 
 				if (hasMoreGhoptes) {
 					const nextGhopte = updatedGhoptes[nextGhopteIndex];
 					if (!nextGhopte) return state;
-					const nextDeclarer = state.players.find((p) => p.id === nextGhopte.declarerId);
-					if (!nextDeclarer) return state;
 
 					return {
 						...state,
@@ -149,59 +195,84 @@ export function gameReducer4P(state: GameState, action: Action): GameState {
 							ghoptes: updatedGhoptes,
 							activeIndex: nextGhopteIndex,
 						},
-						scores: {
-							...state.scores,
-							[winnerId]: updatedScore,
+						play: {
+							number: newPlayNumber,
+							card: playedCardObj,
+							playerPosition: nextGhopte.declarerPosition,
+							isGhopte: true,
+							isTurup: false,
+							makesTurup: false,
 						},
-						trickHistory: updatedTrickHistory,
-						roundNumber: state.roundNumber + 1,
-						currentTurnPlayerId: nextDeclarer.id,
-						currentTrick: {
-							trickNumber: state.roundNumber + 1,
-							leadSuit: null,
+						scoring: {
+							scores: updatedScores,
+						},
+						trick: {
+							number: state.trick.number + 1,
+							playNumber: 1,
+							leadSuit: nextGhopte.suit,
+							leaderPosition: nextGhopte.declarerPosition,
+							isGhopte: true,
 							cards: [],
-							winnerId: null,
+							nextLeaderPosition: null,
+							winnerPosition: null,
 						},
-						actionHistory: nextActionHistory,
+						actions: nextActions,
 					};
 				} else {
 					// All Ghoptes resolved! Transition to PLAYING phase.
 					return {
 						...state,
-						phase: GAME_PHASES.PLAYING,
+						game: {
+							...state.game,
+							phase: GAME_PHASES.PLAYING,
+						},
 						hands: updatedHands,
 						ghopteState: null,
-						scores: {
-							...state.scores,
-							[winnerId]: updatedScore,
+						play: {
+							number: newPlayNumber,
+							card: playedCardObj,
+							playerPosition: winnerPos,
+							isGhopte: true,
+							isTurup: false,
+							makesTurup: false,
 						},
-						trickHistory: updatedTrickHistory,
-						roundNumber: state.roundNumber + 1,
-						currentTurnPlayerId: winnerId,
-						currentTrick: {
-							trickNumber: state.roundNumber + 1,
+						scoring: {
+							scores: updatedScores,
+						},
+						trick: {
+							number: state.trick.number + 1,
+							playNumber: 1,
 							leadSuit: null,
+							leaderPosition: winnerPos,
+							isGhopte: false,
 							cards: [],
-							winnerId: null,
+							nextLeaderPosition: null,
+							winnerPosition: null,
 						},
-						actionHistory: nextActionHistory,
+						actions: nextActions,
 					};
 				}
 			}
 
 			// Ghopte trick in progress: advance turn to next player
-			const currentPlayer = state.players.find((p) => p.id === playerId);
-			if (!currentPlayer) return state;
-			const nextPos = getAnticlockwiseNextPosition(currentPlayer.position, 4);
-			const nextPlayer = state.players.find((p) => p.position === nextPos);
-			if (!nextPlayer) return state;
+			const nextPos = ((playerPos + 1) % 4) as PlayerPosition;
 
 			return {
 				...state,
 				hands: updatedHands,
-				currentTrick: updatedCurrentTrick,
-				currentTurnPlayerId: nextPlayer.id,
-				actionHistory: nextActionHistory,
+				play: {
+					number: newPlayNumber,
+					card: playedCardObj,
+					playerPosition: nextPos,
+					isGhopte: true,
+					isTurup: false,
+					makesTurup: false,
+				},
+				trick: {
+					...currentTrickSnapshot,
+					playNumber: updatedTrickCards.length + 1,
+				},
+				actions: nextActions,
 			};
 		}
 
@@ -214,6 +285,10 @@ export function gameReducer4P(state: GameState, action: Action): GameState {
 			const playedCardObj = hand.find((c) => c === card);
 			if (!playedCardObj) return state;
 
+			const currentPlayer = state.players.find((p) => p.id === playerId);
+			if (!currentPlayer) return state;
+			const playerPos = currentPlayer.position;
+
 			const updatedHands = {
 				...state.hands,
 				[playerId]: hand.filter((c) => c !== card),
@@ -222,18 +297,18 @@ export function gameReducer4P(state: GameState, action: Action): GameState {
 			const playedCardItem: PlayedCard = {
 				playerId,
 				card: playedCardObj,
-				playOrder: state.currentTrick.cards.length + 1,
+				playOrder: state.trick.cards.length + 1,
 			};
 
 			const cardSuit = parseCard(playedCardObj).suit;
-			const isLead = state.currentTrick.cards.length === 0;
-			const currentTrickLeadSuit = isLead ? cardSuit : state.currentTrick.leadSuit;
+			const isLead = state.trick.cards.length === 0;
+			const currentTrickLeadSuit = isLead ? cardSuit : state.trick.leadSuit;
 
-			let newTurup = state.currentTurup;
+			let newTurup = state.game.turup;
 
 			// Turup Creation & Override Logic (within the same trick):
-			const trickHasOffSuitCard = state.currentTrick.cards.some((pc) => parseCard(pc.card).suit !== state.currentTrick.leadSuit);
-			const turupFromPastTrick = state.currentTurup !== null && !trickHasOffSuitCard;
+			const trickHasOffSuitCard = state.trick.cards.some((pc) => parseCard(pc.card).suit !== state.trick.leadSuit);
+			const turupFromPastTrick = state.game.turup !== null && !trickHasOffSuitCard;
 
 			if (!turupFromPastTrick) {
 				const isOffSuit = cardSuit !== currentTrickLeadSuit;
@@ -252,112 +327,140 @@ export function gameReducer4P(state: GameState, action: Action): GameState {
 				}
 			}
 
-			const updatedTrickCards = [...state.currentTrick.cards, playedCardItem];
+			const makesTurup = newTurup !== state.game.turup && newTurup === cardSuit;
+			const isTurup = newTurup !== null && cardSuit === newTurup;
+			const newPlayNumber = state.play.number + 1;
+
+			const updatedTrickCards = [...state.trick.cards, playedCardItem];
 			const isTrickComplete = updatedTrickCards.length === 4;
 
-			const updatedCurrentTrick: Trick = {
-				trickNumber: state.roundNumber,
+			const currentTrickSnapshot: Trick = {
+				number: state.trick.number,
+				playNumber: updatedTrickCards.length,
 				leadSuit: currentTrickLeadSuit,
+				leaderPosition: state.trick.leaderPosition,
+				isGhopte: false,
 				cards: updatedTrickCards,
-				winnerId: null,
+				nextLeaderPosition: null,
+				winnerPosition: null,
 			};
 
 			// if trick is completed
 			if (isTrickComplete) {
 				const winnerId = resolve4PTrickWinner({
-					trick: updatedCurrentTrick,
+					trick: currentTrickSnapshot,
 					currentTurup: newTurup,
 				});
 
 				const winnerPlayer = state.players.find((p) => p.id === winnerId);
 				if (!winnerPlayer) return state;
+				const winnerPos = winnerPlayer.position;
 
-				const wonCards = updatedTrickCards.map((pc) => pc.card);
-				const currentScore = state.scores[winnerId] ?? createInitialScoreState();
+				const completedTrick: Trick = {
+					...currentTrickSnapshot,
+					playNumber: 4,
+					winnerPosition: winnerPos,
+					nextLeaderPosition: winnerPos,
+				};
 
+				const currentScore = state.scoring.scores[winnerId] ?? createInitialScoreState();
 				const updatedScore = updateScoreOnTrickWon({
 					currentScore,
-					wonCards,
-					trickNumber: state.roundNumber,
-					wonByPlayerId: winnerId,
+					trick: completedTrick,
 				});
 
 				const updatedScores = {
-					...state.scores,
+					...state.scoring.scores,
 					[winnerId]: updatedScore,
 				};
 
-				const completedTrick: Trick = {
-					...updatedCurrentTrick,
-					winnerId,
-				};
-
-				const updatedTrickHistory = [...state.trickHistory, completedTrick];
+				const totalTricksPlayed = Object.values(updatedScores).reduce((sum, s) => sum + s.capturedTricksCount, 0);
 
 				const finished = isGameFinished4P({
-					totalTricksPlayed: updatedTrickHistory.length,
+					totalTricksPlayed,
 					hands: updatedHands,
 				});
 
 				if (finished) {
-					const winnerEval = evaluateGameWinner4P({
-						scores: updatedScores,
-						players: state.players,
-					});
-
 					return {
 						...state,
-						phase: GAME_PHASES.END,
-						hands: updatedHands,
-						currentTurup: newTurup,
-						currentTrick: {
-							trickNumber: Math.min(updatedTrickHistory.length + 1, 13),
-							leadSuit: null,
-							cards: [],
-							winnerId: null,
+						game: {
+							...state.game,
+							phase: GAME_PHASES.END,
+							turup: newTurup,
 						},
-						scores: updatedScores,
-						trickHistory: updatedTrickHistory,
-						roundNumber: Math.min(updatedTrickHistory.length + 1, 13),
-						currentTurnPlayerId: null,
-						winnerTeam: winnerEval.winnerTeam,
-						actionHistory: nextActionHistory,
+						hands: updatedHands,
+						play: {
+							number: newPlayNumber,
+							card: playedCardObj,
+							playerPosition: null,
+							isGhopte: false,
+							isTurup,
+							makesTurup,
+						},
+						scoring: {
+							scores: updatedScores,
+						},
+						trick: completedTrick,
+						actions: nextActions,
 					};
 				}
 
 				return {
 					...state,
-					hands: updatedHands,
-					currentTurup: newTurup,
-					currentTrick: {
-						trickNumber: Math.min(updatedTrickHistory.length + 1, 13),
-						leadSuit: null,
-						cards: [],
-						winnerId: null,
+					game: {
+						...state.game,
+						turup: newTurup,
 					},
-					scores: updatedScores,
-					trickHistory: updatedTrickHistory,
-					roundNumber: Math.min(updatedTrickHistory.length + 1, 13),
-					currentTurnPlayerId: winnerId,
-					actionHistory: nextActionHistory,
+					hands: updatedHands,
+					play: {
+						number: newPlayNumber,
+						card: playedCardObj,
+						playerPosition: winnerPos,
+						isGhopte: false,
+						isTurup,
+						makesTurup,
+					},
+					scoring: {
+						scores: updatedScores,
+					},
+					trick: {
+						number: Math.min(totalTricksPlayed + 1, 13),
+						playNumber: 1,
+						leadSuit: null,
+						leaderPosition: winnerPos,
+						isGhopte: false,
+						cards: [],
+						nextLeaderPosition: null,
+						winnerPosition: null,
+					},
+					actions: nextActions,
 				};
 			}
 
 			// trick not complete: advance turn to next player
-			const currentPlayer = state.players.find((p) => p.id === playerId);
-			if (!currentPlayer) return state;
-
-			const nextPos = getAnticlockwiseNextPosition(currentPlayer.position, 4);
-			const nextPlayer = state.players.find((p) => p.position === nextPos);
-			if (!nextPlayer) return state;
+			const nextPos = ((playerPos + 1) % 4) as PlayerPosition;
 
 			return {
 				...state,
+				game: {
+					...state.game,
+					turup: newTurup,
+				},
 				hands: updatedHands,
-				currentTurup: newTurup,
-				currentTrick: updatedCurrentTrick,
-				currentTurnPlayerId: nextPlayer.id,
-				actionHistory: nextActionHistory,
+				play: {
+					number: newPlayNumber,
+					card: playedCardObj,
+					playerPosition: nextPos,
+					isGhopte: false,
+					isTurup,
+					makesTurup,
+				},
+				trick: {
+					...currentTrickSnapshot,
+					playNumber: updatedTrickCards.length + 1,
+				},
+				actions: nextActions,
 			};
 		}
 

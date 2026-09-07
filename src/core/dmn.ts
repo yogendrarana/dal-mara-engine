@@ -12,6 +12,7 @@ import type {
 	Suit,
 	SuitAbbreviation,
 	Trick,
+	ScoreState,
 	ValidationResult,
 } from "../types/index";
 
@@ -63,7 +64,7 @@ export interface DMNState {
 	readonly stacks2P: Record<string, readonly PlayerStack2P[]> | null;
 	// M section
 	readonly moveNumber: number;
-	readonly trickNumber: number;
+	readonly number: number;
 	readonly trickPlay: number;
 	// T section
 	readonly trickLeader: number | null;
@@ -108,12 +109,12 @@ function dmnToSuit(token: string): Suit | null {
 
 export function exportToDMN(state: GameState): string {
 	const version = "DMN1";
-	const numPlayers = state.mode === GAME_MODES.FOUR_PLAYER ? 4 : 2;
+	const numPlayers = state.game.mode === GAME_MODES.FOUR_PLAYER ? 4 : 2;
 
 	// --- G section: Game info ---
-	const modeToken = state.mode === GAME_MODES.FOUR_PLAYER ? "4P" : "2P";
-	const dealerPos = String(state.dealerPosition);
-	const trumpToken = suitToDMN(state.currentTurup);
+	const modeToken = state.game.mode === GAME_MODES.FOUR_PLAYER ? "4P" : "2P";
+	const dealerPos = String(state.game.dealerPosition);
+	const trumpToken = suitToDMN(state.game.turup);
 	const gSection = `G:${modeToken},${dealerPos},${trumpToken}`;
 
 	// --- H section: Player hands ---
@@ -128,7 +129,7 @@ export function exportToDMN(state: GameState): string {
 
 	// --- S section: Stacks ---
 	let sSection = "S:-";
-	if (state.mode === GAME_MODES.TWO_PLAYER) {
+	if (state.game.mode === GAME_MODES.TWO_PLAYER) {
 		const playerStackParts: string[] = [];
 		for (let i = 0; i < 2; i++) {
 			const player = state.players.find((p) => p.position === i);
@@ -146,48 +147,36 @@ export function exportToDMN(state: GameState): string {
 	}
 
 	// --- M section: Move info ---
-	// moveNumber = total cards played so far (computed from hands)
+	// moveNumber = total cards played so far (computed from hands/stacks)
 	const totalCardsInHands = Object.values(state.hands).reduce((sum, h) => sum + h.length, 0);
 	const totalCardsInStacks = Object.values(state.stacks2P).reduce(
 		(sum, stacks) => sum + stacks.reduce((s, stack) => s + stack.hiddenCards.length + (stack.faceUpCard ? 1 : 0), 0),
 		0,
 	);
 	const totalUnplayed = totalCardsInHands + totalCardsInStacks;
-	const moveNumber = totalUnplayed > 0 && totalUnplayed < 52 ? 52 - totalUnplayed : totalUnplayed === 0 ? 0 : 0;
+	const moveNumber = totalUnplayed > 0 && totalUnplayed < 52 ? 52 - totalUnplayed : 0;
 
-	// trickNumber: 0 for initial state (no moves yet), else current trick number
-	const trickNumber = moveNumber === 0 ? 0 : state.currentTrick.trickNumber;
-	const trickPlay = state.currentTrick.cards.length;
+	// number: 0 for initial state (no moves yet), else current trick number
+	const number = moveNumber === 0 ? 0 : state.trick.number;
+	const trickPlay = state.trick.cards.length;
 
-	const mSection = `M:${moveNumber},${trickNumber},${trickPlay}`;
+	const mSection = `M:${moveNumber},${number},${trickPlay}`;
 
 	// --- T section: Trick info ---
 	let trickLeaderToken = "-";
 	let nextTrickLeaderToken = "-";
-	const isGhopteTrickToken = state.phase === GAME_PHASES.GHOPTE ? "1" : "0";
+	const isGhopteTrickToken = state.game.phase === GAME_PHASES.GHOPTE ? "1" : "0";
 
-	if (state.currentTrick.cards.length > 0) {
-		// Trick has cards — leader is the first card's player
-		const leaderPlayerId = state.currentTrick.cards[0]?.playerId;
-		if (leaderPlayerId) {
-			const leaderPlayer = state.players.find((p) => p.id === leaderPlayerId);
-			if (leaderPlayer) {
-				trickLeaderToken = String(leaderPlayer.position);
-			}
-		}
-	} else if (state.currentTurnPlayerId) {
+	if (state.trick.cards.length > 0) {
+		// Trick has cards — leader is trick leaderPosition
+		trickLeaderToken = String(state.trick.leaderPosition);
+	} else if (state.play.playerPosition !== null) {
 		// Empty trick — the current turn player will lead
-		const turnPlayer = state.players.find((p) => p.id === state.currentTurnPlayerId);
-		if (turnPlayer) {
-			trickLeaderToken = String(turnPlayer.position);
-		}
+		trickLeaderToken = String(state.play.playerPosition);
 	}
 
-	if (state.currentTurnPlayerId) {
-		const turnPlayer = state.players.find((p) => p.id === state.currentTurnPlayerId);
-		if (turnPlayer) {
-			nextTrickLeaderToken = String(turnPlayer.position);
-		}
+	if (state.play.playerPosition !== null) {
+		nextTrickLeaderToken = String(state.play.playerPosition);
 	}
 
 	const tSection = `T:${trickLeaderToken},${nextTrickLeaderToken},${isGhopteTrickToken}`;
@@ -199,7 +188,7 @@ export function exportToDMN(state: GameState): string {
 	let isTurupToken = "0";
 	let trickCardsToken = "[]";
 
-	const trickCards = state.currentTrick.cards;
+	const trickCards = state.trick.cards;
 	if (trickCards.length > 0) {
 		// Last played card in current trick
 		const lastPlay = trickCards[trickCards.length - 1];
@@ -209,8 +198,8 @@ export function exportToDMN(state: GameState): string {
 			if (playedByPlayer) {
 				playedByToken = String(playedByPlayer.position);
 			}
-			isGhopteCardToken = state.phase === GAME_PHASES.GHOPTE ? "1" : "0";
-			isTurupToken = state.currentTurup === parseCard(lastPlay.card).suit ? "1" : "0";
+			isGhopteCardToken = state.game.phase === GAME_PHASES.GHOPTE ? "1" : "0";
+			isTurupToken = state.game.turup === parseCard(lastPlay.card).suit ? "1" : "0";
 		}
 		const cardList = trickCards.map((pc) => pc.card).join(",");
 		trickCardsToken = `[${cardList}]`;
@@ -353,7 +342,7 @@ export function importFromDMN(dmnString: string): Partial<GameState> & { dmn: DM
 	const mValue = parseSectionValue(sections, "M");
 	const mParts = mValue.split(",");
 	const moveNumber = parseInt(mParts[0] ?? "0", 10);
-	const trickNumber = parseInt(mParts[1] ?? "0", 10);
+	const number = parseInt(mParts[1] ?? "0", 10);
 	const trickPlay = parseInt(mParts[2] ?? "0", 10);
 
 	// --- T section ---
@@ -419,7 +408,7 @@ export function importFromDMN(dmnString: string): Partial<GameState> & { dmn: DM
 	let phase: GamePhase = GAME_PHASES.PLAYING;
 	if (isGhopteTrick) {
 		phase = GAME_PHASES.GHOPTE;
-	} else if (moveNumber === 0 && trickNumber === 0) {
+	} else if (moveNumber === 0 && number === 0) {
 		const totalCards = Object.values(hands).reduce((sum, h) => sum + h.length, 0);
 		phase = totalCards > 0 ? GAME_PHASES.PLAYING : GAME_PHASES.DEAL;
 	}
@@ -438,13 +427,39 @@ export function importFromDMN(dmnString: string): Partial<GameState> & { dmn: DM
 	});
 
 	const leadSuit = trickCardObjects.length > 0 ? parseCard(trickCardObjects[0].card).suit : null;
+	const leaderPosition = (trickLeader !== null ? (trickLeader as PlayerPosition) : 0) as PlayerPosition;
+	const nextLeaderPosition = nextTrickLeader !== null ? (nextTrickLeader as PlayerPosition) : null;
 
 	const currentTrick: Trick = {
-		trickNumber: trickNumber > 0 ? trickNumber : 1,
+		number: number > 0 ? number : 1,
+		playNumber: trickPlay > 0 ? trickPlay : trickCardObjects.length > 0 ? trickCardObjects.length : 1,
 		leadSuit,
+		leaderPosition,
+		isGhopte: isGhopteTrick,
 		cards: trickCardObjects,
-		winnerId: null,
+		nextLeaderPosition,
+		winnerPosition: null,
 	};
+
+	const currentTurnPosition = nextTrickLeader !== null ? (nextTrickLeader as PlayerPosition) : null;
+
+	const play = {
+		number: moveNumber,
+		card: playedCardId,
+		playerPosition: currentTurnPosition,
+		isGhopte: isGhopteCard,
+		isTurup,
+		makesTurup: false,
+	};
+
+	const scores: Record<string, ScoreState> = {};
+	for (const p of players) {
+		scores[p.id] = {
+			capturedTensCount: 0,
+			capturedTricksCount: 0,
+			capturedTricks: [],
+		};
+	}
 
 	// --- Build DMNState ---
 	const dmn: DMNState = {
@@ -455,7 +470,7 @@ export function importFromDMN(dmnString: string): Partial<GameState> & { dmn: DM
 		hands: handsRaw,
 		stacks2P: mode === GAME_MODES.TWO_PLAYER ? stacks2P : null,
 		moveNumber,
-		trickNumber,
+		number,
 		trickPlay,
 		trickLeader,
 		nextTrickLeader,
@@ -468,16 +483,21 @@ export function importFromDMN(dmnString: string): Partial<GameState> & { dmn: DM
 	};
 
 	return {
-		mode,
-		phase,
-		dealerPosition,
-		currentTurnPlayerId,
+		id: "game-dmn",
+		game: {
+			mode,
+			dealerPosition,
+			turup: trumpSuit,
+			phase,
+		},
 		players,
 		hands,
 		stacks2P,
-		currentTrick,
-		currentTurup: trumpSuit,
-		roundNumber: trickNumber > 0 ? trickNumber : 1,
+		ghopteState: null,
+		play,
+		trick: currentTrick,
+		scoring: { scores },
+		actions: [],
 		dmn,
 	};
 }
@@ -489,32 +509,40 @@ export function importFromDMN(dmnString: string): Partial<GameState> & { dmn: DM
 export function fromDMN(dmnString: string): Game | ValidationResult {
 	const partialState = importFromDMN(dmnString);
 
-	const mode = partialState.mode ?? GAME_MODES.FOUR_PLAYER;
-	const players = partialState.players ?? [];
-	const dealerPosition = (partialState.dealerPosition ?? partialState.dmn?.dealerPosition ?? 0) as PlayerPosition;
-
 	const fullState: GameState = {
 		id: partialState.id ?? "game-dmn",
-		mode,
-		phase: partialState.phase ?? GAME_PHASES.PLAYING,
-		players,
-		dealerPosition,
-		currentTurnPlayerId: partialState.currentTurnPlayerId ?? null,
+		game: partialState.game ?? {
+			mode: partialState.dmn?.mode ?? GAME_MODES.FOUR_PLAYER,
+			dealerPosition: partialState.dmn?.dealerPosition ?? 0,
+			turup: partialState.dmn?.trumpSuit ?? null,
+			phase: GAME_PHASES.PLAYING,
+		},
+		players: partialState.players ?? [],
 		hands: partialState.hands ?? {},
 		stacks2P: partialState.stacks2P ?? {},
-		currentTrick: partialState.currentTrick ?? {
-			trickNumber: 1,
-			leadSuit: null,
-			cards: [],
-			winnerId: null,
+		ghopteState: partialState.ghopteState ?? null,
+		play: partialState.play ?? {
+			number: partialState.dmn?.moveNumber ?? 0,
+			card: partialState.dmn?.playedCard ?? null,
+			playerPosition: (partialState.dmn?.nextTrickLeader as PlayerPosition) ?? null,
+			isGhopte: partialState.dmn?.isGhopteCard ?? false,
+			isTurup: partialState.dmn?.isTurup ?? false,
+			makesTurup: false,
 		},
-		currentTurup: partialState.currentTurup ?? null,
-		ghopteState: null,
-		scores: partialState.scores ?? {},
-		trickHistory: [],
-		roundNumber: partialState.roundNumber ?? 1,
-		winnerTeam: null,
-		actionHistory: [],
+		trick: partialState.trick ?? {
+			number: 1,
+			playNumber: 1,
+			leadSuit: null,
+			leaderPosition: (partialState.dmn?.trickLeader as PlayerPosition) ?? 0,
+			isGhopte: partialState.dmn?.isGhopteTrick ?? false,
+			cards: [],
+			nextLeaderPosition: null,
+			winnerPosition: null,
+		},
+		scoring: partialState.scoring ?? {
+			scores: {},
+		},
+		actions: partialState.actions ?? [],
 	};
 
 	return Game.create(fullState);

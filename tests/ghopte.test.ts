@@ -14,7 +14,7 @@ describe("Ghopte Phase Mechanics", () => {
 		const ghopteState = detectGhopte({ hands });
 		expect(ghopteState).not.toBeNull();
 		const activeGhopte = ghopteState?.ghoptes[ghopteState.activeIndex];
-		expect(activeGhopte?.declarerId).toBe("p1");
+		expect(activeGhopte?.declarerPosition).toBe(0);
 		expect(activeGhopte?.suit).toBe("spades");
 		expect(activeGhopte?.tenCard).toBe("10s");
 	});

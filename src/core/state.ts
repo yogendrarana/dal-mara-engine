@@ -17,27 +17,41 @@ export function createInitialState(options: {
 		scores[p.id] = createInitialScoreState();
 	}
 
+	const initialLeaderPosition = ((dealerPosition + 1) % orderedPlayers.length) as PlayerPosition;
+
 	return {
 		id,
-		mode,
-		phase: GAME_PHASES.DEAL,
+		game: {
+			mode,
+			dealerPosition,
+			turup: null,
+			phase: GAME_PHASES.DEAL,
+		},
 		players: orderedPlayers,
-		dealerPosition,
-		currentTurnPlayerId: null,
 		hands: {},
 		stacks2P: {},
-		currentTrick: {
-			trickNumber: 1,
-			leadSuit: null,
-			cards: [],
-			winnerId: null,
-		},
-		currentTurup: null,
 		ghopteState: null,
-		scores,
-		trickHistory: [],
-		roundNumber: 1,
-		winnerTeam: null,
-		actionHistory: [],
+		play: {
+			number: 0,
+			card: null,
+			playerPosition: null,
+			isGhopte: false,
+			isTurup: false,
+			makesTurup: false,
+		},
+		trick: {
+			number: 1,
+			playNumber: 1,
+			leadSuit: null,
+			leaderPosition: initialLeaderPosition,
+			isGhopte: false,
+			cards: [],
+			nextLeaderPosition: null,
+			winnerPosition: null,
+		},
+		scoring: {
+			scores,
+		},
+		actions: [],
 	};
 }

@@ -47,20 +47,20 @@ export function evaluateGameWinner2P(options: {
 	const p0Score = scores[p0.id] ?? createInitialScoreState();
 	const p1Score = scores[p1.id] ?? createInitialScoreState();
 
-	const p0Tricks = p0Score.capturedTricks ?? p0Score.capturedTrickRecords.length;
-	const p1Tricks = p1Score.capturedTricks ?? p1Score.capturedTrickRecords.length;
+	const p0Tricks = p0Score.capturedTricksCount;
+	const p1Tricks = p1Score.capturedTricksCount;
 
-	if (p0Score.capturedTens > p1Score.capturedTens) {
+	if (p0Score.capturedTensCount > p1Score.capturedTensCount) {
 		return {
 			winnerTeam: p0.id,
-			reason: `${p0.name} wins with ${p0Score.capturedTens} tens`,
+			reason: `${p0.name} wins with ${p0Score.capturedTensCount} tens`,
 		};
 	}
 
-	if (p1Score.capturedTens > p0Score.capturedTens) {
+	if (p1Score.capturedTensCount > p0Score.capturedTensCount) {
 		return {
 			winnerTeam: p1.id,
-			reason: `${p1.name} wins with ${p1Score.capturedTens} tens`,
+			reason: `${p1.name} wins with ${p1Score.capturedTensCount} tens`,
 		};
 	}
 
@@ -81,6 +81,6 @@ export function evaluateGameWinner2P(options: {
 
 	return {
 		winnerTeam: null,
-		reason: `Game ended in a draw (equal tens: ${p0Score.capturedTens}, equal tricks: ${p0Tricks})`,
+		reason: `Game ended in a draw (equal tens: ${p0Score.capturedTensCount}, equal tricks: ${p0Tricks})`,
 	};
 }

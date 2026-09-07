@@ -19,10 +19,10 @@ export function exportReplay(state: GameState): ReplayData {
 	return {
 		version: "1.0",
 		gameId: state.id,
-		mode: state.mode,
-		dealerPosition: state.dealerPosition,
+		mode: state.game.mode,
+		dealerPosition: state.game.dealerPosition,
 		players: state.players,
-		actions: state.actionHistory,
+		actions: state.actions,
 	};
 }
 
@@ -64,7 +64,7 @@ export function playReplay(replay: ReplayData): GameState {
 			);
 		}
 
-		if (state.mode === GAME_MODES.FOUR_PLAYER) {
+		if (state.game.mode === GAME_MODES.FOUR_PLAYER) {
 			state = gameReducer4P(state, action);
 		} else {
 			state = gameReducer2P(state, action);
