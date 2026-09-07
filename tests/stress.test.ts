@@ -22,7 +22,7 @@ describe("Stress & Determinism Testing", () => {
 			}) as Game;
 
 			const shuffledDeck = shuffleDeck(deck);
-			const dealRes = game.deal({ deck: shuffledDeck, playerId: "p1" });
+			const dealRes = game.deal({ deck: shuffledDeck, playerPosition: 0 });
 			expect(dealRes.success).toBe(true);
 
 			let maxSafetyMoves = 200;
@@ -39,7 +39,7 @@ describe("Stress & Determinism Testing", () => {
 				if (!move) break;
 
 				const playRes = game.playCard({
-					playerId: turnP.id,
+					playerPosition: turnP.position,
 					card: move.card,
 				});
 				expect(playRes.success).toBe(true);
@@ -69,7 +69,7 @@ describe("Stress & Determinism Testing", () => {
 			}) as Game;
 
 			const shuffledDeck = shuffleDeck(deck);
-			const dealRes = game.deal({ deck: shuffledDeck, playerId: "p1" });
+			const dealRes = game.deal({ deck: shuffledDeck, playerPosition: 0 });
 			expect(dealRes.success).toBe(true);
 
 			const declP = game.currentPlayer;
@@ -77,7 +77,7 @@ describe("Stress & Determinism Testing", () => {
 
 			const suits = ["spades", "hearts", "diamonds", "clubs"] as const;
 			const suitToDeclare = suits[i % 4] ?? "spades";
-			game.declareTurup({ playerId: declP.id, suit: suitToDeclare });
+			game.declareTurup({ playerPosition: declP.position, suit: suitToDeclare });
 
 			let maxSafetyMoves = 300;
 			while (!game.isFinished && maxSafetyMoves > 0) {
@@ -93,7 +93,7 @@ describe("Stress & Determinism Testing", () => {
 				if (!move) break;
 
 				const playRes = game.playCard({
-					playerId: turnP.id,
+					playerPosition: turnP.position,
 					card: move.card,
 				});
 				expect(playRes.success).toBe(true);

@@ -17,7 +17,7 @@ export function validateDeclareTurup({ state, action }: { state: GameState; acti
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "Cannot declare Turup outside TURUP_DECLARATION phase");
 	}
 
-	if (currentTurnPlayer?.id !== action.payload.playerId) {
+	if (currentTurnPlayer?.position !== action.payload.playerPosition) {
 		return createValidationError(ENGINE_ERROR_CODES.NOT_PLAYER_TURN, "It is not your turn to declare Turup");
 	}
 
@@ -73,8 +73,10 @@ export function emitDeclareTurupEvents({
 	action: DeclareTurupAction;
 	emitter: EventDispatcher;
 }): void {
+	const player = nextState.players.find((p) => p.position === action.payload.playerPosition);
 	emitter.emit("TurupDeclared", {
-		playerId: action.payload.playerId,
+		playerId: player?.id,
+		playerPosition: action.payload.playerPosition,
 		suit: action.payload.suit,
 	});
 

@@ -1,14 +1,13 @@
-import { ACTION_TYPES, GAME_MODES, GAME_PHASES } from "../const";
-import { createValidationError } from "../errors";
 import { ENGINE_ERROR_CODES } from "../const";
-import { evaluateGameWinner4P, evaluateGameWinner2P } from "../scoring/scoring";
+import { createValidationError } from "../errors";
 import type { EventDispatcher } from "../../events/dispatcher";
+import { ACTION_TYPES, GAME_MODES, GAME_PHASES } from "../const";
 import type { Action, GameState, ValidationResult } from "../../types/index";
-
+import { evaluateGameWinner4P, evaluateGameWinner2P } from "../scoring/scoring";
 import { validateDeal, reduceDeal4P, reduceDeal2P, emitDealEvents } from "./deal";
-import { validateDeclareTurup, reduceDeclareTurup2P, emitDeclareTurupEvents } from "./declare-turup";
-import { validatePickupTurup, reducePickupTurup2P, emitPickupTurupEvents } from "./pickup-turup";
 import { validatePlayGhopte, reducePlayGhopte4P, emitPlayGhopteEvents } from "./play-ghopte";
+import { validatePickupTurup, reducePickupTurup2P, emitPickupTurupEvents } from "./pickup-turup";
+import { validateDeclareTurup, reduceDeclareTurup2P, emitDeclareTurupEvents } from "./declare-turup";
 import { validatePlayCard, reducePlayCard4P, reducePlayCard2P, emitPlayCardEvents } from "./play-card";
 
 export interface DispatchResult {

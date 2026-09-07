@@ -20,7 +20,7 @@ describe("4-Player Game Mode", () => {
 
 		expect(game instanceof Game).toBe(true);
 
-		const dealRes = game.deal({ deck, playerId: "p1" });
+		const dealRes = game.deal({ deck, playerPosition: 0 });
 		expect(dealRes.success).toBe(true);
 
 		const hand1 = game.state.hands.p1;
@@ -59,7 +59,7 @@ describe("4-Player Game Mode", () => {
 				{ id: "p4", name: "Dave", position: 3, team: "blue" },
 			],
 		}) as Game;
-		game.deal({ deck, playerId: "p1" });
+		game.deal({ deck, playerPosition: 0 });
 
 		const turnP = game.currentPlayer;
 		if (!turnP) return;
@@ -68,7 +68,7 @@ describe("4-Player Game Mode", () => {
 		const leadCard = hand[0];
 		if (!leadCard) return;
 
-		const playRes = game.playCard({ playerId: turnP.id, card: leadCard });
+		const playRes = game.playCard({ playerPosition: turnP.position, card: leadCard });
 		expect(playRes.success).toBe(true);
 
 		const nextP = game.currentPlayer;
@@ -83,7 +83,7 @@ describe("4-Player Game Mode", () => {
 
 		if (matchingCard && nonMatchingCard) {
 			const illegalRes = game.playCard({
-				playerId: nextP.id,
+				playerPosition: nextP.position,
 				card: nonMatchingCard,
 			});
 			expect(illegalRes.success).toBe(false);
@@ -105,7 +105,7 @@ describe("4-Player Game Mode", () => {
 				{ id: "p4", name: "Dave", position: 3, team: "blue" },
 			],
 		}) as Game;
-		game.deal({ deck, playerId: "p1" });
+		game.deal({ deck, playerPosition: 0 });
 
 		expect(game.currentTurup).toBeNull();
 	});
@@ -125,10 +125,10 @@ describe("4-Player Game Mode", () => {
 
 		expect(game.phase).toBe("DEAL");
 
-		const nonDealerDeal = game.deal({ deck, playerId: "p2" });
+		const nonDealerDeal = game.deal({ deck, playerPosition: 1 });
 		expect(nonDealerDeal.success).toBe(false);
 
-		const dealRes = game.deal({ deck, playerId: "p1" });
+		const dealRes = game.deal({ deck, playerPosition: 0 });
 		expect(dealRes.success).toBe(true);
 		expect(game.phase).not.toBe("DEAL");
 	});

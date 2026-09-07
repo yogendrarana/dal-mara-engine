@@ -70,7 +70,7 @@ const game = Game.create({
 const deck = shuffleDeck(createDeck());
 
 // 3. Dealer deals the cards
-const dealResult = game.deal({ deck, playerId: "p1" });
+const dealResult = game.deal({ deck, playerPosition: 0 });
 if (!dealResult.success) {
   console.error("Deal failed:", dealResult.error);
 }
@@ -85,7 +85,7 @@ if (activePlayer) {
 
   // 6. Play a card
   game.playCard({
-    playerId: activePlayer.id,
+    playerPosition: activePlayer.position,
     card: legalMoves[0].card,
   });
 }
@@ -203,42 +203,42 @@ if ("success" in game && !game.success) {
 
 ### 2. Actions & Game Methods
 
-#### `game.deal({ deck, playerId })`
+#### `game.deal({ deck, playerPosition })`
 Dispatches the `DEAL` action. Only the designated dealer can deal. The deck must contain exactly 52 cards.
 
 ```ts
 import { createDeck, shuffleDeck } from "dal-mara-engine";
 
 const deck = shuffleDeck(createDeck());
-const result = game.deal({ deck, playerId: "p1" });
+const result = game.deal({ deck, playerPosition: 0 });
 ```
 
-#### `game.playCard({ playerId, card })`
+#### `game.playCard({ playerPosition, card })`
 Plays a card for the active turn player. In 2P mode, automatically plays from hand or face-up stack. During the `GHOPTE` phase, routes to Ghopte card submission.
 
 ```ts
 const result = game.playCard({
-  playerId: "p2",
+  playerPosition: 1,
   card: "10s",
 });
 ```
 
-#### `game.declareTurup({ playerId, suit })` *(2P mode only)*
+#### `game.declareTurup({ playerPosition, suit })` *(2P mode only)*
 Declares the Turup suit during `TURUP_DECLARATION` phase.
 
 ```ts
 const result = game.declareTurup({
-  playerId: "p2",
+  playerPosition: 1,
   suit: "hearts", // "spades" | "hearts" | "diamonds" | "clubs"
 });
 ```
 
-#### `game.pickupTurupCard({ playerId, card })` *(2P mode only)*
+#### `game.pickupTurupCard({ playerPosition, card })` *(2P mode only)*
 Picks up a face-up Turup card from the player's stacks into their hand.
 
 ```ts
 const result = game.pickupTurupCard({
-  playerId: "p1",
+  playerPosition: 0,
   card: "Kh", // Must be of the declared Turup suit
 });
 ```
@@ -415,7 +415,7 @@ All validation checks return `{ success: false, error: DalMaraError }` instead o
 ```ts
 import { ENGINE_ERROR_CODES } from "dal-mara-engine";
 
-const result = game.playCard({ playerId: "p1", card: "2s" });
+const result = game.playCard({ playerPosition: 0, card: "2s" });
 if (!result.success) {
   switch (result.error.code) {
     case ENGINE_ERROR_CODES.MUST_FOLLOW_SUIT:

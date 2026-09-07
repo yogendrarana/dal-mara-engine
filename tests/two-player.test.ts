@@ -15,7 +15,7 @@ describe("2-Player Game Mode", () => {
 			],
 		}) as Game;
 
-		const dealRes = game.deal({ deck, playerId: "p1" });
+		const dealRes = game.deal({ deck, playerPosition: 0 });
 		expect(dealRes.success).toBe(true);
 		expect(game.phase).toBe("TURUP_DECLARATION");
 
@@ -23,7 +23,7 @@ describe("2-Player Game Mode", () => {
 		expect(declP?.id).toBe("p2");
 
 		if (declP) {
-			const declRes = game.declareTurup({ playerId: declP.id, suit: "spades" });
+			const declRes = game.declareTurup({ playerPosition: declP.position, suit: "spades" });
 			expect(declRes.success).toBe(true);
 			expect(game.phase).toBe("PLAYING");
 			expect(game.currentTurup).toBe("spades");

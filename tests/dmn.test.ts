@@ -19,7 +19,7 @@ const make4PGame = () =>
 describe("Dal Mara Notation (DMN) - DMN1 Snapshot Format", () => {
 	it("should export initial state with all 6 sections", () => {
 		const game = make4PGame();
-		game.deal({ deck, playerId: "p1" });
+		game.deal({ deck, playerPosition: 0 });
 
 		const dmn = game.toDMN();
 
@@ -43,7 +43,7 @@ describe("Dal Mara Notation (DMN) - DMN1 Snapshot Format", () => {
 
 	it("should encode game info in G section", () => {
 		const game = make4PGame();
-		game.deal({ deck, playerId: "p1" });
+		game.deal({ deck, playerPosition: 0 });
 
 		const dmn = game.toDMN();
 		const parsed = importFromDMN(dmn);
@@ -57,7 +57,7 @@ describe("Dal Mara Notation (DMN) - DMN1 Snapshot Format", () => {
 
 	it("should encode all 52 cards across player hands in H section", () => {
 		const game = make4PGame();
-		game.deal({ deck, playerId: "p1" });
+		game.deal({ deck, playerPosition: 0 });
 
 		const parsed = importFromDMN(game.toDMN());
 
@@ -75,7 +75,7 @@ describe("Dal Mara Notation (DMN) - DMN1 Snapshot Format", () => {
 
 	it("should encode initial move info as M:0,0,0", () => {
 		const game = make4PGame();
-		game.deal({ deck, playerId: "p1" });
+		game.deal({ deck, playerPosition: 0 });
 
 		const parsed = importFromDMN(game.toDMN());
 
@@ -86,7 +86,7 @@ describe("Dal Mara Notation (DMN) - DMN1 Snapshot Format", () => {
 
 	it("should encode empty trick cards in C section for initial state", () => {
 		const game = make4PGame();
-		game.deal({ deck, playerId: "p1" });
+		game.deal({ deck, playerPosition: 0 });
 
 		const parsed = importFromDMN(game.toDMN());
 
@@ -97,14 +97,14 @@ describe("Dal Mara Notation (DMN) - DMN1 Snapshot Format", () => {
 
 	it("should update DMN after playing a card", () => {
 		const game = make4PGame();
-		game.deal({ deck, playerId: "p1" });
+		game.deal({ deck, playerPosition: 0 });
 
 		const turnP = game.currentPlayer;
 		expect(turnP).not.toBeNull();
 
 		const hand = game.state.hands[turnP!.id] ?? [];
 		const firstCard = hand[0]!;
-		game.playCard({ playerId: turnP!.id, card: firstCard });
+		game.playCard({ playerPosition: turnP!.position, card: firstCard });
 
 		const parsed = importFromDMN(game.toDMN());
 
@@ -126,7 +126,7 @@ describe("Dal Mara Notation (DMN) - DMN1 Snapshot Format", () => {
 
 	it("should round-trip: export → import → export produces identical DMN", () => {
 		const game = make4PGame();
-		game.deal({ deck, playerId: "p1" });
+		game.deal({ deck, playerPosition: 0 });
 
 		// Play a few cards
 		for (let i = 0; i < 4; i++) {
@@ -136,7 +136,7 @@ describe("Dal Mara Notation (DMN) - DMN1 Snapshot Format", () => {
 			const moves = game.getLegalMoves(turnP.id);
 			const move = moves[0];
 			if (move) {
-				game.playCard({ playerId: turnP.id, card: move.card });
+				game.playCard({ playerPosition: turnP.position, card: move.card });
 			}
 		}
 
@@ -149,13 +149,13 @@ describe("Dal Mara Notation (DMN) - DMN1 Snapshot Format", () => {
 
 	it("should reconstruct a playable Game from DMN with correct hands", () => {
 		const game = make4PGame();
-		game.deal({ deck, playerId: "p1" });
+		game.deal({ deck, playerPosition: 0 });
 
 		// Play one card
 		const turnP = game.currentPlayer!;
 		const hand = game.state.hands[turnP.id] ?? [];
 		const firstCard = hand[0]!;
-		game.playCard({ playerId: turnP.id, card: firstCard });
+		game.playCard({ playerPosition: turnP.position, card: firstCard });
 
 		const dmn = game.toDMN();
 		const restored = fromDMN(dmn) as Game;
@@ -187,11 +187,11 @@ describe("Dal Mara Notation (DMN) - DMN1 Snapshot Format", () => {
 				{ id: "p2", name: "Bob", position: 1, team: "p2" },
 			],
 		}) as Game;
-		game.deal({ deck, playerId: "p1" });
+		game.deal({ deck, playerPosition: 0 });
 
 		const currP = game.currentPlayer;
 		if (currP) {
-			game.declareTurup({ playerId: currP.id, suit: "hearts" });
+			game.declareTurup({ playerPosition: currP.position, suit: "hearts" });
 		}
 
 		const dmn = game.toDMN();
@@ -249,11 +249,11 @@ describe("Dal Mara Notation (DMN) - DMN1 Snapshot Format", () => {
 				{ id: "p2", name: "Bob", position: 1, team: "p2" },
 			],
 		}) as Game;
-		game.deal({ deck, playerId: "p1" });
+		game.deal({ deck, playerPosition: 0 });
 
 		const currP = game.currentPlayer;
 		if (currP) {
-			game.declareTurup({ playerId: currP.id, suit: "spades" });
+			game.declareTurup({ playerPosition: currP.position, suit: "spades" });
 		}
 
 		const parsed = importFromDMN(game.toDMN());
@@ -273,10 +273,10 @@ describe("Dal Mara Notation (DMN) - DMN1 Snapshot Format", () => {
 				{ id: "p2", name: "Bob", position: 1, team: "p2" },
 			],
 		}) as Game;
-		game.deal({ deck, playerId: "p1" });
+		game.deal({ deck, playerPosition: 0 });
 
 		const currP = game.currentPlayer!;
-		game.declareTurup({ playerId: currP.id, suit: "diamonds" });
+		game.declareTurup({ playerPosition: currP.position, suit: "diamonds" });
 
 		const dmn1 = game.toDMN();
 		const restored = fromDMN(dmn1) as Game;
@@ -295,10 +295,10 @@ describe("Dal Mara Notation (DMN) - DMN1 Snapshot Format", () => {
 				{ id: "p2", name: "Bob", position: 1, team: "p2" },
 			],
 		}) as Game;
-		game.deal({ deck, playerId: "p1" });
+		game.deal({ deck, playerPosition: 0 });
 
 		const turnP = game.currentPlayer!;
-		game.declareTurup({ playerId: turnP.id, suit: "clubs" });
+		game.declareTurup({ playerPosition: turnP.position, suit: "clubs" });
 
 		// Export after turup declaration
 		const dmnInitial = game.toDMN();
@@ -314,7 +314,7 @@ describe("Dal Mara Notation (DMN) - DMN1 Snapshot Format", () => {
 		expect(stackMove).toBeDefined();
 
 		if (stackMove) {
-			const playRes = restored.playCard({ playerId: currentTurnPlayer.id, card: stackMove.card });
+			const playRes = restored.playCard({ playerPosition: currentTurnPlayer.position, card: stackMove.card });
 			expect(playRes.success).toBe(true);
 
 			const dmnAfterPlay = restored.toDMN();

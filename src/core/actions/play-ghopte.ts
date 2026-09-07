@@ -11,7 +11,7 @@ import type { GameState, PlayedCard, PlayerPosition, PlayGhopteAction, Trick, Va
 
 export function validatePlayGhopte({ state, action }: { state: GameState; action: PlayGhopteAction }): ValidationResult {
 	const currentTurnPlayer = getCurrentTurnPlayer(state);
-	const { playerId, card } = action.payload;
+	const { playerPosition, card } = action.payload;
 
 	if (state.game.mode !== GAME_MODES.FOUR_PLAYER) {
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Ghopte is only valid in 4-Player mode");
@@ -21,11 +21,16 @@ export function validatePlayGhopte({ state, action }: { state: GameState; action
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "PLAY_GHOPTE action is only valid during GHOPTE phase");
 	}
 
-	if (currentTurnPlayer?.id !== playerId) {
-		return createValidationError(ENGINE_ERROR_CODES.NOT_PLAYER_TURN, `Not turn for player ${playerId}`);
+	if (currentTurnPlayer?.position !== playerPosition) {
+		return createValidationError(ENGINE_ERROR_CODES.NOT_PLAYER_TURN, `Not turn for player at position ${playerPosition}`);
 	}
 
-	const hand = state.hands[playerId] ?? [];
+	const player = state.players.find((p) => p.position === playerPosition);
+	if (!player) {
+		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Player not found");
+	}
+
+	const hand = state.hands[player.id] ?? [];
 	const cardToPlay = hand.find((c) => c === card) ?? null;
 
 	if (!cardToPlay) {
@@ -40,8 +45,7 @@ export function validatePlayGhopte({ state, action }: { state: GameState; action
 			return createValidationError(ENGINE_ERROR_CODES.INVALID_GHOPTE_SUBMISSION, "Active ghopte is not found.");
 		}
 
-		const player = state.players.find((p) => p.id === playerId);
-		const isPlayerGhopteDeclarer = activeGhopte.declarerPosition === player?.position;
+		const isPlayerGhopteDeclarer = activeGhopte.declarerPosition === playerPosition;
 
 		if (isPlayerGhopteDeclarer) {
 			const cardDetails = parseCard(cardToPlay);
@@ -56,7 +60,7 @@ export function validatePlayGhopte({ state, action }: { state: GameState; action
 		if (!isPlayerGhopteDeclarer) {
 			// player cannot throw their own pending Ghopte 10 for another player's Ghopte
 			const isPendingOwnGhopte = state.ghopteState.ghoptes.some(
-				(g) => g.declarerPosition === player?.position && !g.resolved && g.tenCard === cardToPlay,
+				(g) => g.declarerPosition === playerPosition && !g.resolved && g.tenCard === cardToPlay,
 			);
 
 			if (isPendingOwnGhopte) {
@@ -75,17 +79,18 @@ export function validatePlayGhopte({ state, action }: { state: GameState; action
 
 export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): GameState {
 	const nextActions = [...state.actions, action];
-	const { playerId, card } = action.payload;
+	const { playerPosition, card } = action.payload;
+
+	const currentPlayer = state.players.find((p) => p.position === playerPosition);
+	if (!currentPlayer) return state;
+	const playerId = currentPlayer.id;
+	const playerPos = currentPlayer.position;
 
 	const hand = state.hands[playerId];
 	if (!hand) return state;
 
 	const playedCardObj = hand.find((c) => c === card);
 	if (!playedCardObj) return state;
-
-	const currentPlayer = state.players.find((p) => p.id === playerId);
-	if (!currentPlayer) return state;
-	const playerPos = currentPlayer.position;
 
 	const updatedHands = {
 		...state.hands,
@@ -267,8 +272,10 @@ export function emitPlayGhopteEvents({
 	emitter: EventDispatcher;
 }): void {
 	const prev = prevState ?? state ?? nextState;
+	const player = nextState.players.find((p) => p.position === action.payload.playerPosition);
 	emitter.emit("CardPlayed", {
-		playerId: action.payload.playerId,
+		playerId: player?.id,
+		playerPosition: action.payload.playerPosition,
 		card: action.payload.card,
 	});
 

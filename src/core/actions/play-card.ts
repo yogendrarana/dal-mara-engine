@@ -12,7 +12,7 @@ import type { Card, GameState, PlayCardAction, PlayedCard, PlayerPosition, Trick
 
 export function validatePlayCard({ state, action }: { state: GameState; action: PlayCardAction }): ValidationResult {
 	const currentTurnPlayer = getCurrentTurnPlayer(state);
-	const { playerId, card } = action.payload;
+	const { playerPosition, card } = action.payload;
 
 	if (state?.ghopteState?.ghoptes.some((g) => !g.resolved)) {
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "Cannot play card while there are unresolved Ghoptes");
@@ -22,10 +22,16 @@ export function validatePlayCard({ state, action }: { state: GameState; action: 
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "Cannot play cards outside PLAYING phase");
 	}
 
-	if (currentTurnPlayer?.id !== playerId) {
-		return createValidationError(ENGINE_ERROR_CODES.NOT_PLAYER_TURN, `Not turn for player ${playerId}`);
+	if (currentTurnPlayer?.position !== playerPosition) {
+		return createValidationError(ENGINE_ERROR_CODES.NOT_PLAYER_TURN, `Not turn for player at position ${playerPosition}`);
 	}
 
+	const player = state.players.find((p) => p.position === playerPosition);
+	if (!player) {
+		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Player not found");
+	}
+
+	const playerId = player.id;
 	const hand = state.hands[playerId] ?? [];
 	const stacks = state.stacks2P[playerId] ?? [];
 
@@ -87,17 +93,18 @@ export function validatePlayCard({ state, action }: { state: GameState; action: 
 
 export function reducePlayCard4P(state: GameState, action: PlayCardAction): GameState {
 	const nextActions = [...state.actions, action];
-	const { playerId, card } = action.payload;
+	const { playerPosition, card } = action.payload;
+
+	const currentPlayer = state.players.find((p) => p.position === playerPosition);
+	if (!currentPlayer) return state;
+	const playerId = currentPlayer.id;
+	const playerPos = currentPlayer.position;
 
 	const hand = state.hands[playerId];
 	if (!hand) return state;
 
 	const playedCardObj = hand.find((c) => c === card);
 	if (!playedCardObj) return state;
-
-	const currentPlayer = state.players.find((p) => p.id === playerId);
-	if (!currentPlayer) return state;
-	const playerPos = currentPlayer.position;
 
 	const updatedHands = {
 		...state.hands,
@@ -278,7 +285,12 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 
 export function reducePlayCard2P(state: GameState, action: PlayCardAction): GameState {
 	const nextActions = [...state.actions, action];
-	const { playerId, card } = action.payload;
+	const { playerPosition, card } = action.payload;
+
+	const currentPlayer = state.players.find((p) => p.position === playerPosition);
+	if (!currentPlayer) return state;
+	const playerId = currentPlayer.id;
+	const playerPos = currentPlayer.position;
 
 	let playedCardObj: Card | null = null;
 	const updatedHands = { ...state.hands };
@@ -316,10 +328,6 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 
 	// If card to play is not owned or invalid, return state directly
 	if (!playedCardObj) return state;
-
-	const currentPlayer = state.players.find((p) => p.id === playerId);
-	if (!currentPlayer) return state;
-	const playerPos = currentPlayer.position;
 
 	const playedCardItem: PlayedCard = {
 		playerId,
@@ -479,8 +487,10 @@ export function emitPlayCardEvents({
 	winnerTeam?: string | null;
 }): void {
 	const prev = prevState ?? state ?? nextState;
+	const player = nextState.players.find((p) => p.position === action.payload.playerPosition);
 	emitter.emit("CardPlayed", {
-		playerId: action.payload.playerId,
+		playerId: player?.id,
+		playerPosition: action.payload.playerPosition,
 		card: action.payload.card,
 	});
 

@@ -32,7 +32,7 @@ describe("Ghopte Phase Mechanics", () => {
 			],
 		}) as Game;
 
-		game.deal({ deck, playerId: "p1" });
+		game.deal({ deck, playerPosition: 0 });
 
 		if (game.phase === "GHOPTE") {
 			const turnP = game.currentPlayer;

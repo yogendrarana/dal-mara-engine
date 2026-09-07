@@ -7,13 +7,18 @@ import type { GameState, PickupTurupCardAction, ValidationResult } from "../../t
 // Validation
 
 export function validatePickupTurup({ state, action }: { state: GameState; action: PickupTurupCardAction }): ValidationResult {
-	const { card } = action.payload;
+	const { playerPosition, card } = action.payload;
 
 	if (state.game.mode !== GAME_MODES.TWO_PLAYER) {
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Pickup Turup action is only valid in 2-Player mode");
 	}
 
-	const stacks = state.stacks2P[action.payload.playerId];
+	const player = state.players.find((p) => p.position === playerPosition);
+	if (!player) {
+		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Player not found");
+	}
+
+	const stacks = state.stacks2P[player.id];
 	if (!stacks) {
 		return createValidationError(ENGINE_ERROR_CODES.STACK_NOT_FOUND, "Player stacks not found");
 	}
@@ -35,9 +40,13 @@ export function validatePickupTurup({ state, action }: { state: GameState; actio
 
 export function reducePickupTurup2P(state: GameState, action: PickupTurupCardAction): GameState {
 	const nextActions = [...state.actions, action];
-	const { playerId, card } = action.payload;
+	const { playerPosition, card } = action.payload;
 
 	if (!state.game.turup) return state;
+
+	const player = state.players.find((p) => p.position === playerPosition);
+	if (!player) return state;
+	const playerId = player.id;
 
 	const playerStacks = state.stacks2P[playerId];
 	if (!playerStacks) return state;

@@ -16,7 +16,7 @@ describe("Serialization & Replay Engine", () => {
 				{ id: "p4", name: "Dave", position: 3, team: "blue" },
 			],
 		}) as Game;
-		game.deal({ deck, playerId: "p1" });
+		game.deal({ deck, playerPosition: 0 });
 
 		const json = game.serialize();
 		const deserializedGame = Game.deserialize(json) as Game;
@@ -39,7 +39,7 @@ describe("Serialization & Replay Engine", () => {
 				{ id: "p4", name: "Dave", position: 3, team: "blue" },
 			],
 		}) as Game;
-		game.deal({ deck, playerId: "p1" });
+		game.deal({ deck, playerPosition: 0 });
 
 		for (let i = 0; i < 4; i++) {
 			if (game.isFinished) break;
@@ -48,7 +48,7 @@ describe("Serialization & Replay Engine", () => {
 			const legalMoves = game.getLegalMoves(turnP.id);
 			const move = legalMoves[0];
 			if (move) {
-				game.playCard({ playerId: turnP.id, card: move.card });
+				game.playCard({ playerPosition: turnP.position, card: move.card });
 			}
 		}
 

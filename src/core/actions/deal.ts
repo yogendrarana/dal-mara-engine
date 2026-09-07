@@ -11,7 +11,7 @@ import type { DealAction, GameState, PlayerPosition, ValidationResult } from "..
 // Validation
 
 export function validateDeal({ state, action }: { state: GameState; action: DealAction }): ValidationResult {
-	const { deck, playerId } = action.payload;
+	const { deck, playerPosition } = action.payload;
 
 	if (state.game.phase !== GAME_PHASES.DEAL) {
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "Cannot deal cards outside DEAL phase");
@@ -21,8 +21,7 @@ export function validateDeal({ state, action }: { state: GameState; action: Deal
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_DECK, "Deck must be 52 cards long to deal");
 	}
 
-	const dealer = state.players.find((p) => p.position === state.game.dealerPosition);
-	if (playerId !== dealer?.id) {
+	if (playerPosition !== state.game.dealerPosition) {
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Only the dealer can deal cards");
 	}
 
