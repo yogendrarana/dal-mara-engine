@@ -22,12 +22,11 @@ import { exportToDMN, fromDMN } from "./dmn";
 import { deserializeState, serializeState } from "./serializers";
 import { EventDispatcher } from "../events/dispatcher";
 import { exportReplay, playReplay, type ReplayData } from "./replay";
-import { validateAction, validateCreateGame } from "./validators";
+import { validateCreateGame } from "./validators";
 import { ACTION_TYPES, GAME_MODES, GAME_PHASES } from "./const";
 import { getLegalMoves, type LegalPlayableCard } from "./legal-moves";
 import { createInitialState } from "./state";
-import { gameReducer4P } from "./reducers/four-player";
-import { gameReducer2P } from "./reducers/two-player";
+import { dispatchAction, validateAction } from "./actions";
 
 import { getCurrentTurnPlayer } from "./turn";
 import { evaluateGameWinner4P, evaluateGameWinner2P } from "./scoring/scoring";
@@ -154,7 +153,7 @@ export class Game {
 	// public functions
 
 	public validate(action: Action): ValidationResult {
-		return validateAction(this._state, action);
+		return validateAction({ state: this._state, action });
 	}
 
 	public getLegalMoves(playerId: string): LegalPlayableCard[] {
@@ -204,85 +203,10 @@ export class Game {
 	// dispatch
 
 	public dispatch(action: Action): ValidationResult {
-		const validation = validateAction(this._state, action);
-
-		if (!validation.success) {
-			return validation;
+		const result = dispatchAction({ state: this._state, action, emitter: this.eventDispatcher });
+		if (result.validation.success) {
+			this._state = result.state;
 		}
-
-		const prevTurup = this._state.game.turup;
-
-		this._state =
-			this._state.game.mode === GAME_MODES.FOUR_PLAYER ? gameReducer4P(this._state, action) : gameReducer2P(this._state, action);
-
-		// emit event notifications to subscribers
-		switch (action.type) {
-			case ACTION_TYPES.DEAL:
-				this.eventDispatcher.emit("CardsDealt", { phase: this._state.game.phase });
-
-				if (this._state.game.phase === GAME_PHASES.GHOPTE) {
-					this.eventDispatcher.emit("GhopteStarted", {
-						ghopteState: this._state.ghopteState,
-					});
-				} else if (
-					(this._state.game.phase === GAME_PHASES.PLAYING || this._state.game.phase === GAME_PHASES.TURUP_DECLARATION) &&
-					this.currentPlayer
-				) {
-					this.eventDispatcher.emit("TurnStarted", {
-						playerId: this.currentPlayer.id,
-					});
-				}
-				break;
-
-			case ACTION_TYPES.DECLARE_TURUP:
-				this.eventDispatcher.emit("TurupDeclared", {
-					playerId: action.payload.playerId,
-					suit: action.payload.suit,
-				});
-
-				if (this.currentPlayer) {
-					this.eventDispatcher.emit("TurnStarted", {
-						playerId: this.currentPlayer.id,
-					});
-				}
-				break;
-
-			case ACTION_TYPES.PLAY_GHOPTE:
-			case ACTION_TYPES.PLAY_CARD:
-				this.eventDispatcher.emit("CardPlayed", {
-					playerId: action.payload.playerId,
-					card: action.payload.card,
-				});
-
-				if (prevTurup !== this._state.game.turup && this._state.game.turup) {
-					if (!prevTurup) {
-						this.eventDispatcher.emit("TurupCreated", {
-							suit: this._state.game.turup,
-						});
-					} else {
-						this.eventDispatcher.emit("TurupChanged", {
-							oldSuit: prevTurup,
-							newSuit: this._state.game.turup,
-						});
-					}
-				}
-
-				if (this._state.game.phase === GAME_PHASES.END) {
-					this.eventDispatcher.emit("GameFinished", {
-						winnerTeam: this.winnerTeam,
-						scores: this.scores,
-					});
-				} else if (this.currentPlayer) {
-					this.eventDispatcher.emit("TurnStarted", {
-						playerId: this.currentPlayer.id,
-					});
-				}
-				break;
-
-			default:
-				break;
-		}
-
-		return { success: true };
+		return result.validation;
 	}
 }

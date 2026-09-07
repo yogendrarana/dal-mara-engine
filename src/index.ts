@@ -24,8 +24,24 @@ export {
 	getLegalMoves2P,
 } from "./core/legal-moves";
 
-export { gameReducer4P } from "./core/reducers/four-player";
-export { gameReducer2P } from "./core/reducers/two-player";
+// actions (validate, reduce, dispatch)
+export {
+	dispatchAction,
+	validateAction,
+	type DispatchResult,
+	validateDeal,
+	reduceDeal4P,
+	reduceDeal2P,
+	validateDeclareTurup,
+	reduceDeclareTurup2P,
+	validatePickupTurup,
+	reducePickupTurup2P,
+	validatePlayGhopte,
+	reducePlayGhopte4P,
+	validatePlayCard,
+	reducePlayCard4P,
+	reducePlayCard2P,
+} from "./core/actions";
 
 export { exportReplay, playReplay, type ReplayData } from "./core/replay";
 export { serializeState, deserializeState, deserialize } from "./core/serializers";
@@ -40,7 +56,4 @@ export {
 	type DMNState,
 } from "./core/dmn";
 
-export {
-	validateAction,
-	validateCreateGame,
-} from "./core/validators";
+export { validateCreateGame } from "./core/validators";

@@ -1,10 +1,9 @@
 import type { Action, GameMode, GameState, Player, PlayerPosition } from "../types/index";
 import { DalMaraError } from "./errors";
-import { validateAction } from "./validators";
 import { createInitialState } from "./state";
-import { GAME_MODES } from "./const";
-import { gameReducer4P } from "./reducers/four-player";
-import { gameReducer2P } from "./reducers/two-player";
+import { GAME_MODES, ACTION_TYPES } from "./const";
+import { EventDispatcher } from "../events/dispatcher";
+import { dispatchAction } from "./actions";
 
 export interface ReplayData {
 	readonly version: string;
@@ -46,29 +45,26 @@ export function playReplay(replay: ReplayData): GameState {
 		})),
 	});
 
-	// 2. Apply all actions sequentially
+	// 2. Apply all actions sequentially using dispatchAction
+	const noOpEmitter = new EventDispatcher();
 	for (const action of replay.actions) {
 		if ((action.type as string) === "CREATE_GAME" || (action.type as string) === "JOIN_PLAYER") {
 			continue;
 		}
 
-		const validation = validateAction(state, action);
-		if (!validation.success) {
+		const result = dispatchAction({ state, action, emitter: noOpEmitter });
+		if (!result.validation.success) {
 			throw new DalMaraError(
-				`Replay action '${action.type}' failed validation: ${validation.error.message}`,
+				`Replay action '${action.type}' failed validation: ${result.validation.error.message}`,
 				"REPLAY_VALIDATION_ERROR",
 				{
 					action,
-					error: validation.error,
+					error: result.validation.error,
 				},
 			);
 		}
 
-		if (state.game.mode === GAME_MODES.FOUR_PLAYER) {
-			state = gameReducer4P(state, action);
-		} else {
-			state = gameReducer2P(state, action);
-		}
+		state = result.state;
 	}
 
 	return state;
