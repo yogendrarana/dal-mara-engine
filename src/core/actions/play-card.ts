@@ -1,11 +1,11 @@
 import { parseCard } from "../card";
+import { getCurrentTurnPlayer } from "../turn";
 import { createValidationError } from "../errors";
+import type { EventDispatcher } from "../../events/dispatcher";
 import { ENGINE_ERROR_CODES, GAME_MODES, GAME_PHASES } from "../const";
 import { validateFollowSuit, resolve4PTrickWinner } from "../rules/four-player";
 import { validate2PFollowSuit, resolve2PTrickWinner } from "../rules/two-player";
 import { createInitialScoreState, isGameFinished4P, isGameFinished2P, updateScoreOnTrickWon } from "../scoring/scoring";
-import { getCurrentTurnPlayer } from "../turn";
-import type { EventDispatcher } from "../../events/dispatcher";
 import type { Card, GameState, PlayCardAction, PlayedCard, PlayerPosition, Trick, ValidationResult } from "../../types/index";
 
 // Validation
@@ -92,7 +92,6 @@ export function validatePlayCard({ state, action }: { state: GameState; action: 
 // Reducer (4-Player)
 
 export function reducePlayCard4P(state: GameState, action: PlayCardAction): GameState {
-	const nextActions = [...state.actions, action];
 	const { playerPosition, card } = action.payload;
 
 	const currentPlayer = state.players.find((p) => p.position === playerPosition);
@@ -219,7 +218,6 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 					scores: updatedScores,
 				},
 				trick: completedTrick,
-				actions: nextActions,
 			};
 		}
 
@@ -251,7 +249,6 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 				nextLeaderPosition: null,
 				winnerPosition: null,
 			},
-			actions: nextActions,
 		};
 	}
 
@@ -277,14 +274,12 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 			...currentTrickSnapshot,
 			playNumber: updatedTrickCards.length + 1,
 		},
-		actions: nextActions,
 	};
 }
 
 // Reducer (2-Player)
 
 export function reducePlayCard2P(state: GameState, action: PlayCardAction): GameState {
-	const nextActions = [...state.actions, action];
 	const { playerPosition, card } = action.payload;
 
 	const currentPlayer = state.players.find((p) => p.position === playerPosition);
@@ -413,7 +408,6 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 					scores: updatedScores,
 				},
 				trick: completedTrick,
-				actions: nextActions,
 			};
 		}
 
@@ -442,7 +436,6 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 				nextLeaderPosition: null,
 				winnerPosition: null,
 			},
-			actions: nextActions,
 		};
 	}
 
@@ -465,7 +458,6 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 			...currentTrickSnapshot,
 			playNumber: currentTrickCards.length + 1,
 		},
-		actions: nextActions,
 	};
 }
 

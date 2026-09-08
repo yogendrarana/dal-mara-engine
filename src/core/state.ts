@@ -52,6 +52,5 @@ export function createInitialState(options: {
 		scoring: {
 			scores,
 		},
-		actions: [],
 	};
 }

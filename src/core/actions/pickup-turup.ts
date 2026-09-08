@@ -1,6 +1,6 @@
 import { parseCard } from "../card";
 import { createValidationError } from "../errors";
-import { ENGINE_ERROR_CODES, GAME_MODES, GAME_PHASES } from "../const";
+import { ENGINE_ERROR_CODES, GAME_MODES } from "../const";
 import type { EventDispatcher } from "../../events/dispatcher";
 import type { GameState, PickupTurupCardAction, ValidationResult } from "../../types/index";
 
@@ -39,7 +39,6 @@ export function validatePickupTurup({ state, action }: { state: GameState; actio
 // Reducer (2-Player only)
 
 export function reducePickupTurup2P(state: GameState, action: PickupTurupCardAction): GameState {
-	const nextActions = [...state.actions, action];
 	const { playerPosition, card } = action.payload;
 
 	if (!state.game.turup) return state;
@@ -82,7 +81,6 @@ export function reducePickupTurup2P(state: GameState, action: PickupTurupCardAct
 			...state.stacks2P,
 			[playerId]: newPlayerStacks,
 		},
-		actions: nextActions,
 	};
 }
 

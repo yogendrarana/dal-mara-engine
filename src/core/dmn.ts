@@ -497,7 +497,6 @@ export function importFromDMN(dmnString: string): Partial<GameState> & { dmn: DM
 		play,
 		trick: currentTrick,
 		scoring: { scores },
-		actions: [],
 		dmn,
 	};
 }
@@ -542,7 +541,6 @@ export function fromDMN(dmnString: string): Game | ValidationResult {
 		scoring: partialState.scoring ?? {
 			scores: {},
 		},
-		actions: partialState.actions ?? [],
 	};
 
 	return Game.create(fullState);

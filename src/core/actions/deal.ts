@@ -1,11 +1,11 @@
-import { createDeck, shuffleDeck } from "../deck";
 import { DalMaraError } from "../errors";
+import { getCurrentTurnPlayer } from "../turn";
+import { createDeck, shuffleDeck } from "../deck";
 import { createValidationError } from "../errors";
 import { ENGINE_ERROR_CODES, GAME_PHASES } from "../const";
+import type { EventDispatcher } from "../../events/dispatcher";
 import { dealFourPlayer, detectGhopte } from "../rules/four-player";
 import { dealTwoPlayer, create2PStacks } from "../rules/two-player";
-import { getCurrentTurnPlayer } from "../turn";
-import type { EventDispatcher } from "../../events/dispatcher";
 import type { DealAction, GameState, PlayerPosition, ValidationResult } from "../../types/index";
 
 // Validation
@@ -31,7 +31,6 @@ export function validateDeal({ state, action }: { state: GameState; action: Deal
 // Reducer (4-Player)
 
 export function reduceDeal4P(state: GameState, action: DealAction): GameState {
-	const nextActions = [...state.actions, action];
 	const { deck } = action.payload;
 
 	const dealer = state.players.find((p) => p.position === state.game.dealerPosition);
@@ -85,7 +84,6 @@ export function reduceDeal4P(state: GameState, action: DealAction): GameState {
 				nextLeaderPosition: null,
 				winnerPosition: null,
 			},
-			actions: nextActions,
 		};
 	}
 
@@ -117,14 +115,12 @@ export function reduceDeal4P(state: GameState, action: DealAction): GameState {
 			nextLeaderPosition: null,
 			winnerPosition: null,
 		},
-		actions: nextActions,
 	};
 }
 
 // Reducer (2-Player)
 
 export function reduceDeal2P(state: GameState, action: DealAction): GameState {
-	const nextActions = [...state.actions, action];
 	const { deck } = action.payload;
 
 	const dealer = state.players.find((p) => p.position === state.game.dealerPosition);
@@ -172,7 +168,6 @@ export function reduceDeal2P(state: GameState, action: DealAction): GameState {
 			nextLeaderPosition: null,
 			winnerPosition: null,
 		},
-		actions: nextActions,
 	};
 }
 

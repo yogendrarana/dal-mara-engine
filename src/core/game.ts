@@ -1,6 +1,5 @@
 import type {
 	Action,
-	Card,
 	DealAction,
 	DeclareTurupAction,
 	GameEvent,
@@ -19,17 +18,15 @@ import type {
 	ValidationResult,
 } from "../types/index";
 
-import { exportToDMN, fromDMN } from "./dmn";
-import { deserializeState, serializeState } from "./serializers";
-import { EventDispatcher } from "../events/dispatcher";
-import { exportReplay, playReplay, type ReplayData } from "./replay";
-import { validateCreateGame } from "./validators";
-import { ACTION_TYPES, GAME_MODES, GAME_PHASES } from "./const";
-import { getLegalMoves, type LegalPlayableCard } from "./legal-moves";
 import { createInitialState } from "./state";
-import { dispatchAction, validateAction } from "./actions";
-
+import { exportToDMN, fromDMN } from "./dmn";
 import { getCurrentTurnPlayer } from "./turn";
+import { validateCreateGame } from "./validators";
+import { EventDispatcher } from "../events/dispatcher";
+import { dispatchAction, validateAction } from "./actions";
+import { ACTION_TYPES, GAME_MODES, GAME_PHASES } from "./const";
+import { deserializeState, serializeState } from "./serializers";
+import { getLegalMoves, type LegalPlayableCard } from "./legal-moves";
 import { evaluateGameWinner4P, evaluateGameWinner2P } from "./scoring/scoring";
 
 export interface CreateGameOptions {
@@ -73,11 +70,6 @@ export class Game {
 
 	public static deserialize(json: string): Game | ValidationResult {
 		const state = deserializeState(json);
-		return Game.create(state);
-	}
-
-	public static playReplay(replay: ReplayData): Game | ValidationResult {
-		const state = playReplay(replay);
 		return Game.create(state);
 	}
 
@@ -167,10 +159,6 @@ export class Game {
 
 	public serialize(): string {
 		return serializeState(this._state);
-	}
-
-	public exportReplay(): ReplayData {
-		return exportReplay(this._state);
 	}
 
 	// game actions

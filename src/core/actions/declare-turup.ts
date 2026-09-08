@@ -27,8 +27,6 @@ export function validateDeclareTurup({ state, action }: { state: GameState; acti
 // Reducer (2-Player only)
 
 export function reduceDeclareTurup2P(state: GameState, action: DeclareTurupAction): GameState {
-	const nextActions = [...state.actions, action];
-
 	if (state.game.phase !== GAME_PHASES.TURUP_DECLARATION) return state;
 
 	const turupSuit = action.payload.suit;
@@ -56,7 +54,6 @@ export function reduceDeclareTurup2P(state: GameState, action: DeclareTurupActio
 			nextLeaderPosition: null,
 			winnerPosition: null,
 		},
-		actions: nextActions,
 	};
 }
 

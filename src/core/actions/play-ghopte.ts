@@ -78,7 +78,6 @@ export function validatePlayGhopte({ state, action }: { state: GameState; action
 // Reducer (4-Player only)
 
 export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): GameState {
-	const nextActions = [...state.actions, action];
 	const { playerPosition, card } = action.payload;
 
 	const currentPlayer = state.players.find((p) => p.position === playerPosition);
@@ -196,7 +195,6 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 					nextLeaderPosition: null,
 					winnerPosition: null,
 				},
-				actions: nextActions,
 			};
 		}
 
@@ -230,7 +228,6 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 				nextLeaderPosition: null,
 				winnerPosition: null,
 			},
-			actions: nextActions,
 		};
 	}
 
@@ -252,7 +249,6 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 			...currentTrickSnapshot,
 			playNumber: updatedTrickCards.length + 1,
 		},
-		actions: nextActions,
 	};
 }
 

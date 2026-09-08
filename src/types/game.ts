@@ -82,6 +82,4 @@ export interface GameState {
 	readonly scoring: {
 		readonly scores: Record<string, ScoreState>;
 	};
-
-	readonly actions: readonly Action[];
 }
