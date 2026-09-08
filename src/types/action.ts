@@ -9,7 +9,7 @@ export type ActionType = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 export type DealAction = {
 	type: typeof ACTION_TYPES.DEAL;
 	payload: {
-		deck: readonly Card[];
+		deck?: readonly Card[];
 		playerPosition: PlayerPosition;
 	};
 };

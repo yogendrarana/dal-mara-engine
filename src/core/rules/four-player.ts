@@ -1,6 +1,6 @@
 import { compareCardRanks, parseCard } from "../card";
 import { RANKS, SUITS } from "../const";
-import type { Card, GhopteInfo, GhopteState, PlayedCard, Player, PlayerPosition, Suit, Trick } from "../../types/index";
+import type { Card, Ghopte, PlayedCard, Player, PlayerPosition, Suit, Trick } from "../../types/index";
 
 /**
  * Get anti-clockwise next seat in square arrangement [P0, P1, P2, P3].
@@ -121,7 +121,7 @@ export function detectGhopte({
 	hands: Record<string, readonly Card[]>;
 	players?: readonly Player[];
 	dealerPosition?: number;
-}): GhopteState | null {
+}): Ghopte[] | null {
 	const playersList: readonly Player[] =
 		players.length > 0
 			? players
@@ -132,7 +132,7 @@ export function detectGhopte({
 					team: index % 2 === 0 ? "team1" : "team2",
 				}));
 
-	const allGhoptes: GhopteInfo[] = [];
+	const allGhoptes: Ghopte[] = [];
 
 	const playerByPos: Record<number, Player> = {};
 	for (const p of playersList) {
@@ -162,16 +162,15 @@ export function detectGhopte({
 			suitCounts[parseCard(card).suit].push(card);
 		}
 
-		for (const [suit, cards] of Object.entries(suitCounts)) {
+		for (const cards of Object.values(suitCounts)) {
 			if (cards.length === 1) {
 				const card = cards[0];
 
 				if (card && parseCard(card).rank === RANKS.TEN) {
 					allGhoptes.push({
 						order: allGhoptes.length,
-						declarerPosition: player.position,
-						suit: suit as Suit,
-						tenCard: card,
+						playerPosition: player.position,
+						card,
 						resolved: false,
 					});
 				}
@@ -183,10 +182,7 @@ export function detectGhopte({
 		return null;
 	}
 
-	return {
-		ghoptes: allGhoptes,
-		activeIndex: 0,
-	};
+	return allGhoptes;
 }
 
 /**

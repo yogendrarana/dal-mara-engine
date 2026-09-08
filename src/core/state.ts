@@ -30,7 +30,7 @@ export function createInitialState(options: {
 		players: orderedPlayers,
 		hands: {},
 		stacks2P: {},
-		ghopteState: null,
+		ghoptes: [],
 		play: {
 			number: 0,
 			card: null,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createDeck, Game } from "../src";
+import { createDeck, Game, parseCard } from "../src";
 import { detectGhopte } from "../src/core/rules/four-player";
 
 const deck = createDeck();
@@ -11,12 +11,12 @@ describe("Ghopte Phase Mechanics", () => {
 			p2: ["2s", "3s"] as const,
 		};
 
-		const ghopteState = detectGhopte({ hands });
-		expect(ghopteState).not.toBeNull();
-		const activeGhopte = ghopteState?.ghoptes[ghopteState.activeIndex];
-		expect(activeGhopte?.declarerPosition).toBe(0);
-		expect(activeGhopte?.suit).toBe("spades");
-		expect(activeGhopte?.tenCard).toBe("10s");
+		const ghoptes = detectGhopte({ hands });
+		expect(ghoptes).not.toBeNull();
+		const activeGhopte = ghoptes?.[0];
+		expect(activeGhopte?.playerPosition).toBe(0);
+		expect(activeGhopte && parseCard(activeGhopte.card).suit).toBe("spades");
+		expect(activeGhopte?.card).toBe("10s");
 	});
 
 	it("should allow guessing players to play any hand card during Ghopte round", () => {

@@ -1,6 +1,6 @@
 import { parseCard } from "../card";
 import { createValidationError } from "../errors";
-import { ENGINE_ERROR_CODES, GAME_MODES, GAME_PHASES, RANKS } from "../const";
+import { ENGINE_ERROR_CODES, GAME_MODES, GAME_PHASES } from "../const";
 import { resolve4PTrickWinner } from "../rules/four-player";
 import { createInitialScoreState, updateScoreOnTrickWon } from "../scoring/scoring";
 import { getCurrentTurnPlayer } from "../turn";
@@ -37,19 +37,17 @@ export function validatePlayGhopte({ state, action }: { state: GameState; action
 		return createValidationError(ENGINE_ERROR_CODES.CARD_NOT_OWNED, `Player does not own card ${card}`);
 	}
 
-	if (state.ghopteState) {
-		const unresolvedGhoptes = [...state.ghopteState.ghoptes].filter((g) => !g.resolved).sort((a, b) => a.order - b.order);
-		const activeGhopte = unresolvedGhoptes[0];
+	if (state.ghoptes.length > 0) {
+		const activeGhopte = state.ghoptes.find((g) => !g.resolved);
 
 		if (!activeGhopte) {
 			return createValidationError(ENGINE_ERROR_CODES.INVALID_GHOPTE_SUBMISSION, "Active ghopte is not found.");
 		}
 
-		const isPlayerGhopteDeclarer = activeGhopte.declarerPosition === playerPosition;
+		const isPlayerGhopteDeclarer = activeGhopte.playerPosition === playerPosition;
 
 		if (isPlayerGhopteDeclarer) {
-			const cardDetails = parseCard(cardToPlay);
-			if (cardDetails.suit !== activeGhopte.suit || cardDetails.rank !== RANKS.TEN) {
+			if (cardToPlay !== activeGhopte.card) {
 				return createValidationError(
 					ENGINE_ERROR_CODES.INVALID_GHOPTE_SUBMISSION,
 					"Declarer must play the declared Ghopte 10 card",
@@ -59,8 +57,8 @@ export function validatePlayGhopte({ state, action }: { state: GameState; action
 
 		if (!isPlayerGhopteDeclarer) {
 			// player cannot throw their own pending Ghopte 10 for another player's Ghopte
-			const isPendingOwnGhopte = state.ghopteState.ghoptes.some(
-				(g) => g.declarerPosition === playerPosition && !g.resolved && g.tenCard === cardToPlay,
+			const isPendingOwnGhopte = state.ghoptes.some(
+				(g) => g.playerPosition === playerPosition && !g.resolved && g.card === cardToPlay,
 			);
 
 			if (isPendingOwnGhopte) {
@@ -102,12 +100,12 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 		playOrder: state.trick.cards.length + 1,
 	};
 
-	if (state.game.phase !== GAME_PHASES.GHOPTE || !state.ghopteState) return state;
+	if (state.game.phase !== GAME_PHASES.GHOPTE || state.ghoptes.length === 0) return state;
 
-	const currentGhopte = state.ghopteState.ghoptes[state.ghopteState.activeIndex];
+	const currentGhopte = state.ghoptes.find((g) => !g.resolved);
 	if (!currentGhopte) return state;
 
-	const targetSuit = currentGhopte.suit;
+	const targetSuit = parseCard(currentGhopte.card).suit;
 	const isLead = state.trick.cards.length === 0;
 	const currentTrickLeadSuit = isLead ? targetSuit : state.trick.leadSuit;
 
@@ -137,13 +135,11 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 		const winnerPos = winnerPlayer.position;
 
 		// Mark current Ghopte as resolved
-		const updatedGhoptes = state.ghopteState.ghoptes.map((g, idx) =>
-			idx === state.ghopteState?.activeIndex ? { ...g, resolved: true } : g,
-		);
+		const updatedGhoptes = state.ghoptes.map((g) => (g.order === currentGhopte.order ? { ...g, resolved: true } : g));
 
-		const nextGhopteIndex = state.ghopteState.activeIndex + 1;
-		const hasMoreGhoptes = nextGhopteIndex < updatedGhoptes.length;
-		const nextLeader = hasMoreGhoptes ? (updatedGhoptes[nextGhopteIndex]?.declarerPosition ?? winnerPos) : winnerPos;
+		const nextGhopte = updatedGhoptes.find((g) => !g.resolved);
+		const hasMoreGhoptes = !!nextGhopte;
+		const nextLeader = nextGhopte ? nextGhopte.playerPosition : winnerPos;
 
 		const completedTrick: Trick = {
 			...currentTrickSnapshot,
@@ -163,21 +159,17 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 			[winnerId]: updatedScore,
 		};
 
-		if (hasMoreGhoptes) {
-			const nextGhopte = updatedGhoptes[nextGhopteIndex];
-			if (!nextGhopte) return state;
+		if (hasMoreGhoptes && nextGhopte) {
+			const nextSuit = parseCard(nextGhopte.card).suit;
 
 			return {
 				...state,
 				hands: updatedHands,
-				ghopteState: {
-					ghoptes: updatedGhoptes,
-					activeIndex: nextGhopteIndex,
-				},
+				ghoptes: updatedGhoptes,
 				play: {
 					number: newPlayNumber,
 					card: playedCardObj,
-					playerPosition: nextGhopte.declarerPosition,
+					playerPosition: nextGhopte.playerPosition,
 					isGhopte: true,
 					isTurup: false,
 					makesTurup: false,
@@ -188,8 +180,8 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 				trick: {
 					number: state.trick.number + 1,
 					playNumber: 1,
-					leadSuit: nextGhopte.suit,
-					leaderPosition: nextGhopte.declarerPosition,
+					leadSuit: nextSuit,
+					leaderPosition: nextGhopte.playerPosition,
 					isGhopte: true,
 					cards: [],
 					nextLeaderPosition: null,
@@ -206,7 +198,7 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 				phase: GAME_PHASES.PLAYING,
 			},
 			hands: updatedHands,
-			ghopteState: null,
+			ghoptes: updatedGhoptes,
 			play: {
 				number: newPlayNumber,
 				card: playedCardObj,

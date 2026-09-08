@@ -14,7 +14,7 @@ export function validatePlayCard({ state, action }: { state: GameState; action: 
 	const currentTurnPlayer = getCurrentTurnPlayer(state);
 	const { playerPosition, card } = action.payload;
 
-	if (state?.ghopteState?.ghoptes.some((g) => !g.resolved)) {
+	if (state.ghoptes.some((g) => !g.resolved)) {
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "Cannot play card while there are unresolved Ghoptes");
 	}
 

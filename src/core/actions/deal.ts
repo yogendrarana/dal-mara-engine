@@ -1,3 +1,4 @@
+import { parseCard } from "../card";
 import { DalMaraError } from "../errors";
 import { getCurrentTurnPlayer } from "../turn";
 import { createDeck, shuffleDeck } from "../deck";
@@ -48,14 +49,14 @@ export function reduceDeal4P(state: GameState, action: DealAction): GameState {
 		players: state.players,
 	});
 
-	const ghopteState = detectGhopte({
+	const ghoptes = detectGhopte({
 		hands,
 		players: state.players,
 		dealerPosition: dealer.position,
 	});
 
-	if (ghopteState && ghopteState.ghoptes.length > 0) {
-		const activeGhopte = ghopteState.ghoptes[ghopteState.activeIndex];
+	if (ghoptes && ghoptes.length > 0) {
+		const activeGhopte = ghoptes.find((g) => !g.resolved) ?? ghoptes[0];
 		if (!activeGhopte) return state;
 
 		return {
@@ -65,11 +66,11 @@ export function reduceDeal4P(state: GameState, action: DealAction): GameState {
 				phase: GAME_PHASES.GHOPTE,
 			},
 			hands,
-			ghopteState,
+			ghoptes,
 			play: {
 				number: 0,
 				card: null,
-				playerPosition: activeGhopte.declarerPosition,
+				playerPosition: activeGhopte.playerPosition,
 				isGhopte: false,
 				isTurup: false,
 				makesTurup: false,
@@ -77,8 +78,8 @@ export function reduceDeal4P(state: GameState, action: DealAction): GameState {
 			trick: {
 				number: 1,
 				playNumber: 1,
-				leadSuit: activeGhopte.suit,
-				leaderPosition: activeGhopte.declarerPosition,
+				leadSuit: parseCard(activeGhopte.card).suit,
+				leaderPosition: activeGhopte.playerPosition,
 				isGhopte: true,
 				cards: [],
 				nextLeaderPosition: null,
@@ -131,7 +132,7 @@ export function reduceDeal2P(state: GameState, action: DealAction): GameState {
 	if (state.game.phase !== GAME_PHASES.DEAL) return state;
 	if (state.players.length !== 2) return state;
 
-	const finalDeck = deck.length === 52 ? deck : shuffleDeck(createDeck());
+	const finalDeck = deck?.length === 52 ? deck : shuffleDeck(createDeck());
 
 	const { hands, remainingDeck } = dealTwoPlayer({
 		deck: finalDeck,
@@ -187,7 +188,7 @@ export function emitDealEvents({
 
 	if (nextState.game.phase === GAME_PHASES.GHOPTE) {
 		emitter.emit("GhopteStarted", {
-			ghopteState: nextState.ghopteState,
+			ghoptes: nextState.ghoptes,
 		});
 	} else if (
 		(nextState.game.phase === GAME_PHASES.PLAYING || nextState.game.phase === GAME_PHASES.TURUP_DECLARATION) &&

@@ -43,7 +43,6 @@ export {
 	reducePlayCard2P,
 } from "./core/actions";
 
-export { exportReplay, playReplay, type ReplayData } from "./core/replay";
 export { serializeState, deserializeState, deserialize } from "./core/serializers";
 
 export {

@@ -1,6 +1,6 @@
 import type { Card, GameState } from "../types/index";
 import { parseCard } from "./card";
-import { GAME_MODES, GAME_PHASES, RANKS } from "./const";
+import { GAME_MODES, GAME_PHASES } from "./const";
 import { getCurrentTurnPlayer } from "./turn";
 
 export interface LegalPlayableCard {
@@ -24,24 +24,21 @@ export function getLegalMoves4P(state: GameState, playerId: string): LegalPlayab
 	const availableCards: LegalPlayableCard[] = hand.map((card) => ({ card }));
 
 	// 1. Ghopte Phase
-	if (state.game.phase === GAME_PHASES.GHOPTE && state.ghopteState) {
-		const activeGhopte = state.ghopteState.ghoptes[state.ghopteState.activeIndex];
+	if (state.game.phase === GAME_PHASES.GHOPTE && state.ghoptes.length > 0) {
+		const activeGhopte = state.ghoptes.find((g) => !g.resolved);
 
 		// If current player is the Ghopte declarer, they play their Ghopte 10
-		if (activeGhopte && activeGhopte.declarerPosition === player?.position) {
-			const ghopteCard = hand.find((c) => {
-				const details = parseCard(c);
-				return details.suit === activeGhopte.suit && details.rank === RANKS.TEN;
-			});
+		if (activeGhopte && activeGhopte.playerPosition === player?.position) {
+			const ghopteCard = hand.find((c) => c === activeGhopte.card);
 			if (ghopteCard) {
 				return [{ card: ghopteCard }];
 			}
 		}
 
 		// Find any pending Ghopte cards owned by this player for future Ghopte rounds
-		const pendingOwnGhopteIds = state.ghopteState.ghoptes
-			.filter((g) => g.declarerPosition === player?.position && !g.resolved)
-			.map((g) => g.tenCard);
+		const pendingOwnGhopteIds = state.ghoptes
+			.filter((g) => g.playerPosition === player?.position && !g.resolved)
+			.map((g) => g.card);
 
 		// Other players are guessing the face-down Ghopte card: any card from hand EXCEPT their own pending Ghopte 10s
 		const guessingMoves = availableCards.filter((item) => !pendingOwnGhopteIds.includes(item.card));

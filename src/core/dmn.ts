@@ -493,7 +493,7 @@ export function importFromDMN(dmnString: string): Partial<GameState> & { dmn: DM
 		players,
 		hands,
 		stacks2P,
-		ghopteState: null,
+		ghoptes: [],
 		play,
 		trick: currentTrick,
 		scoring: { scores },
@@ -519,7 +519,7 @@ export function fromDMN(dmnString: string): Game | ValidationResult {
 		players: partialState.players ?? [],
 		hands: partialState.hands ?? {},
 		stacks2P: partialState.stacks2P ?? {},
-		ghopteState: partialState.ghopteState ?? null,
+		ghoptes: partialState.ghoptes ?? [],
 		play: partialState.play ?? {
 			number: partialState.dmn?.moveNumber ?? 0,
 			card: partialState.dmn?.playedCard ?? null,

@@ -1,5 +1,4 @@
 import type { Player, PlayerPosition } from "./player";
-import type { Action } from "./action";
 import type { Card, Suit } from "./card";
 
 import type { GAME_MODES, GAME_PHASES } from "../core/const";
@@ -27,17 +26,11 @@ export interface Trick {
 	readonly winnerPosition: PlayerPosition | null;
 }
 
-export interface GhopteInfo {
-	readonly declarerPosition: PlayerPosition;
-	readonly suit: Suit;
-	readonly tenCard: Card;
+export interface Ghopte {
+	readonly playerPosition: PlayerPosition;
+	readonly card: Card;
 	readonly order: number;
 	readonly resolved: boolean;
-}
-
-export interface GhopteState {
-	readonly ghoptes: readonly GhopteInfo[];
-	readonly activeIndex: number;
 }
 
 export interface PlayerStack2P {
@@ -66,7 +59,7 @@ export interface GameState {
 	readonly hands: Record<string, readonly Card[]>;
 	readonly stacks2P: Record<string, readonly PlayerStack2P[]>;
 
-	readonly ghopteState: GhopteState | null;
+	readonly ghoptes: readonly Ghopte[];
 
 	readonly play: {
 		readonly number: number;
