@@ -1,12 +1,26 @@
-export { Game, type CreateGameOptions } from "./core/game";
+// Engine API (replaces Game class)
+export {
+	createGame,
+	dispatch,
+	deal,
+	declareTurup,
+	pickupTurupCard,
+	playCard,
+	getLegalMoves,
+	getCurrentPlayer,
+	isFinished,
+	type ActionResult,
+	type CreateGameOptions,
+} from "./core/engine";
 
 // types and constants
 export * from "./types/index";
 export * from "./core/const";
 
-// apis
-export { createDeck, shuffleDeck } from "./core/deck";
+// DMN
+export { parseDMN, serializeDMN } from "./core/dmn";
 
+// card utilities
 export {
 	createCard,
 	compareCardRanks,
@@ -15,11 +29,14 @@ export {
 	getCardRank,
 } from "./core/card";
 
+// deck
+export { createDeck, shuffleDeck } from "./core/deck";
+
+// errors
 export { DalMaraError, createValidationError } from "./core/errors";
 
-// core
+// legal moves (internal API, also accessible directly)
 export {
-	getLegalMoves,
 	getLegalMoves4P,
 	getLegalMoves2P,
 } from "./core/legal-moves";
@@ -43,16 +60,28 @@ export {
 	reducePlayCard2P,
 } from "./core/actions";
 
+// serializers
 export { serializeState, deserializeState, deserialize } from "./core/serializers";
 
-export {
-	exportToDMN,
-	importFromDMN,
-	fromDMN,
-	toDMN,
-	cardToDMN,
-	dmnToCard,
-	type DMNState,
-} from "./core/dmn";
-
+// validators
 export { validateCreateGame } from "./core/validators";
+
+// scoring
+export {
+	createInitialScoreState,
+	countTensInCards,
+	updateScoreOnTrickWon,
+} from "./core/scoring/scoring";
+
+export {
+	evaluateGameWinner4P,
+	isGameFinished4P,
+} from "./core/scoring/four-player";
+
+export {
+	evaluateGameWinner2P,
+	isGameFinished2P,
+} from "./core/scoring/two-player";
+
+// rules
+export { detectGhopte } from "./core/rules/four-player";

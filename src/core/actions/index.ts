@@ -1,14 +1,12 @@
 import { ENGINE_ERROR_CODES } from "../const";
 import { createValidationError } from "../errors";
-import type { EventDispatcher } from "../../events/dispatcher";
-import { ACTION_TYPES, GAME_MODES, GAME_PHASES } from "../const";
+import { ACTION_TYPES, GAME_MODES } from "../const";
 import type { Action, GameState, ValidationResult } from "../../types/index";
-import { evaluateGameWinner4P, evaluateGameWinner2P } from "../scoring/scoring";
-import { validateDeal, reduceDeal4P, reduceDeal2P, emitDealEvents } from "./deal";
-import { validatePlayGhopte, reducePlayGhopte4P, emitPlayGhopteEvents } from "./play-ghopte";
-import { validatePickupTurup, reducePickupTurup2P, emitPickupTurupEvents } from "./pickup-turup";
-import { validateDeclareTurup, reduceDeclareTurup2P, emitDeclareTurupEvents } from "./declare-turup";
-import { validatePlayCard, reducePlayCard4P, reducePlayCard2P, emitPlayCardEvents } from "./play-card";
+import { validateDeal, reduceDeal4P, reduceDeal2P } from "./deal";
+import { validatePlayGhopte, reducePlayGhopte4P } from "./play-ghopte";
+import { validatePickupTurup, reducePickupTurup2P } from "./pickup-turup";
+import { validateDeclareTurup, reduceDeclareTurup2P } from "./declare-turup";
+import { validatePlayCard, reducePlayCard4P, reducePlayCard2P } from "./play-card";
 
 export interface DispatchResult {
 	state: GameState;
@@ -18,11 +16,9 @@ export interface DispatchResult {
 export function dispatchAction({
 	state,
 	action,
-	emitter,
 }: {
 	state: GameState;
 	action: Action;
-	emitter: EventDispatcher;
 }): DispatchResult {
 	switch (action.type) {
 		case ACTION_TYPES.DEAL: {
@@ -30,8 +26,6 @@ export function dispatchAction({
 			if (!validation.success) return { state, validation };
 
 			const nextState = state.game.mode === GAME_MODES.FOUR_PLAYER ? reduceDeal4P(state, action) : reduceDeal2P(state, action);
-
-			emitDealEvents({ state, nextState, action, emitter });
 
 			return { state: nextState, validation: { success: true } };
 		}
@@ -42,8 +36,6 @@ export function dispatchAction({
 
 			const nextState = reduceDeclareTurup2P(state, action);
 
-			emitDeclareTurupEvents({ state, nextState, action, emitter });
-
 			return { state: nextState, validation: { success: true } };
 		}
 
@@ -52,8 +44,6 @@ export function dispatchAction({
 			if (!validation.success) return { state, validation };
 
 			const nextState = reducePickupTurup2P(state, action);
-
-			emitPickupTurupEvents({ state, nextState, action, emitter });
 
 			return { state: nextState, validation: { success: true } };
 		}
@@ -64,8 +54,6 @@ export function dispatchAction({
 
 			const nextState = reducePlayGhopte4P(state, action);
 
-			emitPlayGhopteEvents({ state, nextState, action, emitter });
-
 			return { state: nextState, validation: { success: true } };
 		}
 
@@ -75,24 +63,6 @@ export function dispatchAction({
 
 			const nextState =
 				state.game.mode === GAME_MODES.FOUR_PLAYER ? reducePlayCard4P(state, action) : reducePlayCard2P(state, action);
-
-			// Compute winnerTeam for event emission
-			let winnerTeam: string | null = null;
-			if (nextState.game.phase === GAME_PHASES.END) {
-				if (nextState.game.mode === GAME_MODES.FOUR_PLAYER) {
-					winnerTeam = evaluateGameWinner4P({
-						scores: nextState.scoring.scores,
-						players: nextState.players,
-					}).winnerTeam;
-				} else {
-					winnerTeam = evaluateGameWinner2P({
-						scores: nextState.scoring.scores,
-						players: nextState.players,
-					}).winnerTeam;
-				}
-			}
-
-			emitPlayCardEvents({ state, nextState, action, emitter, winnerTeam });
 
 			return { state: nextState, validation: { success: true } };
 		}
@@ -106,7 +76,7 @@ export function dispatchAction({
 }
 
 /**
- * Validate an action without reducing or emitting events.
+ * Validate an action without reducing.
  */
 export function validateAction({ state, action }: { state: GameState; action: Action }): ValidationResult {
 	switch (action.type) {

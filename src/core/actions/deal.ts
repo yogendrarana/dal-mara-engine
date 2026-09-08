@@ -1,10 +1,8 @@
 import { parseCard } from "../card";
 import { DalMaraError } from "../errors";
-import { getCurrentTurnPlayer } from "../turn";
 import { createDeck, shuffleDeck } from "../deck";
 import { createValidationError } from "../errors";
 import { ENGINE_ERROR_CODES, GAME_PHASES } from "../const";
-import type { EventDispatcher } from "../../events/dispatcher";
 import { dealFourPlayer, detectGhopte } from "../rules/four-player";
 import { dealTwoPlayer, create2PStacks } from "../rules/two-player";
 import type { DealAction, GameState, PlayerPosition, ValidationResult } from "../../types/index";
@@ -67,24 +65,20 @@ export function reduceDeal4P(state: GameState, action: DealAction): GameState {
 			},
 			hands,
 			ghoptes,
-			play: {
-				number: 0,
-				card: null,
-				playerPosition: activeGhopte.playerPosition,
-				isGhopte: false,
-				isTurup: false,
-				makesTurup: false,
-			},
+			moveNumber: 0,
 			trick: {
 				number: 1,
-				playNumber: 1,
+				playNumber: 0,
 				leadSuit: parseCard(activeGhopte.card).suit,
-				leaderPosition: activeGhopte.playerPosition,
 				isGhopte: true,
 				cards: [],
-				nextLeaderPosition: null,
-				winnerPosition: null,
 			},
+			moveDetail: {
+				playerPosition: null,
+				card: null,
+				makesTurup: false,
+			},
+			nextMovePlayerPosition: activeGhopte.playerPosition,
 		};
 	}
 
@@ -98,24 +92,20 @@ export function reduceDeal4P(state: GameState, action: DealAction): GameState {
 			phase: GAME_PHASES.PLAYING,
 		},
 		hands,
-		play: {
-			number: 0,
-			card: null,
-			playerPosition: firstTurnPos,
-			isGhopte: false,
-			isTurup: false,
-			makesTurup: false,
-		},
+		moveNumber: 0,
 		trick: {
 			number: 1,
-			playNumber: 1,
+			playNumber: 0,
 			leadSuit: null,
-			leaderPosition: firstTurnPos,
 			isGhopte: false,
 			cards: [],
-			nextLeaderPosition: null,
-			winnerPosition: null,
 		},
+		moveDetail: {
+			playerPosition: null,
+			card: null,
+			makesTurup: false,
+		},
+		nextMovePlayerPosition: firstTurnPos,
 	};
 }
 
@@ -140,7 +130,7 @@ export function reduceDeal2P(state: GameState, action: DealAction): GameState {
 		players: state.players,
 	});
 
-	const stacks2P = create2PStacks({ remainingDeck, players: state.players, dealerPosition: dealer.position });
+	const stacks = create2PStacks({ remainingDeck, players: state.players, dealerPosition: dealer.position });
 	const nonDealerPosition = ((dealer.position + 1) % 2) as PlayerPosition;
 
 	return {
@@ -150,55 +140,20 @@ export function reduceDeal2P(state: GameState, action: DealAction): GameState {
 			phase: GAME_PHASES.TURUP_DECLARATION,
 		},
 		hands,
-		stacks2P,
-		play: {
-			number: 0,
-			card: null,
-			playerPosition: nonDealerPosition,
-			isGhopte: false,
-			isTurup: false,
-			makesTurup: false,
-		},
+		stacks,
+		moveNumber: 0,
 		trick: {
 			number: 1,
-			playNumber: 1,
+			playNumber: 0,
 			leadSuit: null,
-			leaderPosition: nonDealerPosition,
 			isGhopte: false,
 			cards: [],
-			nextLeaderPosition: null,
-			winnerPosition: null,
 		},
+		moveDetail: {
+			playerPosition: null,
+			card: null,
+			makesTurup: false,
+		},
+		nextMovePlayerPosition: nonDealerPosition,
 	};
-}
-
-// Event Emission
-
-export function emitDealEvents({
-	nextState,
-	emitter,
-}: {
-	prevState?: GameState;
-	state?: GameState;
-	nextState: GameState;
-	action?: DealAction;
-	emitter: EventDispatcher;
-}): void {
-	emitter.emit("CardsDealt", { phase: nextState.game.phase });
-
-	if (nextState.game.phase === GAME_PHASES.GHOPTE) {
-		emitter.emit("GhopteStarted", {
-			ghoptes: nextState.ghoptes,
-		});
-	} else if (
-		(nextState.game.phase === GAME_PHASES.PLAYING || nextState.game.phase === GAME_PHASES.TURUP_DECLARATION) &&
-		getCurrentTurnPlayer(nextState)
-	) {
-		const currentPlayer = getCurrentTurnPlayer(nextState);
-		if (currentPlayer) {
-			emitter.emit("TurnStarted", {
-				playerId: currentPlayer.id,
-			});
-		}
-	}
 }

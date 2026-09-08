@@ -19,11 +19,8 @@ export interface Trick {
 	// 1-4 in a 4P trick, 1-2 in 2P mode
 	readonly playNumber: number;
 	readonly leadSuit: Suit | null;
-	readonly leaderPosition: PlayerPosition;
 	readonly isGhopte: boolean;
 	readonly cards: readonly PlayedCard[];
-	readonly nextLeaderPosition: PlayerPosition | null;
-	readonly winnerPosition: PlayerPosition | null;
 }
 
 export interface Ghopte {
@@ -33,7 +30,7 @@ export interface Ghopte {
 	readonly resolved: boolean;
 }
 
-export interface PlayerStack2P {
+export interface PlayerStack {
 	readonly position: number;
 	readonly hiddenCards: readonly Card[];
 	readonly faceUpCard: Card | null;
@@ -46,33 +43,39 @@ export interface ScoreState {
 }
 
 export interface GameState {
-	readonly id: string;
-
+	// DMN Section 1: Game
 	readonly game: {
 		readonly mode: GameMode;
 		readonly dealerPosition: PlayerPosition;
 		readonly turup: Suit | null;
-		readonly phase: GamePhase;
+		readonly phase: GamePhase; // internal, not in DMN
 	};
 
+	// Player roster (derived from mode, not in DMN)
 	readonly players: readonly Player[];
-	readonly hands: Record<string, readonly Card[]>;
-	readonly stacks2P: Record<string, readonly PlayerStack2P[]>;
 
+	// DMN Section 3: Hands (keyed by player id)
+	readonly hands: Record<string, readonly Card[]>;
+
+	// DMN Section 2: Ghoptes
 	readonly ghoptes: readonly Ghopte[];
 
-	readonly play: {
-		readonly number: number;
-		readonly card: Card | null;
+	// DMN Section 4: Stacks (2p only, keyed by player id)
+	readonly stacks: Record<string, readonly PlayerStack[]>;
+
+	// DMN Section 5: Move Number
+	readonly moveNumber: number;
+
+	// DMN Section 6: Trick
+	readonly trick: Trick;
+
+	// DMN Section 7: Move Detail
+	readonly moveDetail: {
 		readonly playerPosition: PlayerPosition | null;
-		readonly isGhopte: boolean;
-		readonly isTurup: boolean;
+		readonly card: Card | null;
 		readonly makesTurup: boolean;
 	};
 
-	readonly trick: Trick;
-
-	readonly scoring: {
-		readonly scores: Record<string, ScoreState>;
-	};
+	// DMN Section 8: Next Move Player Position
+	readonly nextMovePlayerPosition: PlayerPosition;
 }

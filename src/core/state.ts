@@ -1,26 +1,17 @@
 import { GAME_PHASES } from "./const";
-import { createInitialScoreState } from "./scoring/scoring";
-import type { GameMode, GameState, Player, PlayerPosition, ScoreState } from "../types/index";
+import type { GameMode, GameState, Player, PlayerPosition } from "../types/index";
 
 export function createInitialState(options: {
-	id: string;
+	id?: string;
 	mode: GameMode;
 	players: readonly Player[];
 	dealerPosition: PlayerPosition;
 }): GameState {
-	const { id, mode, players, dealerPosition } = options;
+	const { mode, players, dealerPosition } = options;
 
 	const orderedPlayers: Player[] = [...players].sort((a, b) => a.position - b.position);
 
-	const scores: Record<string, ScoreState> = {};
-	for (const p of orderedPlayers) {
-		scores[p.id] = createInitialScoreState();
-	}
-
-	const initialLeaderPosition = ((dealerPosition + 1) % orderedPlayers.length) as PlayerPosition;
-
 	return {
-		id,
 		game: {
 			mode,
 			dealerPosition,
@@ -29,28 +20,21 @@ export function createInitialState(options: {
 		},
 		players: orderedPlayers,
 		hands: {},
-		stacks2P: {},
+		stacks: {},
 		ghoptes: [],
-		play: {
-			number: 0,
-			card: null,
-			playerPosition: null,
-			isGhopte: false,
-			isTurup: false,
-			makesTurup: false,
-		},
+		moveNumber: 0,
 		trick: {
 			number: 1,
-			playNumber: 1,
+			playNumber: 0,
 			leadSuit: null,
-			leaderPosition: initialLeaderPosition,
 			isGhopte: false,
 			cards: [],
-			nextLeaderPosition: null,
-			winnerPosition: null,
 		},
-		scoring: {
-			scores,
+		moveDetail: {
+			playerPosition: null,
+			card: null,
+			makesTurup: false,
 		},
+		nextMovePlayerPosition: dealerPosition,
 	};
 }

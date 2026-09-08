@@ -1,7 +1,6 @@
 import { createValidationError } from "../errors";
 import { ENGINE_ERROR_CODES, GAME_MODES, GAME_PHASES } from "../const";
 import { getCurrentTurnPlayer } from "../turn";
-import type { EventDispatcher } from "../../events/dispatcher";
 import type { DeclareTurupAction, GameState, PlayerPosition, ValidationResult } from "../../types/index";
 
 // Validation
@@ -40,47 +39,13 @@ export function reduceDeclareTurup2P(state: GameState, action: DeclareTurupActio
 			phase: GAME_PHASES.PLAYING,
 			turup: turupSuit,
 		},
-		play: {
-			...state.play,
-			playerPosition: nonDealerPosition,
-		},
 		trick: {
 			number: 1,
-			playNumber: 1,
+			playNumber: 0,
 			leadSuit: null,
-			leaderPosition: nonDealerPosition,
 			isGhopte: false,
 			cards: [],
-			nextLeaderPosition: null,
-			winnerPosition: null,
 		},
+		nextMovePlayerPosition: nonDealerPosition,
 	};
-}
-
-// Event Emission
-
-export function emitDeclareTurupEvents({
-	nextState,
-	action,
-	emitter,
-}: {
-	prevState?: GameState;
-	state?: GameState;
-	nextState: GameState;
-	action: DeclareTurupAction;
-	emitter: EventDispatcher;
-}): void {
-	const player = nextState.players.find((p) => p.position === action.payload.playerPosition);
-	emitter.emit("TurupDeclared", {
-		playerId: player?.id,
-		playerPosition: action.payload.playerPosition,
-		suit: action.payload.suit,
-	});
-
-	const currentPlayer = getCurrentTurnPlayer(nextState);
-	if (currentPlayer) {
-		emitter.emit("TurnStarted", {
-			playerId: currentPlayer.id,
-		});
-	}
 }

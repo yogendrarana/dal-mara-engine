@@ -2,9 +2,7 @@ import { parseCard } from "../card";
 import { createValidationError } from "../errors";
 import { ENGINE_ERROR_CODES, GAME_MODES, GAME_PHASES } from "../const";
 import { resolve4PTrickWinner } from "../rules/four-player";
-import { createInitialScoreState, updateScoreOnTrickWon } from "../scoring/scoring";
 import { getCurrentTurnPlayer } from "../turn";
-import type { EventDispatcher } from "../../events/dispatcher";
 import type { GameState, PlayedCard, PlayerPosition, PlayGhopteAction, Trick, ValidationResult } from "../../types/index";
 
 // Validation
@@ -111,17 +109,14 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 
 	const updatedTrickCards = [...state.trick.cards, playedCardItem];
 	const isTrickComplete = updatedTrickCards.length === 4;
-	const newPlayNumber = state.play.number + 1;
+	const newMoveNumber = state.moveNumber + 1;
 
 	const currentTrickSnapshot: Trick = {
 		number: state.trick.number,
 		playNumber: updatedTrickCards.length,
 		leadSuit: currentTrickLeadSuit,
-		leaderPosition: state.trick.leaderPosition,
 		isGhopte: true,
 		cards: updatedTrickCards,
-		nextLeaderPosition: null,
-		winnerPosition: null,
 	};
 
 	if (isTrickComplete) {
@@ -141,24 +136,6 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 		const hasMoreGhoptes = !!nextGhopte;
 		const nextLeader = nextGhopte ? nextGhopte.playerPosition : winnerPos;
 
-		const completedTrick: Trick = {
-			...currentTrickSnapshot,
-			playNumber: 4,
-			winnerPosition: winnerPos,
-			nextLeaderPosition: nextLeader,
-		};
-
-		const currentScore = state.scoring.scores[winnerId] ?? createInitialScoreState();
-		const updatedScore = updateScoreOnTrickWon({
-			currentScore,
-			trick: completedTrick,
-		});
-
-		const updatedScores = {
-			...state.scoring.scores,
-			[winnerId]: updatedScore,
-		};
-
 		if (hasMoreGhoptes && nextGhopte) {
 			const nextSuit = parseCard(nextGhopte.card).suit;
 
@@ -166,27 +143,20 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 				...state,
 				hands: updatedHands,
 				ghoptes: updatedGhoptes,
-				play: {
-					number: newPlayNumber,
+				moveNumber: newMoveNumber,
+				moveDetail: {
+					playerPosition: playerPos,
 					card: playedCardObj,
-					playerPosition: nextGhopte.playerPosition,
-					isGhopte: true,
-					isTurup: false,
 					makesTurup: false,
-				},
-				scoring: {
-					scores: updatedScores,
 				},
 				trick: {
 					number: state.trick.number + 1,
-					playNumber: 1,
+					playNumber: 0,
 					leadSuit: nextSuit,
-					leaderPosition: nextGhopte.playerPosition,
 					isGhopte: true,
 					cards: [],
-					nextLeaderPosition: null,
-					winnerPosition: null,
 				},
+				nextMovePlayerPosition: nextGhopte.playerPosition,
 			};
 		}
 
@@ -199,27 +169,20 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 			},
 			hands: updatedHands,
 			ghoptes: updatedGhoptes,
-			play: {
-				number: newPlayNumber,
+			moveNumber: newMoveNumber,
+			moveDetail: {
+				playerPosition: playerPos,
 				card: playedCardObj,
-				playerPosition: winnerPos,
-				isGhopte: true,
-				isTurup: false,
 				makesTurup: false,
-			},
-			scoring: {
-				scores: updatedScores,
 			},
 			trick: {
 				number: state.trick.number + 1,
-				playNumber: 1,
+				playNumber: 0,
 				leadSuit: null,
-				leaderPosition: winnerPos,
 				isGhopte: false,
 				cards: [],
-				nextLeaderPosition: null,
-				winnerPosition: null,
 			},
+			nextMovePlayerPosition: winnerPos,
 		};
 	}
 
@@ -229,69 +192,13 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 	return {
 		...state,
 		hands: updatedHands,
-		play: {
-			number: newPlayNumber,
+		moveNumber: newMoveNumber,
+		moveDetail: {
+			playerPosition: playerPos,
 			card: playedCardObj,
-			playerPosition: nextPos,
-			isGhopte: true,
-			isTurup: false,
 			makesTurup: false,
 		},
-		trick: {
-			...currentTrickSnapshot,
-			playNumber: updatedTrickCards.length + 1,
-		},
+		trick: currentTrickSnapshot,
+		nextMovePlayerPosition: nextPos,
 	};
-}
-
-// Event Emission
-
-export function emitPlayGhopteEvents({
-	prevState,
-	state,
-	nextState,
-	action,
-	emitter,
-}: {
-	prevState?: GameState;
-	state?: GameState;
-	nextState: GameState;
-	action: PlayGhopteAction;
-	emitter: EventDispatcher;
-}): void {
-	const prev = prevState ?? state ?? nextState;
-	const player = nextState.players.find((p) => p.position === action.payload.playerPosition);
-	emitter.emit("CardPlayed", {
-		playerId: player?.id,
-		playerPosition: action.payload.playerPosition,
-		card: action.payload.card,
-	});
-
-	if (prev.game.turup !== nextState.game.turup && nextState.game.turup) {
-		if (!prev.game.turup) {
-			emitter.emit("TurupCreated", {
-				suit: nextState.game.turup,
-			});
-		} else {
-			emitter.emit("TurupChanged", {
-				oldSuit: prev.game.turup,
-				newSuit: nextState.game.turup,
-			});
-		}
-	}
-
-	if (nextState.game.phase === GAME_PHASES.END) {
-		// Game ended during ghopte (unlikely but handled)
-		emitter.emit("GameFinished", {
-			winnerTeam: null,
-			scores: nextState.scoring.scores,
-		});
-	} else {
-		const currentPlayer = getCurrentTurnPlayer(nextState);
-		if (currentPlayer) {
-			emitter.emit("TurnStarted", {
-				playerId: currentPlayer.id,
-			});
-		}
-	}
 }

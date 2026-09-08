@@ -357,25 +357,27 @@ const restoredGame = fromDMN(dmnString);
 
 **DMN1 Format**:
 ```
-DMN1 G:<GameInfo> H:<Hands> M:<MoveInfo> T:<TrickInfo> C:<CardInfo>
+DMN1 G:"<GameInfo>" H:"<Hands>" S:"<Stacks>" M:"<MoveInfo>" T:"<TrickInfo>" P:"<PlayInfo>" GH:"<GhopteState>"
 ```
 
 | Section | Format | Description |
 |---------|--------|-------------|
-| **G** | `<Mode>,<Dealer>,<TrumpSuit>` | Game mode (`4P`/`2P`), dealer position, trump suit (`s`/`h`/`d`/`c`/`-`) |
-| **H** | `[P0:<Cards>],[P1:<Cards>],...` | Current remaining cards per player (engine `Card` string format) |
-| **M** | `<MoveNumber>,<TrickNumber>,<TrickPlay>` | Total cards played, current trick number, cards played in trick |
-| **T** | `<TrickLeader>,<NextTrickLeader>,<IsGhopte>` | Trick leader position, next player position, ghopte flag |
-| **C** | `<Card>,<PlayedBy>,<IsGhopte>,<IsTurup>,[<TrickCards>]` | Last played card, who played it, flags, all cards in current trick |
+| **G** | `"<Mode>,<Dealer>,<TrumpSuit>"` | Game mode (`4P`/`2P`), dealer position, trump suit (`s`/`h`/`d`/`c`/`-`) |
+| **H** | `"P0[<Cards>],P1[<Cards>],..."` | Current remaining cards per player (engine `Card` string format) |
+| **S** | `"-"` or `"P0[S0[<Hidden>\|<FaceUp>],...],..."` | 2P stacks (or `-` for 4P) |
+| **M** | `"<MoveNumber>"` | Total cards played (0 to 52) |
+| **T** | `"<TrickNumber>,<TrickPlay>,<TrickLeader>,<NextTrickLeader>,<IsGhopte>,[<TrickCards>]"` | Current trick info and played trick cards |
+| **P** | `"<Card>,<PlayedBy>,<IsGhopte>,<IsTurup>,<MakesTurup>"` | Last played card info |
+| **GH** | `"-"` or `"[P<Pos>,<Card>,<Order>,<IsResolved>],..."` | Active ghoptes |
 
-**Example** (initial state after deal):
+**Example** (initial state after deal, 4P):
 ```
-DMN1 G:4P,0,- H:[P0:2s,3s,...],[P1:...],[P2:...],[P3:...] M:0,0,0 T:1,-,0 C:-,-,0,0,[]
+DMN1 G:"4P,0,-" H:"P0[2s,3s,...],P1[...],P2[...],P3[...]" S:"-" M:"0" T:"1,0,1,1,0,[]" P:"-,-,0,0,0" GH:"-"
 ```
 
-**Example** (mid-game, trick 7):
+**Example** (mid-game with ghopte):
 ```
-DMN1 G:4P,0,s H:[P0:6c,10h],[P1:3s,7d],... M:27,7,3 T:1,-,0 C:10s,3,0,1,[7h,Qs,10s]
+DMN1 G:"4P,0,-" H:"P0[...],..." S:"-" M:"4" T:"1,0,0,-,1,[]" P:"-,-,0,0,0" GH:"[P0,10s,0,0],[P2,10h,1,1]"
 ```
 
 A 4-player game generates **53 snapshots**: 1 initial (after deal) + 52 card plays.

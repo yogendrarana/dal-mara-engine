@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createDeck, shuffleDeck, Game } from "../src";
+import { createDeck, shuffleDeck, createGame, deal, declareTurup, playCard, getCurrentPlayer, getLegalMoves, isFinished } from "../src";
 
 const deck = createDeck();
 
@@ -9,9 +9,8 @@ describe("Stress & Determinism Testing", () => {
 		let completedCount = 0;
 
 		for (let i = 1; i <= gameCount; i++) {
-			const game = Game.create({
-				id: `stress-4p-${i}`,
-				mode: "4P",
+			const gameResult = createGame({
+				mode: "4p",
 				dealerPosition: 0,
 				players: [
 					{ id: "p1", name: "Alice", position: 0, team: "red" },
@@ -19,34 +18,40 @@ describe("Stress & Determinism Testing", () => {
 					{ id: "p3", name: "Charlie", position: 2, team: "red" },
 					{ id: "p4", name: "Dave", position: 3, team: "blue" },
 				],
-			}) as Game;
+			});
+			if (!gameResult.success) throw new Error("Create failed");
 
 			const shuffledDeck = shuffleDeck(deck);
-			const dealRes = game.deal({ deck: shuffledDeck, playerPosition: 0 });
+			const dealRes = deal(gameResult.state, { deck: shuffledDeck, playerPosition: 0 });
 			expect(dealRes.success).toBe(true);
+			if (!dealRes.success) throw new Error("Deal failed");
 
+			let state = dealRes.state;
 			let maxSafetyMoves = 200;
-			while (!game.isFinished && maxSafetyMoves > 0) {
+
+			while (!isFinished(state) && maxSafetyMoves > 0) {
 				maxSafetyMoves--;
 
-				const turnP = game.currentPlayer;
+				const turnP = getCurrentPlayer(state);
 				if (!turnP) break;
 
-				const legalMoves = game.getLegalMoves(turnP.id);
+				const legalMoves = getLegalMoves(state, turnP.position);
 				expect(legalMoves.length).toBeGreaterThan(0);
 
 				const move = legalMoves[0];
 				if (!move) break;
 
-				const playRes = game.playCard({
+				const playRes = playCard(state, {
 					playerPosition: turnP.position,
 					card: move.card,
 				});
 				expect(playRes.success).toBe(true);
+				if (!playRes.success) break;
+
+				state = playRes.state;
 			}
 
-			expect(game.isFinished).toBe(true);
-			expect(game.winnerTeam).not.toBeNull();
+			expect(isFinished(state)).toBe(true);
 			completedCount++;
 		}
 
@@ -58,48 +63,58 @@ describe("Stress & Determinism Testing", () => {
 		let completedCount = 0;
 
 		for (let i = 1; i <= gameCount; i++) {
-			const game = Game.create({
-				id: `stress-2p-${i}`,
-				mode: "2P",
+			const gameResult = createGame({
+				mode: "2p",
 				dealerPosition: 0,
 				players: [
 					{ id: "p1", name: "Alice", position: 0, team: "p1" },
 					{ id: "p2", name: "Bob", position: 1, team: "p2" },
 				],
-			}) as Game;
+			});
+			if (!gameResult.success) throw new Error("Create failed");
 
 			const shuffledDeck = shuffleDeck(deck);
-			const dealRes = game.deal({ deck: shuffledDeck, playerPosition: 0 });
+			const dealRes = deal(gameResult.state, { deck: shuffledDeck, playerPosition: 0 });
 			expect(dealRes.success).toBe(true);
+			if (!dealRes.success) throw new Error("Deal failed");
 
-			const declP = game.currentPlayer;
-			if (!declP) break;
+			let state = dealRes.state;
+
+			const declP = getCurrentPlayer(state);
+			if (!declP) throw new Error("No declarator");
 
 			const suits = ["spades", "hearts", "diamonds", "clubs"] as const;
 			const suitToDeclare = suits[i % 4] ?? "spades";
-			game.declareTurup({ playerPosition: declP.position, suit: suitToDeclare });
+			const declRes = declareTurup(state, { playerPosition: declP.position, suit: suitToDeclare });
+			expect(declRes.success).toBe(true);
+			if (!declRes.success) throw new Error("Declare turup failed");
+
+			state = declRes.state;
 
 			let maxSafetyMoves = 300;
-			while (!game.isFinished && maxSafetyMoves > 0) {
+			while (!isFinished(state) && maxSafetyMoves > 0) {
 				maxSafetyMoves--;
 
-				const turnP = game.currentPlayer;
+				const turnP = getCurrentPlayer(state);
 				if (!turnP) break;
 
-				const legalMoves = game.getLegalMoves(turnP.id);
+				const legalMoves = getLegalMoves(state, turnP.position);
 				expect(legalMoves.length).toBeGreaterThan(0);
 
 				const move = legalMoves[0];
 				if (!move) break;
 
-				const playRes = game.playCard({
+				const playRes = playCard(state, {
 					playerPosition: turnP.position,
 					card: move.card,
 				});
 				expect(playRes.success).toBe(true);
+				if (!playRes.success) break;
+
+				state = playRes.state;
 			}
 
-			expect(game.isFinished).toBe(true);
+			expect(isFinished(state)).toBe(true);
 			completedCount++;
 		}
 

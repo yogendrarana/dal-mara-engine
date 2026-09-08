@@ -1,7 +1,6 @@
 import { parseCard } from "../card";
 import { createValidationError } from "../errors";
 import { ENGINE_ERROR_CODES, GAME_MODES } from "../const";
-import type { EventDispatcher } from "../../events/dispatcher";
 import type { GameState, PickupTurupCardAction, ValidationResult } from "../../types/index";
 
 // Validation
@@ -18,12 +17,12 @@ export function validatePickupTurup({ state, action }: { state: GameState; actio
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Player not found");
 	}
 
-	const stacks = state.stacks2P[player.id];
-	if (!stacks) {
+	const playerStacks = state.stacks[player.id];
+	if (!playerStacks) {
 		return createValidationError(ENGINE_ERROR_CODES.STACK_NOT_FOUND, "Player stacks not found");
 	}
 
-	const targetStack = stacks.find((s) => s.faceUpCard === card);
+	const targetStack = playerStacks.find((s) => s.faceUpCard === card);
 
 	if (!targetStack) {
 		return createValidationError(ENGINE_ERROR_CODES.STACK_NOT_FOUND, "Target stack not found");
@@ -47,7 +46,7 @@ export function reducePickupTurup2P(state: GameState, action: PickupTurupCardAct
 	if (!player) return state;
 	const playerId = player.id;
 
-	const playerStacks = state.stacks2P[playerId];
+	const playerStacks = state.stacks[playerId];
 	if (!playerStacks) return state;
 
 	const targetStack = playerStacks.find((s) => s.faceUpCard === card && parseCard(s.faceUpCard).suit === state.game.turup);
@@ -77,21 +76,9 @@ export function reducePickupTurup2P(state: GameState, action: PickupTurupCardAct
 			...state.hands,
 			[playerId]: newHand,
 		},
-		stacks2P: {
-			...state.stacks2P,
+		stacks: {
+			...state.stacks,
 			[playerId]: newPlayerStacks,
 		},
 	};
-}
-
-// Event Emission
-
-export function emitPickupTurupEvents(_options?: {
-	prevState?: GameState;
-	state?: GameState;
-	nextState?: GameState;
-	action?: PickupTurupCardAction;
-	emitter?: EventDispatcher;
-}): void {
-	// No events emitted for pickup turup card
 }

@@ -1,4 +1,4 @@
-import type { Card, Player, PlayerStack2P, ScoreState } from "../../types/index";
+import type { Card, Player, PlayerStack, ScoreState } from "../../types/index";
 import { createInitialScoreState } from "./scoring";
 
 export interface GameWinnerResult2P {
@@ -9,17 +9,17 @@ export interface GameWinnerResult2P {
 export function isGameFinished2P(options: {
 	totalTricksPlayed: number;
 	hands?: Record<string, readonly Card[]>;
-	stacks2P?: Record<string, readonly PlayerStack2P[]>;
+	stacks?: Record<string, readonly PlayerStack[]>;
 }): boolean {
-	const { totalTricksPlayed, hands, stacks2P } = options;
+	const { totalTricksPlayed, hands, stacks } = options;
 
 	if (totalTricksPlayed >= 26) {
 		return true;
 	}
 
-	if (hands && stacks2P) {
+	if (hands && stacks) {
 		const handsEmpty = Object.values(hands).every((h) => h.length === 0);
-		const stacksEmpty = Object.values(stacks2P).every((playerStacks) =>
+		const stacksEmpty = Object.values(stacks).every((playerStacks) =>
 			playerStacks.every((s) => !s.faceUpCard && s.hiddenCards.length === 0),
 		);
 

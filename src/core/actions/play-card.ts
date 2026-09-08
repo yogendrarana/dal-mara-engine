@@ -1,11 +1,9 @@
 import { parseCard } from "../card";
 import { getCurrentTurnPlayer } from "../turn";
 import { createValidationError } from "../errors";
-import type { EventDispatcher } from "../../events/dispatcher";
 import { ENGINE_ERROR_CODES, GAME_MODES, GAME_PHASES } from "../const";
 import { validateFollowSuit, resolve4PTrickWinner } from "../rules/four-player";
 import { validate2PFollowSuit, resolve2PTrickWinner } from "../rules/two-player";
-import { createInitialScoreState, isGameFinished4P, isGameFinished2P, updateScoreOnTrickWon } from "../scoring/scoring";
 import type { Card, GameState, PlayCardAction, PlayedCard, PlayerPosition, Trick, ValidationResult } from "../../types/index";
 
 // Validation
@@ -33,7 +31,7 @@ export function validatePlayCard({ state, action }: { state: GameState; action: 
 
 	const playerId = player.id;
 	const hand = state.hands[playerId] ?? [];
-	const stacks = state.stacks2P[playerId] ?? [];
+	const stacks = state.stacks[playerId] ?? [];
 
 	let cardToPlay: Card | null = null;
 
@@ -144,8 +142,7 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 	}
 
 	const makesTurup = newTurup !== state.game.turup && newTurup === cardSuit;
-	const isTurup = newTurup !== null && cardSuit === newTurup;
-	const newPlayNumber = state.play.number + 1;
+	const newMoveNumber = state.moveNumber + 1;
 
 	const updatedTrickCards = [...state.trick.cards, playedCardItem];
 	const isTrickComplete = updatedTrickCards.length === 4;
@@ -154,11 +151,8 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 		number: state.trick.number,
 		playNumber: updatedTrickCards.length,
 		leadSuit: currentTrickLeadSuit,
-		leaderPosition: state.trick.leaderPosition,
 		isGhopte: false,
 		cards: updatedTrickCards,
-		nextLeaderPosition: null,
-		winnerPosition: null,
 	};
 
 	// if trick is completed
@@ -172,32 +166,10 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 		if (!winnerPlayer) return state;
 		const winnerPos = winnerPlayer.position;
 
-		const completedTrick: Trick = {
-			...currentTrickSnapshot,
-			playNumber: 4,
-			winnerPosition: winnerPos,
-			nextLeaderPosition: winnerPos,
-		};
+		// Check if game is finished (all hands empty after this play)
+		const allHandsEmpty = Object.values(updatedHands).every((h) => h.length === 0);
 
-		const currentScore = state.scoring.scores[winnerId] ?? createInitialScoreState();
-		const updatedScore = updateScoreOnTrickWon({
-			currentScore,
-			trick: completedTrick,
-		});
-
-		const updatedScores = {
-			...state.scoring.scores,
-			[winnerId]: updatedScore,
-		};
-
-		const totalTricksPlayed = Object.values(updatedScores).reduce((sum, s) => sum + s.capturedTricksCount, 0);
-
-		const finished = isGameFinished4P({
-			totalTricksPlayed,
-			hands: updatedHands,
-		});
-
-		if (finished) {
+		if (allHandsEmpty) {
 			return {
 				...state,
 				game: {
@@ -206,18 +178,20 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 					turup: newTurup,
 				},
 				hands: updatedHands,
-				play: {
-					number: newPlayNumber,
+				moveNumber: newMoveNumber,
+				moveDetail: {
+					playerPosition: playerPos,
 					card: playedCardObj,
-					playerPosition: null,
-					isGhopte: false,
-					isTurup,
 					makesTurup,
 				},
-				scoring: {
-					scores: updatedScores,
+				trick: {
+					number: state.trick.number,
+					playNumber: 4,
+					leadSuit: currentTrickLeadSuit,
+					isGhopte: false,
+					cards: [],
 				},
-				trick: completedTrick,
+				nextMovePlayerPosition: winnerPos,
 			};
 		}
 
@@ -228,27 +202,20 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 				turup: newTurup,
 			},
 			hands: updatedHands,
-			play: {
-				number: newPlayNumber,
+			moveNumber: newMoveNumber,
+			moveDetail: {
+				playerPosition: playerPos,
 				card: playedCardObj,
-				playerPosition: winnerPos,
-				isGhopte: false,
-				isTurup,
 				makesTurup,
 			},
-			scoring: {
-				scores: updatedScores,
-			},
 			trick: {
-				number: Math.min(totalTricksPlayed + 1, 13),
-				playNumber: 1,
+				number: state.trick.number + 1,
+				playNumber: 0,
 				leadSuit: null,
-				leaderPosition: winnerPos,
 				isGhopte: false,
 				cards: [],
-				nextLeaderPosition: null,
-				winnerPosition: null,
 			},
+			nextMovePlayerPosition: winnerPos,
 		};
 	}
 
@@ -262,18 +229,14 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 			turup: newTurup,
 		},
 		hands: updatedHands,
-		play: {
-			number: newPlayNumber,
+		moveNumber: newMoveNumber,
+		moveDetail: {
+			playerPosition: playerPos,
 			card: playedCardObj,
-			playerPosition: nextPos,
-			isGhopte: false,
-			isTurup,
 			makesTurup,
 		},
-		trick: {
-			...currentTrickSnapshot,
-			playNumber: updatedTrickCards.length + 1,
-		},
+		trick: currentTrickSnapshot,
+		nextMovePlayerPosition: nextPos,
 	};
 }
 
@@ -289,7 +252,7 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 
 	let playedCardObj: Card | null = null;
 	const updatedHands = { ...state.hands };
-	const updatedStacks = { ...state.stacks2P };
+	const updatedStacks = { ...state.stacks };
 	const playerStacks = [...(updatedStacks[playerId] ?? [])];
 
 	// 1. Play from stack if card belongs to stack
@@ -334,8 +297,7 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 	const isLead = state.trick.cards.length === 0;
 	const currentTrickLeadSuit = isLead ? cardSuit : state.trick.leadSuit;
 
-	const isTurup = state.game.turup !== null && cardSuit === state.game.turup;
-	const newPlayNumber = state.play.number + 1;
+	const newMoveNumber = state.moveNumber + 1;
 
 	const currentTrickCards = [...state.trick.cards, playedCardItem];
 	const isTrickComplete = currentTrickCards.length === 2;
@@ -344,11 +306,8 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 		number: state.trick.number,
 		playNumber: currentTrickCards.length,
 		leadSuit: currentTrickLeadSuit,
-		leaderPosition: state.trick.leaderPosition,
 		isGhopte: false,
 		cards: currentTrickCards,
-		nextLeaderPosition: null,
-		winnerPosition: null,
 	};
 
 	if (isTrickComplete) {
@@ -361,31 +320,12 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 		if (!winnerPlayer) return state;
 		const winnerPos = winnerPlayer.position;
 
-		const completedTrick: Trick = {
-			...currentTrickSnapshot,
-			playNumber: 2,
-			winnerPosition: winnerPos,
-			nextLeaderPosition: winnerPos,
-		};
-
-		const currentScore = state.scoring.scores[winnerId] ?? createInitialScoreState();
-		const updatedScore = updateScoreOnTrickWon({
-			currentScore,
-			trick: completedTrick,
-		});
-
-		const updatedScores = {
-			...state.scoring.scores,
-			[winnerId]: updatedScore,
-		};
-
-		const totalTricksPlayed = Object.values(updatedScores).reduce((sum, s) => sum + s.capturedTricksCount, 0);
-
-		const finished = isGameFinished2P({
-			totalTricksPlayed,
-			hands: updatedHands,
-			stacks2P: updatedStacks,
-		});
+		// Check if game is finished
+		const allHandsEmpty = Object.values(updatedHands).every((h) => h.length === 0);
+		const allStacksEmpty = Object.values(updatedStacks).every((pStacks) =>
+			pStacks.every((s) => !s.faceUpCard && s.hiddenCards.length === 0),
+		);
+		const finished = allHandsEmpty && allStacksEmpty;
 
 		if (finished) {
 			return {
@@ -395,47 +335,42 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 					phase: GAME_PHASES.END,
 				},
 				hands: updatedHands,
-				stacks2P: updatedStacks,
-				play: {
-					number: newPlayNumber,
+				stacks: updatedStacks,
+				moveNumber: newMoveNumber,
+				moveDetail: {
+					playerPosition: playerPos,
 					card: playedCardObj,
-					playerPosition: null,
-					isGhopte: false,
-					isTurup,
 					makesTurup: false,
 				},
-				scoring: {
-					scores: updatedScores,
+				trick: {
+					number: state.trick.number,
+					playNumber: 2,
+					leadSuit: currentTrickLeadSuit,
+					isGhopte: false,
+					cards: [],
 				},
-				trick: completedTrick,
+				nextMovePlayerPosition: winnerPos,
 			};
 		}
 
 		return {
 			...state,
 			hands: updatedHands,
-			stacks2P: updatedStacks,
-			play: {
-				number: newPlayNumber,
+			stacks: updatedStacks,
+			moveNumber: newMoveNumber,
+			moveDetail: {
+				playerPosition: playerPos,
 				card: playedCardObj,
-				playerPosition: winnerPos,
-				isGhopte: false,
-				isTurup,
 				makesTurup: false,
 			},
-			scoring: {
-				scores: updatedScores,
-			},
 			trick: {
-				number: Math.min(totalTricksPlayed + 1, 26),
-				playNumber: 1,
+				number: state.trick.number + 1,
+				playNumber: 0,
 				leadSuit: null,
-				leaderPosition: winnerPos,
 				isGhopte: false,
 				cards: [],
-				nextLeaderPosition: null,
-				winnerPosition: null,
 			},
+			nextMovePlayerPosition: winnerPos,
 		};
 	}
 
@@ -445,71 +380,14 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 	return {
 		...state,
 		hands: updatedHands,
-		stacks2P: updatedStacks,
-		play: {
-			number: newPlayNumber,
+		stacks: updatedStacks,
+		moveNumber: newMoveNumber,
+		moveDetail: {
+			playerPosition: playerPos,
 			card: playedCardObj,
-			playerPosition: nextPos,
-			isGhopte: false,
-			isTurup,
 			makesTurup: false,
 		},
-		trick: {
-			...currentTrickSnapshot,
-			playNumber: currentTrickCards.length + 1,
-		},
+		trick: currentTrickSnapshot,
+		nextMovePlayerPosition: nextPos,
 	};
-}
-
-// Event Emission
-
-export function emitPlayCardEvents({
-	prevState,
-	state,
-	nextState,
-	action,
-	emitter,
-	winnerTeam = null,
-}: {
-	prevState?: GameState;
-	state?: GameState;
-	nextState: GameState;
-	action: PlayCardAction;
-	emitter: EventDispatcher;
-	winnerTeam?: string | null;
-}): void {
-	const prev = prevState ?? state ?? nextState;
-	const player = nextState.players.find((p) => p.position === action.payload.playerPosition);
-	emitter.emit("CardPlayed", {
-		playerId: player?.id,
-		playerPosition: action.payload.playerPosition,
-		card: action.payload.card,
-	});
-
-	if (prev.game.turup !== nextState.game.turup && nextState.game.turup) {
-		if (!prev.game.turup) {
-			emitter.emit("TurupCreated", {
-				suit: nextState.game.turup,
-			});
-		} else {
-			emitter.emit("TurupChanged", {
-				oldSuit: prev.game.turup,
-				newSuit: nextState.game.turup,
-			});
-		}
-	}
-
-	if (nextState.game.phase === GAME_PHASES.END) {
-		emitter.emit("GameFinished", {
-			winnerTeam,
-			scores: nextState.scoring.scores,
-		});
-	} else {
-		const currentPlayer = getCurrentTurnPlayer(nextState);
-		if (currentPlayer) {
-			emitter.emit("TurnStarted", {
-				playerId: currentPlayer.id,
-			});
-		}
-	}
 }

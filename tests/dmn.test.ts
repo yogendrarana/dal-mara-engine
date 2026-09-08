@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { createDeck, fromDMN, Game, importFromDMN, toDMN } from "../src";
+import { createDeck, createGame, deal, playCard, declareTurup, parseDMN, serializeDMN, getLegalMoves, getCurrentPlayer } from "../src";
+import type { GameState } from "../src";
 
 const deck = createDeck();
 
-const make4PGame = () =>
-	Game.create({
-		id: "dmn-test",
-		mode: "4P",
+const make4PGame = () => {
+	const result = createGame({
+		mode: "4p",
 		dealerPosition: 0,
 		players: [
 			{ id: "p1", name: "Alice", position: 0, team: "red" },
@@ -14,337 +14,281 @@ const make4PGame = () =>
 			{ id: "p3", name: "Charlie", position: 2, team: "red" },
 			{ id: "p4", name: "Dave", position: 3, team: "blue" },
 		],
-	}) as Game;
+	});
+	if (!result.success) throw new Error("Failed to create game");
+	return result;
+};
 
-describe("Dal Mara Notation (DMN) - DMN1 Snapshot Format", () => {
-	it("should export initial state with all 6 sections", () => {
-		const game = make4PGame();
-		game.deal({ deck, playerPosition: 0 });
+describe("Dal Mara Notation (DMN) - Pipe-Separated Format", () => {
+	it("should produce initial DMN immediately on game creation (pre-deal)", () => {
+		const result = make4PGame();
+		expect(result.success).toBe(true);
+		expect(result.dmn).toBeDefined();
+		expect(typeof result.dmn).toBe("string");
 
-		const dmn = game.toDMN();
+		// Should have 8 pipe-separated sections
+		const sections = result.dmn.split(" | ");
+		expect(sections.length).toBe(8);
 
-		// Version prefix
-		expect(dmn.startsWith("DMN1 ")).toBe(true);
+		// Game section
+		expect(sections[0]).toBe("4p,0,-");
 
-		// All 6 sections present
-		expect(dmn).toContain("G:");
-		expect(dmn).toContain("H:");
-		expect(dmn).toContain("S:-");
-		expect(dmn).toContain("M:");
-		expect(dmn).toContain("T:");
-		expect(dmn).toContain("C:");
-
-		// H section uses owner-based P0[...],P1[...] format
-		expect(dmn).toMatch(/H:P0\[.*\],P1\[.*\],P2\[.*\],P3\[.*\]/);
-
-		// toDMN utility produces the same output
-		expect(toDMN(game)).toBe(dmn);
+		// next_move_player_position = dealer (0) before deal
+		expect(sections[7]).toBe("0");
 	});
 
-	it("should encode game info in G section", () => {
-		const game = make4PGame();
-		game.deal({ deck, playerPosition: 0 });
+	it("should export DMN with all 8 sections after dealing", () => {
+		const { state: initState } = make4PGame();
+		const result = deal(initState, { deck, playerPosition: 0 });
+		if (!result.success) throw new Error("Deal failed");
 
-		const dmn = game.toDMN();
-		const parsed = importFromDMN(dmn);
+		const sections = result.dmn.split(" | ");
+		expect(sections.length).toBe(8);
 
-		expect(parsed.dmn.version).toBe("DMN1");
-		expect(parsed.dmn.mode).toBe("4P");
-		expect(parsed.dmn.dealerPosition).toBe(0);
-		// No trump declared yet
-		expect(parsed.dmn.trumpSuit).toBeNull();
+		// Game section: 4p mode, dealer 0, no turup yet
+		expect(sections[0]).toBe("4p,0,-");
+
+		// Move number = 0
+		expect(sections[4]).toBe("0");
+
+		// Move detail: no move yet
+		expect(sections[6]).toBe("-,-,-");
 	});
 
-	it("should encode all 52 cards across player hands in H section", () => {
-		const game = make4PGame();
-		game.deal({ deck, playerPosition: 0 });
+	it("should encode hands as slash-separated player segments", () => {
+		const { state: initState } = make4PGame();
+		const result = deal(initState, { deck, playerPosition: 0 });
+		if (!result.success) throw new Error("Deal failed");
 
-		const parsed = importFromDMN(game.toDMN());
+		const sections = result.dmn.split(" | ");
+		const handsSection = sections[2];
+		const handSegments = handsSection.split("/");
 
-		// Each player should have 13 cards
-		const h = parsed.dmn.hands;
-		expect(h["P0"]?.length).toBe(13);
-		expect(h["P1"]?.length).toBe(13);
-		expect(h["P2"]?.length).toBe(13);
-		expect(h["P3"]?.length).toBe(13);
+		// 4 players = 4 segments
+		expect(handSegments.length).toBe(4);
 
-		// Total = 52
-		const total = Object.values(h).reduce((sum, cards) => sum + cards.length, 0);
-		expect(total).toBe(52);
+		// Each player has 13 cards
+		for (const segment of handSegments) {
+			const cards = segment.split(",");
+			expect(cards.length).toBe(13);
+		}
 	});
 
-	it("should encode initial move info as M:0,0,0", () => {
-		const game = make4PGame();
-		game.deal({ deck, playerPosition: 0 });
+	it("should use - for ghoptes in 2p mode", () => {
+		const result = createGame({
+			mode: "2p",
+			dealerPosition: 0,
+			players: [
+				{ id: "p1", name: "Alice", position: 0, team: "p1" },
+				{ id: "p2", name: "Bob", position: 1, team: "p2" },
+			],
+		});
+		if (!result.success) throw new Error("Failed");
 
-		const parsed = importFromDMN(game.toDMN());
-
-		expect(parsed.dmn.moveNumber).toBe(0);
-		expect(parsed.dmn.number).toBe(0);
-		expect(parsed.dmn.trickPlay).toBe(0);
+		const sections = result.dmn.split(" | ");
+		expect(sections[1]).toBe("-");
 	});
 
-	it("should encode empty trick cards in C section for initial state", () => {
-		const game = make4PGame();
-		game.deal({ deck, playerPosition: 0 });
+	it("should use - for stacks in 4p mode", () => {
+		const { state: initState } = make4PGame();
+		const result = deal(initState, { deck, playerPosition: 0 });
+		if (!result.success) throw new Error("Deal failed");
 
-		const parsed = importFromDMN(game.toDMN());
+		const sections = result.dmn.split(" | ");
+		expect(sections[3]).toBe("-");
+	});
 
-		expect(parsed.dmn.playedCard).toBeNull();
-		expect(parsed.dmn.playedBy).toBeNull();
-		expect(parsed.dmn.trickCards).toEqual([]);
+	it("should round-trip: serializeDMN → parseDMN → serializeDMN produces identical DMN", () => {
+		const { state: initState } = make4PGame();
+		const dealResult = deal(initState, { deck, playerPosition: 0 });
+		if (!dealResult.success) throw new Error("Deal failed");
+
+		// Play a few cards
+		let currentState = dealResult.state;
+		for (let i = 0; i < 4; i++) {
+			const player = getCurrentPlayer(currentState);
+			if (!player) break;
+			const moves = getLegalMoves(currentState, player.position);
+			const move = moves[0];
+			if (!move) break;
+
+			const playResult = playCard(currentState, { playerPosition: player.position, card: move.card });
+			if (!playResult.success) break;
+			currentState = playResult.state;
+		}
+
+		const dmn1 = serializeDMN(currentState);
+		const parsed = parseDMN(dmn1);
+		const dmn2 = serializeDMN(parsed);
+
+		expect(dmn2).toBe(dmn1);
 	});
 
 	it("should update DMN after playing a card", () => {
-		const game = make4PGame();
-		game.deal({ deck, playerPosition: 0 });
+		const { state: initState } = make4PGame();
+		const dealResult = deal(initState, { deck, playerPosition: 0 });
+		if (!dealResult.success) throw new Error("Deal failed");
 
-		const turnP = game.currentPlayer;
-		expect(turnP).not.toBeNull();
+		const turnPlayer = getCurrentPlayer(dealResult.state);
+		expect(turnPlayer).not.toBeNull();
 
-		const hand = game.state.hands[turnP!.id] ?? [];
+		const hand = dealResult.state.hands[turnPlayer!.id] ?? [];
 		const firstCard = hand[0]!;
-		game.playCard({ playerPosition: turnP!.position, card: firstCard });
+		const playResult = playCard(dealResult.state, { playerPosition: turnPlayer!.position, card: firstCard });
+		if (!playResult.success) throw new Error("Play failed");
 
-		const parsed = importFromDMN(game.toDMN());
+		const sections = playResult.dmn.split(" | ");
 
-		// M section: 1 card played, trick 1, 1 card in trick
-		expect(parsed.dmn.moveNumber).toBe(1);
-		expect(parsed.dmn.number).toBe(1);
-		expect(parsed.dmn.trickPlay).toBe(1);
+		// Move number = 1
+		expect(sections[4]).toBe("1");
 
-		// C section: the played card
-		expect(parsed.dmn.playedCard).toBe(firstCard);
-		expect(parsed.dmn.playedBy).toBe(turnP!.position);
-		expect(parsed.dmn.trickCards).toEqual([firstCard]);
+		// Trick section: trick 1, play 1
+		const trickParts = sections[5].split(",");
+		expect(trickParts[0]).toBe("1"); // trick number
+		expect(trickParts[1]).toBe("1"); // play number
 
-		// H section: hand shrank by 1
-		const handAfter = parsed.dmn.hands[`P${turnP!.position}`] ?? [];
+		// Move detail: player position, card, no turup
+		const moveDetailParts = sections[6].split(",");
+		expect(moveDetailParts[0]).toBe(String(turnPlayer!.position));
+		expect(moveDetailParts[1]).toBe(firstCard);
+		expect(moveDetailParts[2]).toBe("-");
+
+		// Hand shrank by 1
+		const parsed = parseDMN(playResult.dmn);
+		const handAfter = parsed.hands[turnPlayer!.id] ?? [];
 		expect(handAfter.length).toBe(12);
 		expect(handAfter).not.toContain(firstCard);
 	});
 
-	it("should round-trip: export → import → export produces identical DMN", () => {
-		const game = make4PGame();
-		game.deal({ deck, playerPosition: 0 });
+	it("should handle 2p mode with stacks and turup", () => {
+		const result = createGame({
+			mode: "2p",
+			dealerPosition: 0,
+			players: [
+				{ id: "p1", name: "Alice", position: 0, team: "p1" },
+				{ id: "p2", name: "Bob", position: 1, team: "p2" },
+			],
+		});
+		if (!result.success) throw new Error("Failed");
 
-		// Play a few cards
-		for (let i = 0; i < 4; i++) {
-			if (game.isFinished) break;
-			const turnP = game.currentPlayer;
-			if (!turnP) break;
-			const moves = game.getLegalMoves(turnP.id);
-			const move = moves[0];
-			if (move) {
-				game.playCard({ playerPosition: turnP.position, card: move.card });
-			}
+		const dealResult = deal(result.state, { deck, playerPosition: 0 });
+		if (!dealResult.success) throw new Error("Deal failed");
+
+		const currP = getCurrentPlayer(dealResult.state);
+		expect(currP).not.toBeNull();
+
+		const turupResult = declareTurup(dealResult.state, { playerPosition: currP!.position, suit: "hearts" });
+		if (!turupResult.success) throw new Error("Turup failed");
+
+		const sections = turupResult.dmn.split(" | ");
+
+		// Game section has turup
+		expect(sections[0]).toContain(",h");
+
+		// Ghoptes = -
+		expect(sections[1]).toBe("-");
+
+		// Hands section has 2 segments
+		const handSegments = sections[2].split("/");
+		expect(handSegments.length).toBe(2);
+		for (const segment of handSegments) {
+			const cards = segment.split(",");
+			expect(cards.length).toBe(6);
 		}
 
-		const dmn1 = game.toDMN();
-		const restored = fromDMN(dmn1) as Game;
-		const dmn2 = restored.toDMN();
+		// Stacks section has 8 slots
+		const stackSlots = sections[3].split("/");
+		expect(stackSlots.length).toBe(8);
 
+		// Each stack should have 5 cards (4 hidden + 1 face-up)
+		for (const slot of stackSlots) {
+			expect(slot).not.toBe("-");
+			const cards = slot.split(",");
+			expect(cards.length).toBe(5);
+		}
+
+		// Round-trip 2P
+		const dmn1 = turupResult.dmn;
+		const parsed = parseDMN(dmn1);
+		const dmn2 = serializeDMN(parsed);
 		expect(dmn2).toBe(dmn1);
 	});
 
-	it("should reconstruct a playable Game from DMN with correct hands", () => {
-		const game = make4PGame();
-		game.deal({ deck, playerPosition: 0 });
+	it("should encode trick cards in DMN with player position format", () => {
+		const { state: initState } = make4PGame();
+		const dealResult = deal(initState, { deck, playerPosition: 0 });
+		if (!dealResult.success) throw new Error("Deal failed");
 
-		// Play one card
-		const turnP = game.currentPlayer!;
-		const hand = game.state.hands[turnP.id] ?? [];
-		const firstCard = hand[0]!;
-		game.playCard({ playerPosition: turnP.position, card: firstCard });
+		const player = getCurrentPlayer(dealResult.state);
+		if (!player) throw new Error("No current player");
 
-		const dmn = game.toDMN();
-		const restored = fromDMN(dmn) as Game;
+		const hand = dealResult.state.hands[player.id] ?? [];
+		const playResult = playCard(dealResult.state, { playerPosition: player.position, card: hand[0]! });
+		if (!playResult.success) throw new Error("Play failed");
 
-		// Mode and phase match
-		expect(restored.mode).toBe(game.mode);
-		expect(restored.phase).toBe(game.phase);
+		const sections = playResult.dmn.split(" | ");
+		const trickParts = sections[5].split(",");
 
-		// Hands match
-		expect(restored.state.hands).toEqual(game.state.hands);
-
-		// Current trick matches
-		expect(restored.currentTrick.cards.length).toBe(game.currentTrick.cards.length);
-		expect(restored.currentTurup).toBe(game.currentTurup);
-
-		// Game.fromDMN also works
-		const restoredStatic = Game.fromDMN(dmn) as Game;
-		expect(restoredStatic.mode).toBe(game.mode);
-		expect(restoredStatic.state.hands).toEqual(game.state.hands);
+		// Trick cards (5th element onwards): format is <pos>:<card>
+		const trickCardsPart = trickParts.slice(4).join(",");
+		expect(trickCardsPart).toContain(":");
+		expect(trickCardsPart).toContain(String(player.position));
 	});
 
-	it("should handle 2-Player game DMN with hands and stacks", () => {
-		const game = Game.create({
-			id: "dmn-2p",
-			mode: "2P",
-			dealerPosition: 0,
-			players: [
-				{ id: "p1", name: "Alice", position: 0, team: "p1" },
-				{ id: "p2", name: "Bob", position: 1, team: "p2" },
-			],
-		}) as Game;
-		game.deal({ deck, playerPosition: 0 });
+	it("should encode and decode ghoptes in position-grouped format", () => {
+		// Craft a DMN string with ghoptes to test parsing
+		const dmnWithGhopte =
+			"4p,0,- | -/Kh,1,-:7s,1,-/Qd,2,-/- | As,Qh,10d,2c,3h,4d,5c,6h,7d,8c,9h,Jd,Qc/2s,3s,4s,5s,6s,7s,8s,9s,Js,Qs,Ks,As,2h/2d,3d,4d,5d,6d,7d,8d,9d,Jd,Qd,Kd,Ad,3c/4c,5c,6c,7c,8c,9c,Jc,Qc,Kc,Ac,4h,5h,6h | - | 0 | 1,0,s,g,- | -,-,- | 1";
+		const parsed = parseDMN(dmnWithGhopte);
 
-		const currP = game.currentPlayer;
-		if (currP) {
-			game.declareTurup({ playerPosition: currP.position, suit: "hearts" });
-		}
+		expect(parsed.ghoptes).toHaveLength(3);
 
-		const dmn = game.toDMN();
-		expect(dmn.startsWith("DMN1 G:2P,")).toBe(true);
+		// Player 0: no ghoptes
+		expect(parsed.ghoptes.filter((g) => g.playerPosition === 0)).toHaveLength(0);
 
-		// H section should have P0[...] and P1[...]
-		expect(dmn).toMatch(/H:P0\[.*\],P1\[.*\]/);
+		// Player 1: 2 ghoptes with order 1
+		const p1Ghoptes = parsed.ghoptes.filter((g) => g.playerPosition === 1);
+		expect(p1Ghoptes).toHaveLength(2);
+		expect(p1Ghoptes[0]?.card).toBe("Kh");
+		expect(p1Ghoptes[0]?.order).toBe(1);
+		expect(p1Ghoptes[0]?.resolved).toBe(false);
+		expect(p1Ghoptes[1]?.card).toBe("7s");
 
-		// S section should have P0[S0[...|...],...],P1[S0[...|...],...]
-		expect(dmn).toMatch(
-			/S:P0\[S0\[.*\|.*\],S1\[.*\|.*\],S2\[.*\|.*\],S3\[.*\|.*\]\],P1\[S0\[.*\|.*\],S1\[.*\|.*\],S2\[.*\|.*\],S3\[.*\|.*\]\]/,
-		);
+		// Player 2: 1 ghopte with order 2
+		const p2Ghoptes = parsed.ghoptes.filter((g) => g.playerPosition === 2);
+		expect(p2Ghoptes).toHaveLength(1);
+		expect(p2Ghoptes[0]?.card).toBe("Qd");
+		expect(p2Ghoptes[0]?.order).toBe(2);
 
-		const parsed = importFromDMN(dmn);
-		expect(parsed.dmn.mode).toBe("2P");
-		expect(parsed.dmn.trumpSuit).toBe("hearts");
+		// Player 3: no ghoptes
+		expect(parsed.ghoptes.filter((g) => g.playerPosition === 3)).toHaveLength(0);
 
-		// Hands should have 6 cards each
-		expect(parsed.dmn.hands["P0"]?.length).toBe(6);
-		expect(parsed.dmn.hands["P1"]?.length).toBe(6);
-
-		// Stacks should be populated for both players
-		expect(parsed.dmn.stacks2P).toBeDefined();
-		const p1Stacks = parsed.dmn.stacks2P?.p1;
-		const p2Stacks = parsed.dmn.stacks2P?.p2;
-		expect(p1Stacks?.length).toBe(4);
-		expect(p2Stacks?.length).toBe(4);
-
-		// Each stack should have 4 hidden cards and 1 face-up card initially
-		for (let s = 0; s < 4; s++) {
-			expect(p1Stacks?.[s]?.position).toBe(s);
-			expect(p1Stacks?.[s]?.hiddenCards.length).toBe(4);
-			expect(p1Stacks?.[s]?.faceUpCard).toBeTruthy();
-
-			expect(p2Stacks?.[s]?.position).toBe(s);
-			expect(p2Stacks?.[s]?.hiddenCards.length).toBe(4);
-			expect(p2Stacks?.[s]?.faceUpCard).toBeTruthy();
-		}
-
-		// Reconstructed game matches
-		const restored = fromDMN(dmn) as Game;
-		expect(restored.mode).toBe("2P");
-		expect(restored.state.stacks2P.p1?.length).toBe(4);
-		expect(restored.state.stacks2P.p2?.length).toBe(4);
-		expect(restored.state.stacks2P).toEqual(game.state.stacks2P);
+		// Round-trip
+		const reserialized = serializeDMN(parsed);
+		const reparsed = parseDMN(reserialized);
+		expect(reparsed.ghoptes).toEqual(parsed.ghoptes);
 	});
 
-	it("should encode trump suit in G section after turup declaration", () => {
-		const game = Game.create({
-			id: "dmn-turup",
-			mode: "2P",
-			dealerPosition: 0,
-			players: [
-				{ id: "p1", name: "Alice", position: 0, team: "p1" },
-				{ id: "p2", name: "Bob", position: 1, team: "p2" },
-			],
-		}) as Game;
-		game.deal({ deck, playerPosition: 0 });
+	it("should always populate next_move_player_position", () => {
+		// At creation
+		const { dmn: initDmn, state: initState } = make4PGame();
+		const initSections = initDmn.split(" | ");
+		expect(initSections[7]).not.toBe("-");
+		expect(parseInt(initSections[7], 10)).toBeGreaterThanOrEqual(0);
 
-		const currP = game.currentPlayer;
-		if (currP) {
-			game.declareTurup({ playerPosition: currP.position, suit: "spades" });
-		}
+		// After deal
+		const dealResult = deal(initState, { deck, playerPosition: 0 });
+		if (!dealResult.success) throw new Error("Deal failed");
+		const dealSections = dealResult.dmn.split(" | ");
+		expect(dealSections[7]).not.toBe("-");
 
-		const parsed = importFromDMN(game.toDMN());
-		expect(parsed.dmn.trumpSuit).toBe("spades");
-
-		// G section should show 's' for spades
-		expect(game.toDMN()).toContain("G:2P,0,s");
-	});
-
-	it("should round-trip 2-Player DMN through export → import → export", () => {
-		const game = Game.create({
-			id: "dmn-2p-roundtrip",
-			mode: "2P",
-			dealerPosition: 0,
-			players: [
-				{ id: "p1", name: "Alice", position: 0, team: "p1" },
-				{ id: "p2", name: "Bob", position: 1, team: "p2" },
-			],
-		}) as Game;
-		game.deal({ deck, playerPosition: 0 });
-
-		const currP = game.currentPlayer!;
-		game.declareTurup({ playerPosition: currP.position, suit: "diamonds" });
-
-		const dmn1 = game.toDMN();
-		const restored = fromDMN(dmn1) as Game;
-		const dmn2 = restored.toDMN();
-
-		expect(dmn2).toBe(dmn1);
-	});
-
-	it("should reconstruct playable 2-Player game and allow playing from stack", () => {
-		const game = Game.create({
-			id: "dmn-2p-play",
-			mode: "2P",
-			dealerPosition: 0,
-			players: [
-				{ id: "p1", name: "Alice", position: 0, team: "p1" },
-				{ id: "p2", name: "Bob", position: 1, team: "p2" },
-			],
-		}) as Game;
-		game.deal({ deck, playerPosition: 0 });
-
-		const turnP = game.currentPlayer!;
-		game.declareTurup({ playerPosition: turnP.position, suit: "clubs" });
-
-		// Export after turup declaration
-		const dmnInitial = game.toDMN();
-		const restored = Game.fromDMN(dmnInitial) as Game;
-
-		// Turn player plays a legal card (which may come from stack)
-		const currentTurnPlayer = restored.currentPlayer!;
-		const moves = restored.getLegalMoves(currentTurnPlayer.id);
-		expect(moves.length).toBeGreaterThan(0);
-
-		// Find a stack move
-		const stackMove = moves.find((m) => m.stackPosition !== undefined);
-		expect(stackMove).toBeDefined();
-
-		if (stackMove) {
-			const playRes = restored.playCard({ playerPosition: currentTurnPlayer.position, card: stackMove.card });
-			expect(playRes.success).toBe(true);
-
-			const dmnAfterPlay = restored.toDMN();
-			const parsedAfterPlay = importFromDMN(dmnAfterPlay);
-
-			// Stack position that was played should now have 3 hidden cards and a new face-up card
-			const playerStacks = parsedAfterPlay.dmn.stacks2P?.[currentTurnPlayer.id];
-			const modifiedStack = playerStacks?.[stackMove.stackPosition!];
-			expect(modifiedStack?.hiddenCards.length).toBe(3);
-			expect(modifiedStack?.faceUpCard).toBeTruthy();
-			expect(modifiedStack?.faceUpCard).not.toBe(stackMove.card);
-		}
-	});
-
-	it("should correctly parse stacks with empty hidden cards and null face-up cards", () => {
-		const dmnString =
-			"DMN1 G:2P,0,h H:P0[],P1[] S:P0[S0[|10s],S1[|-],S2[2h,5d|-],S3[|]],P1[S0[|-],S1[|-],S2[|-],S3[|-]] M:52,13,2 T:0,0,0 C:10s,0,0,1,[10s,9s]";
-		const parsed = importFromDMN(dmnString);
-
-		const p0Stacks = parsed.dmn.stacks2P?.p1;
-		expect(p0Stacks?.[0]?.hiddenCards).toEqual([]);
-		expect(p0Stacks?.[0]?.faceUpCard).toBe("10s");
-
-		expect(p0Stacks?.[1]?.hiddenCards).toEqual([]);
-		expect(p0Stacks?.[1]?.faceUpCard).toBeNull();
-
-		expect(p0Stacks?.[2]?.hiddenCards).toEqual(["2h", "5d"]);
-		expect(p0Stacks?.[2]?.faceUpCard).toBeNull();
-
-		expect(p0Stacks?.[3]?.hiddenCards).toEqual([]);
-		expect(p0Stacks?.[3]?.faceUpCard).toBeNull();
+		// After play
+		const player = getCurrentPlayer(dealResult.state);
+		if (!player) throw new Error("No player");
+		const hand = dealResult.state.hands[player.id] ?? [];
+		const playResult = playCard(dealResult.state, { playerPosition: player.position, card: hand[0]! });
+		if (!playResult.success) throw new Error("Play failed");
+		const playSections = playResult.dmn.split(" | ");
+		expect(playSections[7]).not.toBe("-");
 	});
 });

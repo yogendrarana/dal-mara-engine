@@ -74,7 +74,7 @@ export function getLegalMoves2P(state: GameState, playerId: string): LegalPlayab
 	if (currentTurnPlayer?.id !== playerId) return [];
 
 	const hand = state.hands[playerId] ?? [];
-	const stacks = state.stacks2P[playerId] ?? [];
+	const stacks = state.stacks[playerId] ?? [];
 	const leadSuit = state.trick.leadSuit;
 
 	const availableCards: LegalPlayableCard[] = [];

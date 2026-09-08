@@ -1,378 +1,179 @@
 import { parseCard } from "./card";
+import { DalMaraError } from "./errors";
+import { createInitialScoreState } from "./scoring/scoring";
 
 import type {
 	Card,
+	Ghopte,
 	GameMode,
 	GamePhase,
 	GameState,
 	PlayedCard,
 	Player,
 	PlayerPosition,
-	PlayerStack2P,
+	PlayerStack,
 	Suit,
 	SuitAbbreviation,
 	Trick,
 	ScoreState,
-	ValidationResult,
 } from "../types/index";
 
-import { Game } from "./game";
-import { DalMaraError } from "./errors";
 import { ABBREVIATION_TO_SUIT, ENGINE_ERROR_CODES, GAME_MODES, GAME_PHASES, SUIT_ABBREVIATION } from "./const";
 
-// Dal Mara Notation (DMN) - Version 1
-//
-// DMN1 is a self-contained game state snapshot format.
-// Every DMN string contains enough information to reconstruct a full playable Game without any database lookup.
-//
-// Format:
-// DMN1 G:<GameInfo> H:<Hands> S:<Stacks> M:<MoveInfo> T:<TrickInfo> C:<CardInfo>
-//
-// Sections:
-//   G:<Mode>,<DealerPosition>,<TrumpSuit>
-//   H:P0[<Cards>],P1[<Cards>],P2[<Cards>],P3[<Cards>]  (4P)
-//   H:P0[<Cards>],P1[<Cards>]                          (2P)
-//   S:-                                                (4P)
-//   S:P0[S0[<Hidden>|<FaceUp>],...],P1[...]           (2P)
-//   M:<MoveNumber>,<TrickNumber>,<TrickPlay>
-//   T:<TrickLeader>,<NextTrickLeader>,<IsGhopte>
-//   C:<PlayedCard>,<PlayedBy>,<IsGhopte>,<IsTurup>,[<TrickCards>]
-//
-// Card format uses engine Card directly: 2s, 10h, Js, Qd, Ac
-// "-" represents no value / not applicable
-//
-// Game flow:
-//   1 initial DMN after dealing (moveNumber=0)
-//   1 DMN after every card play
-//   For a 52-card 4P game: 1 initial + 52 moves = 53 DMN snapshots
-//
-// Example (4P initial state after deal):
-//   DMN1 G:4P,0,- H:P0[2s,3s,...],P1[...],P2[...],P3[...] S:- M:0,0,0 T:1,-,0 C:-,-,0,0,[]
-//
-// Example (2P state with stacks):
-//   DMN1 G:2P,0,s H:P0[2s,6c,10h,As,Qd,Kh],P1[3s,7d,Jh,Qc,5h,9s] S:P0[S0[2h,5d,7c,Kh|10s],S1[4c,8s,6h,9d|Qs],S2[3d,8c,Jc,Ac|4h],S3[5s,7h,Kd,2c|Ad]],P1[S0[...|9c],S1[...|Jh],S2[...|Kd],S3[...|2d]] M:0,0,0 T:1,-,0 C:-,-,0,0,[]
-
-export interface DMNState {
-	readonly version: string;
-	// G section
-	readonly mode: GameMode;
-	readonly dealerPosition: PlayerPosition;
-	readonly trumpSuit: Suit | null;
-	// H section
-	readonly hands: Record<string, readonly Card[]>;
-	// S section
-	readonly stacks2P: Record<string, readonly PlayerStack2P[]> | null;
-	// M section
-	readonly moveNumber: number;
-	readonly number: number;
-	readonly trickPlay: number;
-	// T section
-	readonly trickLeader: number | null;
-	readonly nextTrickLeader: number | null;
-	readonly isGhopteTrick: boolean;
-	// C section
-	readonly playedCard: Card | null;
-	readonly playedBy: number | null;
-	readonly isGhopteCard: boolean;
-	readonly isTurup: boolean;
-	readonly trickCards: readonly Card[];
-}
-
 // ---------------------------------------------------------------------------
-// Card conversion helpers
+// Helpers
 // ---------------------------------------------------------------------------
 
-/** Convert a Card string to its DMN token representation */
-export function cardToDMN(card: Card | null): string {
-	return card ?? "-";
-}
-
-/** Convert a DMN token back to a Card string */
-export function dmnToCard(token: string): Card | null {
-	if (!token || token === "-") return null;
-	return token as Card;
-}
-
-function suitToDMN(suit: Suit | null): string {
+function suitToToken(suit: Suit | null): string {
 	if (!suit) return "-";
 	return SUIT_ABBREVIATION[suit];
 }
 
-function dmnToSuit(token: string): Suit | null {
+function tokenToSuit(token: string): Suit | null {
 	if (!token || token === "-") return null;
 	return ABBREVIATION_TO_SUIT[token as SuitAbbreviation] ?? null;
 }
 
 // ---------------------------------------------------------------------------
-// Export
+// Serialize DMN
 // ---------------------------------------------------------------------------
 
-export function exportToDMN(state: GameState): string {
-	const version = "DMN1";
+/**
+ * Serialize a GameState into the pipe-separated DMN string format.
+ *
+ * Format:
+ * <game> | <ghoptes> | <hands> | <stacks> | <move_number> | <trick> | <move_detail> | <next_move_player_position>
+ */
+export function serializeDMN(state: GameState): string {
 	const numPlayers = state.game.mode === GAME_MODES.FOUR_PLAYER ? 4 : 2;
 
-	// --- G section: Game info ---
-	const modeToken = state.game.mode === GAME_MODES.FOUR_PLAYER ? "4P" : "2P";
+	// --- Section 1: Game ---
+	const modeToken = state.game.mode;
 	const dealerPos = String(state.game.dealerPosition);
-	const trumpToken = suitToDMN(state.game.turup);
-	const gSection = `G:${modeToken},${dealerPos},${trumpToken}`;
+	const turupToken = suitToToken(state.game.turup);
+	const gameSection = `${modeToken},${dealerPos},${turupToken}`;
 
-	// --- H section: Player hands ---
+	// --- Section 2: Ghoptes ---
+	let ghoptesSection: string;
+	if (state.game.mode === GAME_MODES.TWO_PLAYER) {
+		ghoptesSection = "-";
+	} else {
+		const groups: string[] = [];
+		for (let pos = 0; pos < 4; pos++) {
+			const playerGhoptes = state.ghoptes.filter((g) => g.playerPosition === pos);
+			if (playerGhoptes.length === 0) {
+				groups.push("-");
+			} else {
+				const entries = playerGhoptes.map((g) => `${g.card},${g.order},${g.resolved ? "r" : "-"}`);
+				groups.push(entries.join(":"));
+			}
+		}
+		ghoptesSection = groups.join("/");
+	}
+
+	// --- Section 3: Hands ---
 	const handParts: string[] = [];
 	for (let i = 0; i < numPlayers; i++) {
 		const player = state.players.find((p) => p.position === i);
 		const hand = player ? (state.hands[player.id] ?? []) : [];
-		const cardIds = hand.join(",");
-		handParts.push(`P${i}[${cardIds}]`);
+		handParts.push(hand.join(",") || "");
 	}
-	const hSection = `H:${handParts.join(",")}`;
+	const handsSection = handParts.join("/");
 
-	// --- S section: Stacks ---
-	let sSection = "S:-";
-	if (state.game.mode === GAME_MODES.TWO_PLAYER) {
-		const playerStackParts: string[] = [];
-		for (let i = 0; i < 2; i++) {
-			const player = state.players.find((p) => p.position === i);
-			const stacks = player ? (state.stacks2P[player.id] ?? []) : [];
-			const stackTokens: string[] = [];
+	// --- Section 4: Stacks ---
+	let stacksSection: string;
+	if (state.game.mode === GAME_MODES.FOUR_PLAYER) {
+		stacksSection = "-";
+	} else {
+		const stackParts: string[] = [];
+		for (let playerIdx = 0; playerIdx < 2; playerIdx++) {
+			const player = state.players.find((p) => p.position === playerIdx);
+			const playerStacks = player ? (state.stacks[player.id] ?? []) : [];
 			for (let s = 0; s < 4; s++) {
-				const stack = stacks.find((st) => st.position === s);
-				const hiddenStr = stack ? stack.hiddenCards.join(",") : "";
-				const faceUpStr = stack?.faceUpCard ?? "-";
-				stackTokens.push(`S${s}[${hiddenStr}|${faceUpStr}]`);
+				const stack = playerStacks.find((st) => st.position === s);
+				if (!stack || (stack.hiddenCards.length === 0 && !stack.faceUpCard)) {
+					stackParts.push("-");
+				} else {
+					// Bottom-to-top: hidden cards then face-up card
+					const cards = [...stack.hiddenCards];
+					if (stack.faceUpCard) {
+						cards.push(stack.faceUpCard);
+					}
+					stackParts.push(cards.join(","));
+				}
 			}
-			playerStackParts.push(`P${i}[${stackTokens.join(",")}]`);
 		}
-		sSection = `S:${playerStackParts.join(",")}`;
+		stacksSection = stackParts.join("/");
 	}
 
-	// --- M section: Move info ---
-	// moveNumber = total cards played so far (computed from hands/stacks)
-	const totalCardsInHands = Object.values(state.hands).reduce((sum, h) => sum + h.length, 0);
-	const totalCardsInStacks = Object.values(state.stacks2P).reduce(
-		(sum, stacks) => sum + stacks.reduce((s, stack) => s + stack.hiddenCards.length + (stack.faceUpCard ? 1 : 0), 0),
-		0,
-	);
-	const totalUnplayed = totalCardsInHands + totalCardsInStacks;
-	const moveNumber = totalUnplayed > 0 && totalUnplayed < 52 ? 52 - totalUnplayed : 0;
+	// --- Section 5: Move Number ---
+	const moveNumberSection = String(state.moveNumber);
 
-	// number: 0 for initial state (no moves yet), else current trick number
-	const number = moveNumber === 0 ? 0 : state.trick.number;
-	const trickPlay = state.trick.cards.length;
+	// --- Section 6: Trick ---
+	const trickNumber = state.trick.number;
+	const playNumber = state.trick.playNumber;
+	const leadSuitToken = suitToToken(state.trick.leadSuit);
+	const ghopteFlag = state.trick.isGhopte ? "g" : "-";
 
-	const mSection = `M:${moveNumber},${number},${trickPlay}`;
+	let trickCardsToken: string;
+	if (state.trick.cards.length === 0) {
+		trickCardsToken = "-";
+	} else {
+		const cardEntries = state.trick.cards.map((pc) => {
+			const player = state.players.find((p) => p.id === pc.playerId);
+			const pos = player ? player.position : 0;
+			return `${pos}:${pc.card}`;
+		});
+		trickCardsToken = cardEntries.join("/");
+	}
+	const trickSection = `${trickNumber},${playNumber},${leadSuitToken},${ghopteFlag},${trickCardsToken}`;
 
-	// --- T section: Trick info ---
-	let trickLeaderToken = "-";
-	let nextTrickLeaderToken = "-";
-	const isGhopteTrickToken = state.game.phase === GAME_PHASES.GHOPTE ? "1" : "0";
-
-	if (state.trick.cards.length > 0) {
-		// Trick has cards — leader is trick leaderPosition
-		trickLeaderToken = String(state.trick.leaderPosition);
-	} else if (state.play.playerPosition !== null) {
-		// Empty trick — the current turn player will lead
-		trickLeaderToken = String(state.play.playerPosition);
+	// --- Section 7: Move Detail ---
+	let moveDetailSection: string;
+	if (state.moveDetail.playerPosition === null || state.moveDetail.card === null) {
+		moveDetailSection = "-,-,-";
+	} else {
+		const makesTurupToken = state.moveDetail.makesTurup ? "t" : "-";
+		moveDetailSection = `${state.moveDetail.playerPosition},${state.moveDetail.card},${makesTurupToken}`;
 	}
 
-	if (state.play.playerPosition !== null) {
-		nextTrickLeaderToken = String(state.play.playerPosition);
-	}
+	// --- Section 8: Next Move Player Position ---
+	const nextMoveSection = String(state.nextMovePlayerPosition);
 
-	const tSection = `T:${trickLeaderToken},${nextTrickLeaderToken},${isGhopteTrickToken}`;
-
-	// --- C section: Card info ---
-	let playedCardToken = "-";
-	let playedByToken = "-";
-	let isGhopteCardToken = "0";
-	let isTurupToken = "0";
-	let trickCardsToken = "[]";
-
-	const trickCards = state.trick.cards;
-	if (trickCards.length > 0) {
-		// Last played card in current trick
-		const lastPlay = trickCards[trickCards.length - 1];
-		if (lastPlay) {
-			playedCardToken = lastPlay.card;
-			const playedByPlayer = state.players.find((p) => p.id === lastPlay.playerId);
-			if (playedByPlayer) {
-				playedByToken = String(playedByPlayer.position);
-			}
-			isGhopteCardToken = state.game.phase === GAME_PHASES.GHOPTE ? "1" : "0";
-			isTurupToken = state.game.turup === parseCard(lastPlay.card).suit ? "1" : "0";
-		}
-		const cardList = trickCards.map((pc) => pc.card).join(",");
-		trickCardsToken = `[${cardList}]`;
-	}
-
-	const cSection = `C:${playedCardToken},${playedByToken},${isGhopteCardToken},${isTurupToken},${trickCardsToken}`;
-
-	return `${version} ${gSection} ${hSection} ${sSection} ${mSection} ${tSection} ${cSection}`;
-}
-
-export function toDMN(stateOrGame: GameState | Game): string {
-	if ("state" in stateOrGame && stateOrGame.state) {
-		return exportToDMN(stateOrGame.state);
-	}
-	return exportToDMN(stateOrGame as GameState);
+	return `${gameSection} | ${ghoptesSection} | ${handsSection} | ${stacksSection} | ${moveNumberSection} | ${trickSection} | ${moveDetailSection} | ${nextMoveSection}`;
 }
 
 // ---------------------------------------------------------------------------
-// Import / parsing helpers
+// Parse DMN
 // ---------------------------------------------------------------------------
 
-function parseSectionValue(sections: Map<string, string>, key: string): string {
-	const value = sections.get(key);
-	if (value === undefined) {
-		throw new DalMaraError(`Missing DMN section: ${key}`, ENGINE_ERROR_CODES.INVALID_ACTION);
-	}
-	return value;
-}
+/**
+ * Parse a pipe-separated DMN string into a GameState.
+ *
+ * Format:
+ * <game> | <ghoptes> | <hands> | <stacks> | <move_number> | <trick> | <move_detail> | <next_move_player_position>
+ */
+export function parseDMN(dmn: string): GameState {
+	const trimmed = dmn.trim();
+	const sections = trimmed.split(" | ");
 
-function parseHandsSection(hValue: string): Record<string, Card[]> {
-	const hands: Record<string, Card[]> = {};
-	const isLegacy = hValue.includes("[P");
-	const playerPattern = isLegacy ? /\[P(\d+):([^\]]*)\]/g : /P(\d+)\[([^\]]*)\]/g;
-	let match: RegExpExecArray | null;
-
-	match = playerPattern.exec(hValue);
-	while (match !== null) {
-		const position = match[1];
-		const cardsStr = match[2] ?? "";
-		const cards: Card[] = cardsStr ? (cardsStr.split(",").map((c) => c.trim()) as Card[]) : [];
-		hands[`P${position}`] = cards;
-		match = playerPattern.exec(hValue);
-	}
-
-	return hands;
-}
-
-function parseStacksSection(sValue: string): Record<string, PlayerStack2P[]> {
-	if (!sValue || sValue === "-") return {};
-	const result: Record<string, PlayerStack2P[]> = {};
-
-	const playerRegex = /P(\d+)\[/g;
-	let match = playerRegex.exec(sValue);
-
-	while (match !== null) {
-		const pPos = match[1];
-		const startIdx = match.index + match[0].length;
-		let depth = 1;
-		let endIdx = startIdx;
-		while (endIdx < sValue.length && depth > 0) {
-			if (sValue[endIdx] === "[") depth++;
-			else if (sValue[endIdx] === "]") depth--;
-			endIdx++;
-		}
-		const pContent = sValue.slice(startIdx, endIdx - 1);
-
-		const stackRegex = /S(\d+)\[([^|]*)\|([^\]]*)\]/g;
-		const stacks: PlayerStack2P[] = [];
-		let sMatch = stackRegex.exec(pContent);
-		while (sMatch !== null) {
-			const sPos = parseInt(sMatch[1], 10);
-			const hiddenRaw = sMatch[2]?.trim() ?? "";
-			const faceUpRaw = sMatch[3]?.trim() ?? "";
-			const hiddenCards: Card[] = hiddenRaw ? (hiddenRaw.split(",").map((c) => c.trim()) as Card[]) : [];
-			const faceUpCard: Card | null = faceUpRaw && faceUpRaw !== "-" ? (faceUpRaw as Card) : null;
-			stacks.push({
-				position: sPos,
-				hiddenCards,
-				faceUpCard,
-			});
-			sMatch = stackRegex.exec(pContent);
-		}
-		result[`P${pPos}`] = stacks;
-		match = playerRegex.exec(sValue);
-	}
-
-	return result;
-}
-
-function parseTrickCardsArray(token: string): Card[] {
-	const inner = token.slice(1, -1); // remove [ and ]
-	if (!inner) return [];
-	return inner.split(",").map((c) => c.trim()) as Card[];
-}
-
-export function importFromDMN(dmnString: string): Partial<GameState> & { dmn: DMNState } {
-	const parts = dmnString.trim().split(/\s+/);
-
-	if (parts.length < 6) {
+	if (sections.length !== 8) {
 		throw new DalMaraError(
-			`Invalid DMN string: expected at least 6 space-separated parts, received ${parts.length}`,
-			ENGINE_ERROR_CODES.INVALID_ACTION,
+			`Invalid DMN string: expected 8 pipe-separated sections, got ${sections.length}`,
+			ENGINE_ERROR_CODES.INVALID_DMN,
 		);
 	}
 
-	const version = parts[0];
-	if (version !== "DMN1") {
-		throw new DalMaraError(`Unsupported DMN version: ${version}`, ENGINE_ERROR_CODES.INVALID_ACTION);
+	const [gameRaw, ghoptesRaw, handsRaw, stacksRaw, moveNumberRaw, trickRaw, moveDetailRaw, nextMoveRaw] = sections;
+
+	// --- Section 1: Game ---
+	const gameParts = gameRaw.split(",");
+	if (gameParts.length !== 3) {
+		throw new DalMaraError("Invalid DMN game section", ENGINE_ERROR_CODES.INVALID_DMN);
 	}
-
-	// Parse keyed sections
-	const sections = new Map<string, string>();
-	for (let i = 1; i < parts.length; i++) {
-		const part = parts[i];
-		const colonIdx = part.indexOf(":");
-		if (colonIdx === -1) {
-			throw new DalMaraError(`Invalid DMN section (missing colon): ${part}`, ENGINE_ERROR_CODES.INVALID_ACTION);
-		}
-		const key = part.slice(0, colonIdx);
-		const value = part.slice(colonIdx + 1);
-		sections.set(key, value);
-	}
-
-	// --- G section ---
-	const gValue = parseSectionValue(sections, "G");
-	const gParts = gValue.split(",");
-	const mode: GameMode = gParts[0] === "2P" ? GAME_MODES.TWO_PLAYER : GAME_MODES.FOUR_PLAYER;
-	const dealerPosition = parseInt(gParts[1] ?? "0", 10) as PlayerPosition;
-	const trumpSuit = dmnToSuit(gParts[2] ?? "-");
-
-	// --- H section ---
-	const hValue = parseSectionValue(sections, "H");
-	const handsRaw = parseHandsSection(hValue);
-
-	// --- S section ---
-	const sValue = sections.get("S") ?? "-";
-	const stacksRaw = parseStacksSection(sValue);
-
-	// --- M section ---
-	const mValue = parseSectionValue(sections, "M");
-	const mParts = mValue.split(",");
-	const moveNumber = parseInt(mParts[0] ?? "0", 10);
-	const number = parseInt(mParts[1] ?? "0", 10);
-	const trickPlay = parseInt(mParts[2] ?? "0", 10);
-
-	// --- T section ---
-	const tValue = parseSectionValue(sections, "T");
-	const tParts = tValue.split(",");
-	const trickLeader = tParts[0] && tParts[0] !== "-" ? parseInt(tParts[0], 10) : null;
-	const nextTrickLeader = tParts[1] && tParts[1] !== "-" ? parseInt(tParts[1], 10) : null;
-	const isGhopteTrick = tParts[2] === "1";
-
-	// --- C section ---
-	const cValue = parseSectionValue(sections, "C");
-	// Format: <PlayedCard>,<PlayedBy>,<IsGhopte>,<IsTurup>,[<TrickCards>]
-	// Split at the first '[' to separate scalar fields from the trick cards array
-	const bracketIdx = cValue.indexOf("[");
-	let cFields: string[];
-	let trickCardsRaw: Card[] = [];
-
-	if (bracketIdx !== -1) {
-		const beforeBracket = cValue.slice(0, bracketIdx);
-		const trickCardsStr = cValue.slice(bracketIdx);
-		cFields = beforeBracket.split(",").filter((s) => s !== "");
-		trickCardsRaw = parseTrickCardsArray(trickCardsStr);
-	} else {
-		cFields = cValue.split(",");
-	}
-
-	const playedCardId: Card | null = cFields[0] && cFields[0] !== "-" ? (cFields[0] as Card) : null;
-	const playedByPosition = cFields[1] && cFields[1] !== "-" ? parseInt(cFields[1], 10) : null;
-	const isGhopteCard = cFields[2] === "1";
-	const isTurup = cFields[3] === "1";
+	const mode: GameMode = gameParts[0] === GAME_MODES.TWO_PLAYER ? GAME_MODES.TWO_PLAYER : GAME_MODES.FOUR_PLAYER;
+	const dealerPosition = parseInt(gameParts[1], 10) as PlayerPosition;
+	const turup = tokenToSuit(gameParts[2]);
 
 	// --- Construct players ---
 	const numPlayers = mode === GAME_MODES.FOUR_PLAYER ? 4 : 2;
@@ -386,162 +187,160 @@ export function importFromDMN(dmnString: string): Partial<GameState> & { dmn: DM
 		});
 	}
 
-	// --- Hands directly use Card[] ---
-	const hands: Record<string, readonly Card[]> = {};
-	for (let i = 0; i < numPlayers; i++) {
-		const playerId = `p${i + 1}`;
-		hands[playerId] = handsRaw[`P${i}`] ?? [];
-	}
+	// --- Section 2: Ghoptes ---
+	const ghoptes: Ghopte[] = [];
+	if (ghoptesRaw !== "-" && mode === GAME_MODES.FOUR_PLAYER) {
+		const playerGroups = ghoptesRaw.split("/");
+		for (let pos = 0; pos < playerGroups.length; pos++) {
+			const group = playerGroups[pos];
+			if (group === "-" || !group) continue;
 
-	// --- Stacks directly use PlayerStack2P[] ---
-	const stacks2P: Record<string, readonly PlayerStack2P[]> = {};
-	if (mode === GAME_MODES.TWO_PLAYER) {
-		for (let i = 0; i < numPlayers; i++) {
-			const playerId = `p${i + 1}`;
-			stacks2P[playerId] = stacksRaw[`P${i}`] ?? [];
+			const entries = group.split(":");
+			for (const entry of entries) {
+				const parts = entry.split(",");
+				if (parts.length !== 3) continue;
+
+				const card = parts[0] as Card;
+				const order = parseInt(parts[1], 10);
+				const resolved = parts[2] === "r";
+
+				ghoptes.push({
+					playerPosition: pos as PlayerPosition,
+					card,
+					order,
+					resolved,
+				});
+			}
 		}
 	}
 
-	const currentTurnPlayerId = nextTrickLeader !== null ? (players[nextTrickLeader]?.id ?? null) : null;
+	// --- Section 3: Hands ---
+	const hands: Record<string, readonly Card[]> = {};
+	const handSegments = handsRaw.split("/");
+	for (let i = 0; i < numPlayers; i++) {
+		const playerId = `p${i + 1}`;
+		const segment = handSegments[i] ?? "";
+		hands[playerId] = segment ? (segment.split(",") as Card[]) : [];
+	}
+
+	// --- Section 4: Stacks ---
+	const stacks: Record<string, readonly PlayerStack[]> = {};
+	if (stacksRaw !== "-" && mode === GAME_MODES.TWO_PLAYER) {
+		const stackSlots = stacksRaw.split("/");
+		// First 4 = player 0, next 4 = player 1
+		for (let playerIdx = 0; playerIdx < 2; playerIdx++) {
+			const playerId = `p${playerIdx + 1}`;
+			const playerStacks: PlayerStack[] = [];
+			for (let s = 0; s < 4; s++) {
+				const slotIdx = playerIdx * 4 + s;
+				const slotRaw = stackSlots[slotIdx] ?? "-";
+				if (slotRaw === "-") {
+					playerStacks.push({ position: s, hiddenCards: [], faceUpCard: null });
+				} else {
+					const cards = slotRaw.split(",") as Card[];
+					// Last card is face-up, rest are hidden (bottom-to-top)
+					if (cards.length === 0) {
+						playerStacks.push({ position: s, hiddenCards: [], faceUpCard: null });
+					} else {
+						const faceUpCard = cards[cards.length - 1] ?? null;
+						const hiddenCards = cards.slice(0, -1);
+						playerStacks.push({ position: s, hiddenCards, faceUpCard });
+					}
+				}
+			}
+			stacks[playerId] = playerStacks;
+		}
+	}
+
+	// --- Section 5: Move Number ---
+	const moveNumber = parseInt(moveNumberRaw, 10);
+
+	// --- Section 6: Trick ---
+	// Format: <trick_number>,<play_number>,<lead_suit>,<ghopte_flag>,<trick_cards>
+	const trickParts = trickRaw.split(",");
+	const trickNumber = parseInt(trickParts[0], 10);
+	const playNumber = parseInt(trickParts[1], 10);
+	const leadSuit = tokenToSuit(trickParts[2]);
+	const ghopteFlag = trickParts[3] === "g";
+
+	// Trick cards: everything after the 4th comma is the trick cards portion
+	// Format: <pos>:<card>/<pos>:<card>/...  or  -
+	const trickCardsPart = trickParts.slice(4).join(","); // rejoin in case card has no commas — but trick cards use / separator
+	const trickCards: PlayedCard[] = [];
+	if (trickCardsPart && trickCardsPart !== "-") {
+		const cardEntries = trickCardsPart.split("/");
+		for (let idx = 0; idx < cardEntries.length; idx++) {
+			const entry = cardEntries[idx];
+			const colonIdx = entry.indexOf(":");
+			if (colonIdx === -1) continue;
+			const pos = parseInt(entry.slice(0, colonIdx), 10);
+			const card = entry.slice(colonIdx + 1) as Card;
+			const player = players.find((p) => p.position === pos);
+			trickCards.push({
+				playerId: player?.id ?? `p${pos + 1}`,
+				card,
+				playOrder: idx + 1,
+			});
+		}
+	}
+
+	const trick: Trick = {
+		number: trickNumber,
+		playNumber,
+		leadSuit,
+		isGhopte: ghopteFlag,
+		cards: trickCards,
+	};
+
+	// --- Section 7: Move Detail ---
+	const moveDetailParts = moveDetailRaw.split(",");
+	const movePlayerPos = moveDetailParts[0] !== "-" ? (parseInt(moveDetailParts[0], 10) as PlayerPosition) : null;
+	const moveCard = moveDetailParts[1] !== "-" ? (moveDetailParts[1] as Card) : null;
+	const moveMakesTurup = moveDetailParts[2] === "t";
+
+	// --- Section 8: Next Move Player Position ---
+	const nextMovePlayerPosition = parseInt(nextMoveRaw, 10) as PlayerPosition;
 
 	// --- Determine phase ---
 	let phase: GamePhase = GAME_PHASES.PLAYING;
-	if (isGhopteTrick) {
+	if (ghopteFlag || ghoptes.some((g) => !g.resolved)) {
 		phase = GAME_PHASES.GHOPTE;
-	} else if (moveNumber === 0 && number === 0) {
+	} else if (moveNumber === 0) {
 		const totalCards = Object.values(hands).reduce((sum, h) => sum + h.length, 0);
-		phase = totalCards > 0 ? GAME_PHASES.PLAYING : GAME_PHASES.DEAL;
-	}
-
-	// --- Build current trick from C section's trick cards ---
-	const trickCardObjects: PlayedCard[] = trickCardsRaw.map((card, idx) => {
-		// Determine who played each card: trick leader starts, then anti-clockwise
-		let playerId: string;
-		if (trickLeader !== null) {
-			const pos = (trickLeader + idx) % numPlayers;
-			playerId = players[pos]?.id ?? `p${pos + 1}`;
-		} else {
-			playerId = `p${idx + 1}`;
+		if (totalCards === 0) {
+			phase = GAME_PHASES.DEAL;
+		} else if (mode === GAME_MODES.TWO_PLAYER && !turup) {
+			phase = GAME_PHASES.TURUP_DECLARATION;
 		}
-		return { playerId, card, playOrder: idx + 1 };
-	});
-
-	const leadSuit = trickCardObjects.length > 0 ? parseCard(trickCardObjects[0].card).suit : null;
-	const leaderPosition = (trickLeader !== null ? (trickLeader as PlayerPosition) : 0) as PlayerPosition;
-	const nextLeaderPosition = nextTrickLeader !== null ? (nextTrickLeader as PlayerPosition) : null;
-
-	const currentTrick: Trick = {
-		number: number > 0 ? number : 1,
-		playNumber: trickPlay > 0 ? trickPlay : trickCardObjects.length > 0 ? trickCardObjects.length : 1,
-		leadSuit,
-		leaderPosition,
-		isGhopte: isGhopteTrick,
-		cards: trickCardObjects,
-		nextLeaderPosition,
-		winnerPosition: null,
-	};
-
-	const currentTurnPosition = nextTrickLeader !== null ? (nextTrickLeader as PlayerPosition) : null;
-
-	const play = {
-		number: moveNumber,
-		card: playedCardId,
-		playerPosition: currentTurnPosition,
-		isGhopte: isGhopteCard,
-		isTurup,
-		makesTurup: false,
-	};
-
-	const scores: Record<string, ScoreState> = {};
-	for (const p of players) {
-		scores[p.id] = {
-			capturedTensCount: 0,
-			capturedTricksCount: 0,
-			capturedTricks: [],
-		};
 	}
 
-	// --- Build DMNState ---
-	const dmn: DMNState = {
-		version,
-		mode,
-		dealerPosition,
-		trumpSuit,
-		hands: handsRaw,
-		stacks2P: mode === GAME_MODES.TWO_PLAYER ? stacks2P : null,
-		moveNumber,
-		number,
-		trickPlay,
-		trickLeader,
-		nextTrickLeader,
-		isGhopteTrick,
-		playedCard: playedCardId,
-		playedBy: playedByPosition,
-		isGhopteCard,
-		isTurup,
-		trickCards: trickCardsRaw,
-	};
+	// Check if game is finished (all cards played)
+	const allHandsEmpty = Object.values(hands).every((h) => h.length === 0);
+	const allStacksEmpty = Object.values(stacks).every((playerStacks) =>
+		playerStacks.every((s) => !s.faceUpCard && s.hiddenCards.length === 0),
+	);
+	if (allHandsEmpty && allStacksEmpty && moveNumber > 0 && trickCards.length === 0) {
+		phase = GAME_PHASES.END;
+	}
 
 	return {
-		id: "game-dmn",
 		game: {
 			mode,
 			dealerPosition,
-			turup: trumpSuit,
+			turup,
 			phase,
 		},
 		players,
 		hands,
-		stacks2P,
-		ghoptes: [],
-		play,
-		trick: currentTrick,
-		scoring: { scores },
-		dmn,
+		ghoptes,
+		stacks,
+		moveNumber,
+		trick,
+		moveDetail: {
+			playerPosition: movePlayerPos,
+			card: moveCard,
+			makesTurup: moveMakesTurup,
+		},
+		nextMovePlayerPosition,
 	};
-}
-
-// ---------------------------------------------------------------------------
-// Full Game reconstruction from DMN
-// ---------------------------------------------------------------------------
-
-export function fromDMN(dmnString: string): Game | ValidationResult {
-	const partialState = importFromDMN(dmnString);
-
-	const fullState: GameState = {
-		id: partialState.id ?? "game-dmn",
-		game: partialState.game ?? {
-			mode: partialState.dmn?.mode ?? GAME_MODES.FOUR_PLAYER,
-			dealerPosition: partialState.dmn?.dealerPosition ?? 0,
-			turup: partialState.dmn?.trumpSuit ?? null,
-			phase: GAME_PHASES.PLAYING,
-		},
-		players: partialState.players ?? [],
-		hands: partialState.hands ?? {},
-		stacks2P: partialState.stacks2P ?? {},
-		ghoptes: partialState.ghoptes ?? [],
-		play: partialState.play ?? {
-			number: partialState.dmn?.moveNumber ?? 0,
-			card: partialState.dmn?.playedCard ?? null,
-			playerPosition: (partialState.dmn?.nextTrickLeader as PlayerPosition) ?? null,
-			isGhopte: partialState.dmn?.isGhopteCard ?? false,
-			isTurup: partialState.dmn?.isTurup ?? false,
-			makesTurup: false,
-		},
-		trick: partialState.trick ?? {
-			number: 1,
-			playNumber: 1,
-			leadSuit: null,
-			leaderPosition: (partialState.dmn?.trickLeader as PlayerPosition) ?? 0,
-			isGhopte: partialState.dmn?.isGhopteTrick ?? false,
-			cards: [],
-			nextLeaderPosition: null,
-			winnerPosition: null,
-		},
-		scoring: partialState.scoring ?? {
-			scores: {},
-		},
-	};
-
-	return Game.create(fullState);
 }

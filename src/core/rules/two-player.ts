@@ -1,5 +1,5 @@
 import { compareCardRanks, parseCard } from "../card";
-import type { Card, Player, PlayerStack2P, Suit, Trick } from "../../types/index";
+import type { Card, Player, PlayerStack, Suit, Trick } from "../../types/index";
 
 /**
  * 2-Player initial deal:
@@ -46,10 +46,8 @@ export function dealTwoPlayer({
  * - Card to Non-Dealer Stack 3, then Dealer Stack 3
  */
 
-const buildPlayerStacks = (stacks: Card[][]): PlayerStack2P[] => {
+const buildPlayerStacks = (stacks: Card[][]): PlayerStack[] => {
 	return stacks.map((stackCards, sIdx) => {
-		// @TODO: dont hardode indx, we can use slice(0, -1) and slice(-1)
-		// This way in future, if we decide to have 5 stack with 4 cards in each stack, this functions works just fine
 		const hiddenCards = stackCards.slice(0, 4);
 		const faceUpCard = stackCards[4] ?? null;
 
@@ -69,8 +67,7 @@ export function create2PStacks({
 	remainingDeck: readonly Card[];
 	players: readonly Player[];
 	dealerPosition: number;
-}): Record<string, PlayerStack2P[]> {
-	// @TODO: validate remainingDeck has exactly 52 - 6 - 6 cards beacse 6 cards for 2 players have alreaddy been dealt for hand
+}): Record<string, PlayerStack[]> {
 	const nonDealerPosition = (dealerPosition + 1) % 2;
 
 	const dealer = players[dealerPosition];
@@ -110,7 +107,7 @@ export function validate2PFollowSuit({
 	leadSuit,
 }: {
 	hand: readonly Card[];
-	stacks: readonly PlayerStack2P[];
+	stacks: readonly PlayerStack[];
 	cardToPlay: Card;
 	leadSuit: Suit | null;
 }): boolean {
