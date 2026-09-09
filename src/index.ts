@@ -1,4 +1,4 @@
-// Engine API (replaces Game class)
+// Engine API
 export {
 	createGame,
 	dispatch,
@@ -11,7 +11,7 @@ export {
 	isFinished,
 	type ActionResult,
 	type CreateGameOptions,
-} from "./core/engine";
+} from "./core/game";
 
 // types and constants
 export * from "./types/index";

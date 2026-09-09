@@ -1,27 +1,16 @@
 import { compareCardRanks, parseCard } from "../card";
-import type { Card, Player, PlayerStack, Suit, Trick } from "../../types/index";
+import type { Card, Player, PlayerPosition, PlayerStack, Suit, Trick } from "../../types/index";
 
 /**
  * 2-Player initial deal:
  * 6 cards to opponent (non-dealer), 6 cards to dealer.
  */
-export function dealTwoPlayer({
-	deck,
-	dealerPosition,
-	players,
-}: {
-	deck: readonly Card[];
-	dealerPosition: number;
-	players: readonly Player[];
-}): { hands: Record<string, Card[]>; remainingDeck: Card[] } {
-	const nonDealerPosition = (dealerPosition + 1) % 2;
-
-	const dealer = players[dealerPosition];
-	const nonDealer = players[nonDealerPosition];
-
-	if (!nonDealer || !dealer) {
-		throw new Error("Invalid player list for 2-Player deal");
-	}
+export function dealTwoPlayer({ deck, dealerPosition }: { deck: readonly Card[]; dealerPosition: number }): {
+	hands: Record<PlayerPosition, Card[]>;
+	remainingDeck: Card[];
+} {
+	const nonDealerPosition = ((dealerPosition + 1) % 2) as PlayerPosition;
+	const dealerPos = dealerPosition as PlayerPosition;
 
 	const nonDealerHand = deck.slice(0, 6);
 	const dealerHand = deck.slice(6, 12);
@@ -29,9 +18,9 @@ export function dealTwoPlayer({
 
 	return {
 		hands: {
-			[nonDealer.id]: nonDealerHand,
-			[dealer.id]: dealerHand,
-		},
+			[nonDealerPosition]: nonDealerHand,
+			[dealerPos]: dealerHand,
+		} as Record<PlayerPosition, Card[]>,
 		remainingDeck,
 	};
 }
@@ -61,20 +50,13 @@ const buildPlayerStacks = (stacks: Card[][]): PlayerStack[] => {
 
 export function create2PStacks({
 	remainingDeck,
-	players,
 	dealerPosition,
 }: {
 	remainingDeck: readonly Card[];
-	players: readonly Player[];
 	dealerPosition: number;
-}): Record<string, PlayerStack[]> {
-	const nonDealerPosition = (dealerPosition + 1) % 2;
-
-	const dealer = players[dealerPosition];
-	const nonDealer = players[nonDealerPosition];
-	if (!nonDealer || !dealer) {
-		throw new Error("Invalid player list for 2-Player stacks");
-	}
+}): Record<PlayerPosition, PlayerStack[]> {
+	const nonDealerPosition = ((dealerPosition + 1) % 2) as PlayerPosition;
+	const dealerPos = dealerPosition as PlayerPosition;
 
 	const dealerStacks: Card[][] = [[], [], [], []];
 	const nonDealerStacks: Card[][] = [[], [], [], []];
@@ -91,9 +73,9 @@ export function create2PStacks({
 	}
 
 	return {
-		[nonDealer.id]: buildPlayerStacks(nonDealerStacks),
-		[dealer.id]: buildPlayerStacks(dealerStacks),
-	};
+		[nonDealerPosition]: buildPlayerStacks(nonDealerStacks),
+		[dealerPos]: buildPlayerStacks(dealerStacks),
+	} as Record<PlayerPosition, PlayerStack[]>;
 }
 
 /**
@@ -122,8 +104,9 @@ export function validate2PFollowSuit({
 
 /**
  * Determine winner of a completed 2-Player trick.
+ * Returns the winning player's position.
  */
-export function resolve2PTrickWinner(options: { trick: Trick; currentTurup: Suit | null }): string {
+export function resolve2PTrickWinner(options: { trick: Trick; currentTurup: Suit | null }): PlayerPosition {
 	const { trick, currentTurup } = options;
 	const card1 = trick.cards[0];
 	const card2 = trick.cards[1];
@@ -137,25 +120,25 @@ export function resolve2PTrickWinner(options: { trick: Trick; currentTurup: Suit
 	const leadSuit = trick.leadSuit ?? card1Suit;
 
 	if (card1Suit === currentTurup && card2Suit !== currentTurup) {
-		return card1.playerId;
+		return card1.playerPosition;
 	}
 
 	if (card2Suit === currentTurup && card1Suit !== currentTurup) {
-		return card2.playerId;
+		return card2.playerPosition;
 	}
 
 	if (card1Suit === currentTurup && card2Suit === currentTurup) {
-		return compareCardRanks(card1.card, card2.card) >= 0 ? card1.playerId : card2.playerId;
+		return compareCardRanks(card1.card, card2.card) >= 0 ? card1.playerPosition : card2.playerPosition;
 	}
 
 	// Neither is Turup
 	if (card2Suit === leadSuit && card1Suit === leadSuit) {
-		return compareCardRanks(card1.card, card2.card) >= 0 ? card1.playerId : card2.playerId;
+		return compareCardRanks(card1.card, card2.card) >= 0 ? card1.playerPosition : card2.playerPosition;
 	}
 
 	if (card1Suit === leadSuit && card2Suit !== leadSuit) {
-		return card1.playerId;
+		return card1.playerPosition;
 	}
 
-	return card1.playerId;
+	return card1.playerPosition;
 }

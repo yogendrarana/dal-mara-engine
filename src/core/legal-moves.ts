@@ -1,4 +1,4 @@
-import type { Card, GameState } from "../types/index";
+import type { Card, GameState, PlayerPosition } from "../types/index";
 import { parseCard } from "./card";
 import { GAME_MODES, GAME_PHASES } from "./const";
 import { getCurrentTurnPlayer } from "./turn";
@@ -11,16 +11,15 @@ export interface LegalPlayableCard {
 /**
  * Get legal playable cards for 4-Player mode.
  */
-export function getLegalMoves4P(state: GameState, playerId: string): LegalPlayableCard[] {
+export function getLegalMoves4P(state: GameState, playerPosition: PlayerPosition): LegalPlayableCard[] {
 	if (state.game.phase !== GAME_PHASES.PLAYING && state.game.phase !== GAME_PHASES.GHOPTE) {
 		return [];
 	}
 
 	const currentTurnPlayer = getCurrentTurnPlayer(state);
-	if (currentTurnPlayer?.id !== playerId) return [];
+	if (currentTurnPlayer?.position !== playerPosition) return [];
 
-	const player = state.players.find((p) => p.id === playerId);
-	const hand = state.hands[playerId] ?? [];
+	const hand = state.hands[playerPosition] ?? [];
 	const availableCards: LegalPlayableCard[] = hand.map((card) => ({ card }));
 
 	// 1. Ghopte Phase
@@ -28,7 +27,7 @@ export function getLegalMoves4P(state: GameState, playerId: string): LegalPlayab
 		const activeGhopte = state.ghoptes.find((g) => !g.resolved);
 
 		// If current player is the Ghopte declarer, they play their Ghopte 10
-		if (activeGhopte && activeGhopte.playerPosition === player?.position) {
+		if (activeGhopte && activeGhopte.playerPosition === playerPosition) {
 			const ghopteCard = hand.find((c) => c === activeGhopte.card);
 			if (ghopteCard) {
 				return [{ card: ghopteCard }];
@@ -37,7 +36,7 @@ export function getLegalMoves4P(state: GameState, playerId: string): LegalPlayab
 
 		// Find any pending Ghopte cards owned by this player for future Ghopte rounds
 		const pendingOwnGhopteIds = state.ghoptes
-			.filter((g) => g.playerPosition === player?.position && !g.resolved)
+			.filter((g) => g.playerPosition === playerPosition && !g.resolved)
 			.map((g) => g.card);
 
 		// Other players are guessing the face-down Ghopte card: any card from hand EXCEPT their own pending Ghopte 10s
@@ -65,16 +64,16 @@ export function getLegalMoves4P(state: GameState, playerId: string): LegalPlayab
 /**
  * Get legal playable cards for 2-Player mode.
  */
-export function getLegalMoves2P(state: GameState, playerId: string): LegalPlayableCard[] {
+export function getLegalMoves2P(state: GameState, playerPosition: PlayerPosition): LegalPlayableCard[] {
 	if (state.game.phase !== GAME_PHASES.PLAYING) {
 		return [];
 	}
 
 	const currentTurnPlayer = getCurrentTurnPlayer(state);
-	if (currentTurnPlayer?.id !== playerId) return [];
+	if (currentTurnPlayer?.position !== playerPosition) return [];
 
-	const hand = state.hands[playerId] ?? [];
-	const stacks = state.stacks[playerId] ?? [];
+	const hand = state.hands[playerPosition] ?? [];
+	const stacks = state.stacks[playerPosition] ?? [];
 	const leadSuit = state.trick.leadSuit;
 
 	const availableCards: LegalPlayableCard[] = [];
@@ -111,9 +110,9 @@ export function getLegalMoves2P(state: GameState, playerId: string): LegalPlayab
 /**
  * Main getLegalMoves dispatcher.
  */
-export function getLegalMoves(state: GameState, playerId: string): LegalPlayableCard[] {
+export function getLegalMoves(state: GameState, playerPosition: PlayerPosition): LegalPlayableCard[] {
 	if (state.game.mode === GAME_MODES.FOUR_PLAYER) {
-		return getLegalMoves4P(state, playerId);
+		return getLegalMoves4P(state, playerPosition);
 	}
-	return getLegalMoves2P(state, playerId);
+	return getLegalMoves2P(state, playerPosition);
 }

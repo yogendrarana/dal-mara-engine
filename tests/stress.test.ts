@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { createDeck, shuffleDeck, createGame, deal, declareTurup, playCard, getCurrentPlayer, getLegalMoves, isFinished } from "../src";
+import {
+	createDeck,
+	shuffleDeck,
+	createGame,
+	deal,
+	declareTurup,
+	playCard,
+	getCurrentPlayer,
+	getLegalMoves,
+	isFinished,
+} from "../src";
 
 const deck = createDeck();
 
@@ -13,10 +23,10 @@ describe("Stress & Determinism Testing", () => {
 				mode: "4p",
 				dealerPosition: 0,
 				players: [
-					{ id: "p1", name: "Alice", position: 0, team: "red" },
-					{ id: "p2", name: "Bob", position: 1, team: "blue" },
-					{ id: "p3", name: "Charlie", position: 2, team: "red" },
-					{ id: "p4", name: "Dave", position: 3, team: "blue" },
+					{ position: 0, team: "red" },
+					{ position: 1, team: "blue" },
+					{ position: 2, team: "red" },
+					{ position: 3, team: "blue" },
 				],
 			});
 			if (!gameResult.success) throw new Error("Create failed");
@@ -67,8 +77,8 @@ describe("Stress & Determinism Testing", () => {
 				mode: "2p",
 				dealerPosition: 0,
 				players: [
-					{ id: "p1", name: "Alice", position: 0, team: "p1" },
-					{ id: "p2", name: "Bob", position: 1, team: "p2" },
+					{ position: 0, team: "p1" },
+					{ position: 1, team: "p2" },
 				],
 			});
 			if (!gameResult.success) throw new Error("Create failed");

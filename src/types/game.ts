@@ -10,7 +10,7 @@ export type GamePhase = (typeof GAME_PHASES)[keyof typeof GAME_PHASES];
 
 export interface PlayedCard {
 	readonly card: Card;
-	readonly playerId: string;
+	readonly playerPosition: PlayerPosition;
 	readonly playOrder: number;
 }
 
@@ -54,14 +54,14 @@ export interface GameState {
 	// Player roster (derived from mode, not in DMN)
 	readonly players: readonly Player[];
 
-	// DMN Section 3: Hands (keyed by player id)
-	readonly hands: Record<string, readonly Card[]>;
+	// DMN Section 3: Hands (keyed by player position)
+	readonly hands: Record<PlayerPosition, readonly Card[]>;
 
 	// DMN Section 2: Ghoptes
 	readonly ghoptes: readonly Ghopte[];
 
-	// DMN Section 4: Stacks (2p only, keyed by player id)
-	readonly stacks: Record<string, readonly PlayerStack[]>;
+	// DMN Section 4: Stacks (2p only, keyed by player position)
+	readonly stacks: Record<PlayerPosition, readonly PlayerStack[]>;
 
 	// DMN Section 5: Move Number
 	readonly moveNumber: number;

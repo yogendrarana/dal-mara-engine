@@ -25,20 +25,6 @@ export function getFirstPlayerPosition({
 }
 
 /**
- *
- * @param pos
- * @returns
- */
-const getPlayerIdByPos = ({ position, players }: { position: number; players: readonly Player[] }): string => {
-	const p = players.find((pl) => pl.position === position);
-
-	if (!p) {
-		throw new Error(`Player position ${position} not found in player list`);
-	}
-	return p.id;
-};
-
-/**
  * 4-Player Deal distribution:
  * Pass 1: 5 cards to each player (total 20)
  * Pass 2: 4 cards to each player (total 16)
@@ -49,16 +35,14 @@ const getPlayerIdByPos = ({ position, players }: { position: number; players: re
 export function dealFourPlayer({
 	deck,
 	dealerPosition,
-	players,
 }: {
 	deck: readonly Card[];
 	dealerPosition: number;
-	players: readonly Player[];
-}): Record<string, Card[]> {
-	// initialize empty hands
-	const hands: Record<string, Card[]> = {};
-	for (const player of players) {
-		hands[player.id] = [];
+}): Record<PlayerPosition, Card[]> {
+	// initialize empty hands keyed by position
+	const hands = {} as Record<PlayerPosition, Card[]>;
+	for (let i = 0; i < 4; i++) {
+		hands[i as PlayerPosition] = [];
 	}
 
 	let deckIndex = 0;
@@ -67,10 +51,9 @@ export function dealFourPlayer({
 	// deal pass 1: 5 cards each
 	let currPos = startPos;
 	for (let i = 0; i < 4; i++) {
-		const pId = getPlayerIdByPos({ position: currPos, players });
-		const targetHand = hands[pId];
+		const targetHand = hands[currPos as PlayerPosition];
 		if (!targetHand) {
-			throw new Error(`Hand not initialized for player ${pId}`);
+			throw new Error(`Hand not initialized for position ${currPos}`);
 		}
 		targetHand.push(...deck.slice(deckIndex, deckIndex + 5));
 		deckIndex += 5;
@@ -80,10 +63,9 @@ export function dealFourPlayer({
 	// deal pass 2: 4 cards each
 	currPos = startPos;
 	for (let i = 0; i < 4; i++) {
-		const pId = getPlayerIdByPos({ position: currPos, players });
-		const targetHand = hands[pId];
+		const targetHand = hands[currPos as PlayerPosition];
 		if (!targetHand) {
-			throw new Error(`Hand not initialized for player ${pId}`);
+			throw new Error(`Hand not initialized for position ${currPos}`);
 		}
 		targetHand.push(...deck.slice(deckIndex, deckIndex + 4));
 		deckIndex += 4;
@@ -93,10 +75,9 @@ export function dealFourPlayer({
 	// deal pass 3: 4 cards each
 	currPos = startPos;
 	for (let i = 0; i < 4; i++) {
-		const pId = getPlayerIdByPos({ position: currPos, players });
-		const targetHand = hands[pId];
+		const targetHand = hands[currPos as PlayerPosition];
 		if (!targetHand) {
-			throw new Error(`Hand not initialized for player ${pId}`);
+			throw new Error(`Hand not initialized for position ${currPos}`);
 		}
 		targetHand.push(...deck.slice(deckIndex, deckIndex + 4));
 		deckIndex += 4;
@@ -114,43 +95,21 @@ export function dealFourPlayer({
  * - "dealer-first": starts from dealer
  */
 export function detectGhopte({
-	hands = {},
-	players = [],
+	hands = {} as Record<PlayerPosition, readonly Card[]>,
 	dealerPosition = 0,
 }: {
-	hands: Record<string, readonly Card[]>;
-	players?: readonly Player[];
+	hands: Record<PlayerPosition, readonly Card[]>;
 	dealerPosition?: number;
 }): Ghopte[] | null {
-	const playersList: readonly Player[] =
-		players.length > 0
-			? players
-			: Object.keys(hands).map((id, index) => ({
-					id,
-					name: id,
-					position: (index % 4) as PlayerPosition,
-					team: index % 2 === 0 ? "team1" : "team2",
-				}));
-
 	const allGhoptes: Ghopte[] = [];
 
-	const playerByPos: Record<number, Player> = {};
-	for (const p of playersList) {
-		playerByPos[p.position] = p;
-	}
-
-	const total = playersList.length;
+	const total = 4;
 
 	for (let i = 0; i < total; i++) {
 		// Normal anti-clockwise direction starting after the dealer (dealer is last)
-		const pos = (dealerPosition + 1 + i) % total;
+		const pos = ((dealerPosition + 1 + i) % total) as PlayerPosition;
 
-		const player = playerByPos[pos];
-		if (!player) {
-			continue;
-		}
-
-		const hand = hands[player.id] ?? [];
+		const hand = hands[pos] ?? [];
 		const suitCounts: Record<Suit, Card[]> = {
 			[SUITS.SPADES]: [],
 			[SUITS.HEARTS]: [],
@@ -169,7 +128,7 @@ export function detectGhopte({
 				if (card && parseCard(card).rank === RANKS.TEN) {
 					allGhoptes.push({
 						order: allGhoptes.length,
-						playerPosition: player.position,
+						playerPosition: pos,
 						card,
 						resolved: false,
 					});
@@ -207,8 +166,9 @@ export function validateFollowSuit({
 /**
  * Determine winner of a completed 4-Player trick.
  * In 4P mode, active Turup is passed in `currentTurup`.
+ * Returns the winning player's position.
  */
-export function resolve4PTrickWinner(options: { trick: Trick; currentTurup: Suit | null }): string {
+export function resolve4PTrickWinner(options: { trick: Trick; currentTurup: Suit | null }): PlayerPosition {
 	const { trick, currentTurup } = options;
 
 	const firstCard = trick.cards[0];
@@ -245,5 +205,5 @@ export function resolve4PTrickWinner(options: { trick: Trick; currentTurup: Suit
 		}
 	}
 
-	return winningPlayedCard.playerId;
+	return winningPlayedCard.playerPosition;
 }

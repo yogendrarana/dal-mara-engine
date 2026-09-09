@@ -8,10 +8,7 @@ describe("2-Player Game Mode", () => {
 		const gameResult = createGame({
 			mode: "2p",
 			dealerPosition: 0,
-			players: [
-				{ id: "p1", name: "Alice", position: 0, team: "p1" },
-				{ id: "p2", name: "Bob", position: 1, team: "p2" },
-			],
+			players: [{ position: 0 }, { position: 1 }],
 		});
 		if (!gameResult.success) throw new Error("Create failed");
 
@@ -22,7 +19,7 @@ describe("2-Player Game Mode", () => {
 		expect(dealRes.state.game.phase).toBe("TURUP_DECLARATION");
 
 		const declP = getCurrentPlayer(dealRes.state);
-		expect(declP?.id).toBe("p2");
+		expect(declP?.position).toBe(1);
 
 		if (declP) {
 			const declRes = declareTurup(dealRes.state, { playerPosition: declP.position, suit: "spades" });
@@ -32,8 +29,8 @@ describe("2-Player Game Mode", () => {
 			expect(declRes.state.game.phase).toBe("PLAYING");
 			expect(declRes.state.game.turup).toBe("spades");
 
-			const p1Stacks = declRes.state.stacks.p1;
-			const p2Stacks = declRes.state.stacks.p2;
+			const p1Stacks = declRes.state.stacks[0];
+			const p2Stacks = declRes.state.stacks[1];
 			expect(p1Stacks?.length).toBe(4);
 			expect(p2Stacks?.length).toBe(4);
 			expect(p1Stacks?.[0]?.position).toBe(0);

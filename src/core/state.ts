@@ -1,15 +1,19 @@
-import { GAME_PHASES } from "./const";
-import type { GameMode, GameState, Player, PlayerPosition } from "../types/index";
+import { GAME_MODES, GAME_PHASES } from "./const";
+import type { Card, GameMode, GameState, Player, PlayerPosition, PlayerStack } from "../types/index";
 
 export function createInitialState(options: {
-	id?: string;
 	mode: GameMode;
 	players: readonly Player[];
 	dealerPosition: PlayerPosition;
 }): GameState {
 	const { mode, players, dealerPosition } = options;
 
-	const orderedPlayers: Player[] = [...players].sort((a, b) => a.position - b.position);
+	const orderedPlayers: Player[] = [...players]
+		.sort((a, b) => a.position - b.position)
+		.map((p) => ({
+			position: p.position,
+			team: p.team ?? (mode === GAME_MODES.FOUR_PLAYER ? (p.position % 2 === 0 ? "02" : "13") : String(p.position)),
+		}));
 
 	return {
 		game: {
@@ -19,8 +23,8 @@ export function createInitialState(options: {
 			phase: GAME_PHASES.DEAL,
 		},
 		players: orderedPlayers,
-		hands: {},
-		stacks: {},
+		hands: {} as Record<PlayerPosition, readonly Card[]>,
+		stacks: {} as Record<PlayerPosition, readonly PlayerStack[]>,
 		ghoptes: [],
 		moveNumber: 0,
 		trick: {

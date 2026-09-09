@@ -28,7 +28,7 @@ export function validatePlayGhopte({ state, action }: { state: GameState; action
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Player not found");
 	}
 
-	const hand = state.hands[player.id] ?? [];
+	const hand = state.hands[playerPosition] ?? [];
 	const cardToPlay = hand.find((c) => c === card) ?? null;
 
 	if (!cardToPlay) {
@@ -78,10 +78,9 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 
 	const currentPlayer = state.players.find((p) => p.position === playerPosition);
 	if (!currentPlayer) return state;
-	const playerId = currentPlayer.id;
 	const playerPos = currentPlayer.position;
 
-	const hand = state.hands[playerId];
+	const hand = state.hands[playerPos];
 	if (!hand) return state;
 
 	const playedCardObj = hand.find((c) => c === card);
@@ -89,11 +88,11 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 
 	const updatedHands = {
 		...state.hands,
-		[playerId]: hand.filter((c) => c !== card),
+		[playerPos]: hand.filter((c) => c !== card),
 	};
 
 	const playedCardItem: PlayedCard = {
-		playerId,
+		playerPosition: playerPos,
 		card: playedCardObj,
 		playOrder: state.trick.cards.length + 1,
 	};
@@ -120,21 +119,16 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 	};
 
 	if (isTrickComplete) {
-		const winnerId = resolve4PTrickWinner({
+		const winnerPos = resolve4PTrickWinner({
 			trick: currentTrickSnapshot,
 			currentTurup: null,
 		});
-
-		const winnerPlayer = state.players.find((p) => p.id === winnerId);
-		if (!winnerPlayer) return state;
-		const winnerPos = winnerPlayer.position;
 
 		// Mark current Ghopte as resolved
 		const updatedGhoptes = state.ghoptes.map((g) => (g.order === currentGhopte.order ? { ...g, resolved: true } : g));
 
 		const nextGhopte = updatedGhoptes.find((g) => !g.resolved);
 		const hasMoreGhoptes = !!nextGhopte;
-		const nextLeader = nextGhopte ? nextGhopte.playerPosition : winnerPos;
 
 		if (hasMoreGhoptes && nextGhopte) {
 			const nextSuit = parseCard(nextGhopte.card).suit;

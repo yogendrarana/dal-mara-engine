@@ -17,7 +17,7 @@ export function validatePickupTurup({ state, action }: { state: GameState; actio
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Player not found");
 	}
 
-	const playerStacks = state.stacks[player.id];
+	const playerStacks = state.stacks[playerPosition];
 	if (!playerStacks) {
 		return createValidationError(ENGINE_ERROR_CODES.STACK_NOT_FOUND, "Player stacks not found");
 	}
@@ -44,9 +44,8 @@ export function reducePickupTurup2P(state: GameState, action: PickupTurupCardAct
 
 	const player = state.players.find((p) => p.position === playerPosition);
 	if (!player) return state;
-	const playerId = player.id;
 
-	const playerStacks = state.stacks[playerId];
+	const playerStacks = state.stacks[playerPosition];
 	if (!playerStacks) return state;
 
 	const targetStack = playerStacks.find((s) => s.faceUpCard === card && parseCard(s.faceUpCard).suit === state.game.turup);
@@ -55,7 +54,7 @@ export function reducePickupTurup2P(state: GameState, action: PickupTurupCardAct
 	const targetCard = targetStack.faceUpCard;
 	if (!targetCard) return state;
 
-	const currentHand = state.hands[playerId] ?? [];
+	const currentHand = state.hands[playerPosition] ?? [];
 	const newHand = [...currentHand, targetCard];
 
 	const newHidden = [...targetStack.hiddenCards];
@@ -74,11 +73,11 @@ export function reducePickupTurup2P(state: GameState, action: PickupTurupCardAct
 		...state,
 		hands: {
 			...state.hands,
-			[playerId]: newHand,
+			[playerPosition]: newHand,
 		},
 		stacks: {
 			...state.stacks,
-			[playerId]: newPlayerStacks,
+			[playerPosition]: newPlayerStacks,
 		},
 	};
 }

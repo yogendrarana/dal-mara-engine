@@ -44,12 +44,10 @@ export function reduceDeal4P(state: GameState, action: DealAction): GameState {
 	const hands = dealFourPlayer({
 		deck: finalDeck,
 		dealerPosition: dealer.position,
-		players: state.players,
 	});
 
 	const ghoptes = detectGhopte({
 		hands,
-		players: state.players,
 		dealerPosition: dealer.position,
 	});
 
@@ -127,10 +125,9 @@ export function reduceDeal2P(state: GameState, action: DealAction): GameState {
 	const { hands, remainingDeck } = dealTwoPlayer({
 		deck: finalDeck,
 		dealerPosition: dealer.position,
-		players: state.players,
 	});
 
-	const stacks = create2PStacks({ remainingDeck, players: state.players, dealerPosition: dealer.position });
+	const stacks = create2PStacks({ remainingDeck, dealerPosition: dealer.position });
 	const nonDealerPosition = ((dealer.position + 1) % 2) as PlayerPosition;
 
 	return {

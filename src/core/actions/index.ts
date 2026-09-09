@@ -13,13 +13,7 @@ export interface DispatchResult {
 	validation: ValidationResult;
 }
 
-export function dispatchAction({
-	state,
-	action,
-}: {
-	state: GameState;
-	action: Action;
-}): DispatchResult {
+export function dispatchAction({ state, action }: { state: GameState; action: Action }): DispatchResult {
 	switch (action.type) {
 		case ACTION_TYPES.DEAL: {
 			const validation = validateDeal({ state, action });

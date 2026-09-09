@@ -74,8 +74,7 @@ export function serializeDMN(state: GameState): string {
 	// --- Section 3: Hands ---
 	const handParts: string[] = [];
 	for (let i = 0; i < numPlayers; i++) {
-		const player = state.players.find((p) => p.position === i);
-		const hand = player ? (state.hands[player.id] ?? []) : [];
+		const hand = state.hands[i as PlayerPosition] ?? [];
 		handParts.push(hand.join(",") || "");
 	}
 	const handsSection = handParts.join("/");
@@ -87,8 +86,7 @@ export function serializeDMN(state: GameState): string {
 	} else {
 		const stackParts: string[] = [];
 		for (let playerIdx = 0; playerIdx < 2; playerIdx++) {
-			const player = state.players.find((p) => p.position === playerIdx);
-			const playerStacks = player ? (state.stacks[player.id] ?? []) : [];
+			const playerStacks = state.stacks[playerIdx as PlayerPosition] ?? [];
 			for (let s = 0; s < 4; s++) {
 				const stack = playerStacks.find((st) => st.position === s);
 				if (!stack || (stack.hiddenCards.length === 0 && !stack.faceUpCard)) {
@@ -120,9 +118,7 @@ export function serializeDMN(state: GameState): string {
 		trickCardsToken = "-";
 	} else {
 		const cardEntries = state.trick.cards.map((pc) => {
-			const player = state.players.find((p) => p.id === pc.playerId);
-			const pos = player ? player.position : 0;
-			return `${pos}:${pc.card}`;
+			return `${pc.playerPosition}:${pc.card}`;
 		});
 		trickCardsToken = cardEntries.join("/");
 	}
@@ -180,10 +176,8 @@ export function parseDMN(dmn: string): GameState {
 	const players: Player[] = [];
 	for (let i = 0; i < numPlayers; i++) {
 		players.push({
-			id: `p${i + 1}`,
-			name: `Player ${i + 1}`,
 			position: i as PlayerPosition,
-			team: mode === GAME_MODES.FOUR_PLAYER ? (i % 2 === 0 ? "team1" : "team2") : `p${i + 1}`,
+			team: mode === GAME_MODES.FOUR_PLAYER ? (i % 2 === 0 ? "02" : "13") : String(i),
 		});
 	}
 
@@ -215,21 +209,19 @@ export function parseDMN(dmn: string): GameState {
 	}
 
 	// --- Section 3: Hands ---
-	const hands: Record<string, readonly Card[]> = {};
+	const hands = {} as Record<PlayerPosition, readonly Card[]>;
 	const handSegments = handsRaw.split("/");
 	for (let i = 0; i < numPlayers; i++) {
-		const playerId = `p${i + 1}`;
 		const segment = handSegments[i] ?? "";
-		hands[playerId] = segment ? (segment.split(",") as Card[]) : [];
+		hands[i as PlayerPosition] = segment ? (segment.split(",") as Card[]) : [];
 	}
 
 	// --- Section 4: Stacks ---
-	const stacks: Record<string, readonly PlayerStack[]> = {};
+	const stacks = {} as Record<PlayerPosition, readonly PlayerStack[]>;
 	if (stacksRaw !== "-" && mode === GAME_MODES.TWO_PLAYER) {
 		const stackSlots = stacksRaw.split("/");
 		// First 4 = player 0, next 4 = player 1
 		for (let playerIdx = 0; playerIdx < 2; playerIdx++) {
-			const playerId = `p${playerIdx + 1}`;
 			const playerStacks: PlayerStack[] = [];
 			for (let s = 0; s < 4; s++) {
 				const slotIdx = playerIdx * 4 + s;
@@ -248,7 +240,7 @@ export function parseDMN(dmn: string): GameState {
 					}
 				}
 			}
-			stacks[playerId] = playerStacks;
+			stacks[playerIdx as PlayerPosition] = playerStacks;
 		}
 	}
 
@@ -273,11 +265,10 @@ export function parseDMN(dmn: string): GameState {
 			const entry = cardEntries[idx];
 			const colonIdx = entry.indexOf(":");
 			if (colonIdx === -1) continue;
-			const pos = parseInt(entry.slice(0, colonIdx), 10);
+			const pos = parseInt(entry.slice(0, colonIdx), 10) as PlayerPosition;
 			const card = entry.slice(colonIdx + 1) as Card;
-			const player = players.find((p) => p.position === pos);
 			trickCards.push({
-				playerId: player?.id ?? `p${pos + 1}`,
+				playerPosition: pos,
 				card,
 				playOrder: idx + 1,
 			});

@@ -9,10 +9,10 @@ describe("4-Player Game Mode", () => {
 			mode: "4p",
 			dealerPosition: 0,
 			players: [
-				{ id: "p1", name: "Alice", position: 0, team: "red" },
-				{ id: "p2", name: "Bob", position: 1, team: "blue" },
-				{ id: "p3", name: "Charlie", position: 2, team: "red" },
-				{ id: "p4", name: "Dave", position: 3, team: "blue" },
+				{ position: 0, team: "red" },
+				{ position: 1, team: "blue" },
+				{ position: 2, team: "red" },
+				{ position: 3, team: "blue" },
 			],
 		});
 
@@ -23,10 +23,10 @@ describe("4-Player Game Mode", () => {
 		expect(dealRes.success).toBe(true);
 		if (!dealRes.success) return;
 
-		const hand1 = dealRes.state.hands.p1;
-		const hand2 = dealRes.state.hands.p2;
-		const hand3 = dealRes.state.hands.p3;
-		const hand4 = dealRes.state.hands.p4;
+		const hand1 = dealRes.state.hands[0];
+		const hand2 = dealRes.state.hands[1];
+		const hand3 = dealRes.state.hands[2];
+		const hand4 = dealRes.state.hands[3];
 
 		expect(hand1?.length).toBe(13);
 		expect(hand2?.length).toBe(13);
@@ -39,8 +39,8 @@ describe("4-Player Game Mode", () => {
 			mode: "4p",
 			dealerPosition: 0,
 			players: [
-				{ id: "p1", name: "Alice", position: 0, team: "red" },
-				{ id: "p2", name: "Bob", position: 1, team: "blue" },
+				{ position: 0, team: "red" },
+				{ position: 1, team: "blue" },
 			],
 		});
 		expect(result.success).toBe(false);
@@ -51,10 +51,10 @@ describe("4-Player Game Mode", () => {
 			mode: "4p",
 			dealerPosition: 0,
 			players: [
-				{ id: "p1", name: "Alice", position: 0, team: "red" },
-				{ id: "p2", name: "Bob", position: 1, team: "blue" },
-				{ id: "p3", name: "Charlie", position: 2, team: "red" },
-				{ id: "p4", name: "Dave", position: 3, team: "blue" },
+				{ position: 0, team: "red" },
+				{ position: 1, team: "blue" },
+				{ position: 2, team: "red" },
+				{ position: 3, team: "blue" },
 			],
 		});
 		if (!gameResult.success) return;
@@ -66,7 +66,7 @@ describe("4-Player Game Mode", () => {
 		const turnP = getCurrentPlayer(state);
 		if (!turnP) return;
 
-		const hand = state.hands[turnP.id] ?? [];
+		const hand = state.hands[turnP.position] ?? [];
 		const leadCard = hand[0];
 		if (!leadCard) return;
 
@@ -77,7 +77,7 @@ describe("4-Player Game Mode", () => {
 		const nextP = getCurrentPlayer(state);
 		if (!nextP) return;
 
-		const nextHand = state.hands[nextP.id] ?? [];
+		const nextHand = state.hands[nextP.position] ?? [];
 		const leadSuit = state.trick.leadSuit;
 		if (!leadSuit) return;
 
@@ -101,10 +101,10 @@ describe("4-Player Game Mode", () => {
 			mode: "4p",
 			dealerPosition: 0,
 			players: [
-				{ id: "p1", name: "Alice", position: 0, team: "red" },
-				{ id: "p2", name: "Bob", position: 1, team: "blue" },
-				{ id: "p3", name: "Charlie", position: 2, team: "red" },
-				{ id: "p4", name: "Dave", position: 3, team: "blue" },
+				{ position: 0, team: "red" },
+				{ position: 1, team: "blue" },
+				{ position: 2, team: "red" },
+				{ position: 3, team: "blue" },
 			],
 		});
 		if (!gameResult.success) return;
@@ -120,10 +120,10 @@ describe("4-Player Game Mode", () => {
 			mode: "4p",
 			dealerPosition: 0,
 			players: [
-				{ id: "p1", name: "Alice", position: 0, team: "red" },
-				{ id: "p2", name: "Bob", position: 1, team: "blue" },
-				{ id: "p3", name: "Charlie", position: 2, team: "red" },
-				{ id: "p4", name: "Dave", position: 3, team: "blue" },
+				{ position: 0, team: "red" },
+				{ position: 1, team: "blue" },
+				{ position: 2, team: "red" },
+				{ position: 3, team: "blue" },
 			],
 		});
 		if (!gameResult.success) return;

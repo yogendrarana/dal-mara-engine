@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { createDeck, createGame, deal, playCard, declareTurup, parseDMN, serializeDMN, getLegalMoves, getCurrentPlayer } from "../src";
+import {
+	createDeck,
+	createGame,
+	deal,
+	playCard,
+	declareTurup,
+	parseDMN,
+	serializeDMN,
+	getLegalMoves,
+	getCurrentPlayer,
+} from "../src";
 import type { GameState } from "../src";
 
 const deck = createDeck();
@@ -9,10 +19,10 @@ const make4PGame = () => {
 		mode: "4p",
 		dealerPosition: 0,
 		players: [
-			{ id: "p1", name: "Alice", position: 0, team: "red" },
-			{ id: "p2", name: "Bob", position: 1, team: "blue" },
-			{ id: "p3", name: "Charlie", position: 2, team: "red" },
-			{ id: "p4", name: "Dave", position: 3, team: "blue" },
+			{ position: 0, team: "red" },
+			{ position: 1, team: "blue" },
+			{ position: 2, team: "red" },
+			{ position: 3, team: "blue" },
 		],
 	});
 	if (!result.success) throw new Error("Failed to create game");
@@ -79,8 +89,8 @@ describe("Dal Mara Notation (DMN) - Pipe-Separated Format", () => {
 			mode: "2p",
 			dealerPosition: 0,
 			players: [
-				{ id: "p1", name: "Alice", position: 0, team: "p1" },
-				{ id: "p2", name: "Bob", position: 1, team: "p2" },
+				{ position: 0, team: "p1" },
+				{ position: 1, team: "p2" },
 			],
 		});
 		if (!result.success) throw new Error("Failed");
@@ -132,7 +142,7 @@ describe("Dal Mara Notation (DMN) - Pipe-Separated Format", () => {
 		const turnPlayer = getCurrentPlayer(dealResult.state);
 		expect(turnPlayer).not.toBeNull();
 
-		const hand = dealResult.state.hands[turnPlayer!.id] ?? [];
+		const hand = dealResult.state.hands[turnPlayer!.position] ?? [];
 		const firstCard = hand[0]!;
 		const playResult = playCard(dealResult.state, { playerPosition: turnPlayer!.position, card: firstCard });
 		if (!playResult.success) throw new Error("Play failed");
@@ -155,7 +165,7 @@ describe("Dal Mara Notation (DMN) - Pipe-Separated Format", () => {
 
 		// Hand shrank by 1
 		const parsed = parseDMN(playResult.dmn);
-		const handAfter = parsed.hands[turnPlayer!.id] ?? [];
+		const handAfter = parsed.hands[turnPlayer!.position] ?? [];
 		expect(handAfter.length).toBe(12);
 		expect(handAfter).not.toContain(firstCard);
 	});
@@ -165,8 +175,8 @@ describe("Dal Mara Notation (DMN) - Pipe-Separated Format", () => {
 			mode: "2p",
 			dealerPosition: 0,
 			players: [
-				{ id: "p1", name: "Alice", position: 0, team: "p1" },
-				{ id: "p2", name: "Bob", position: 1, team: "p2" },
+				{ position: 0, team: "p1" },
+				{ position: 1, team: "p2" },
 			],
 		});
 		if (!result.success) throw new Error("Failed");
@@ -222,7 +232,7 @@ describe("Dal Mara Notation (DMN) - Pipe-Separated Format", () => {
 		const player = getCurrentPlayer(dealResult.state);
 		if (!player) throw new Error("No current player");
 
-		const hand = dealResult.state.hands[player.id] ?? [];
+		const hand = dealResult.state.hands[player.position] ?? [];
 		const playResult = playCard(dealResult.state, { playerPosition: player.position, card: hand[0]! });
 		if (!playResult.success) throw new Error("Play failed");
 
@@ -285,7 +295,7 @@ describe("Dal Mara Notation (DMN) - Pipe-Separated Format", () => {
 		// After play
 		const player = getCurrentPlayer(dealResult.state);
 		if (!player) throw new Error("No player");
-		const hand = dealResult.state.hands[player.id] ?? [];
+		const hand = dealResult.state.hands[player.position] ?? [];
 		const playResult = playCard(dealResult.state, { playerPosition: player.position, card: hand[0]! });
 		if (!playResult.success) throw new Error("Play failed");
 		const playSections = playResult.dmn.split(" | ");

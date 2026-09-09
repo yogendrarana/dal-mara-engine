@@ -1,4 +1,4 @@
-import type { Card, Player, ScoreState } from "../../types/index";
+import type { Card, Player, PlayerPosition, ScoreState } from "../../types/index";
 import { ENGINE_ERROR_CODES } from "../const";
 import { DalMaraError } from "../errors";
 import { createInitialScoreState } from "./scoring";
@@ -8,7 +8,10 @@ export interface GameWinnerResult4P {
 	readonly reason?: string;
 }
 
-export function isGameFinished4P(options: { totalTricksPlayed: number; hands?: Record<string, readonly Card[]> }): boolean {
+export function isGameFinished4P(options: {
+	totalTricksPlayed: number;
+	hands?: Record<PlayerPosition, readonly Card[]>;
+}): boolean {
 	const { totalTricksPlayed, hands } = options;
 
 	if (totalTricksPlayed >= 13) {
@@ -26,7 +29,7 @@ export function isGameFinished4P(options: { totalTricksPlayed: number; hands?: R
 }
 
 export function evaluateGameWinner4P(options: {
-	scores: Record<string, ScoreState>;
+	scores: Record<PlayerPosition, ScoreState>;
 	players: readonly Player[];
 }): GameWinnerResult4P {
 	const { scores, players } = options;
@@ -38,8 +41,8 @@ export function evaluateGameWinner4P(options: {
 		throw new DalMaraError("Players not found in players array.", ENGINE_ERROR_CODES.INVALID_PLAYERS);
 	}
 
-	const team1 = p0.team;
-	const team2 = p1.team;
+	const team1 = p0.team ?? "02";
+	const team2 = p1.team ?? "13";
 
 	let team1Tens = 0;
 	let team1Tricks = 0;
@@ -48,7 +51,7 @@ export function evaluateGameWinner4P(options: {
 	let team2Tricks = 0;
 
 	for (const p of players) {
-		const pScore = scores[p.id] ?? createInitialScoreState();
+		const pScore = scores[p.position] ?? createInitialScoreState();
 		const pTricks = pScore.capturedTricksCount;
 
 		if (p.team === team1) {

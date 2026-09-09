@@ -1,14 +1,13 @@
-import { parseDMN, serializeDMN } from "./dmn";
-import { createInitialState } from "./state";
-import { validateCreateGame } from "./validators";
 import { dispatchAction } from "./actions";
+import { createInitialState } from "./state";
 import { getCurrentTurnPlayer } from "./turn";
+import { parseDMN, serializeDMN } from "./dmn";
+import { validateCreateGame } from "./validators";
+import { ACTION_TYPES, GAME_PHASES } from "./const";
 import { getLegalMoves as getLegalMovesInternal } from "./legal-moves";
-import { ACTION_TYPES, GAME_MODES, GAME_PHASES } from "./const";
 
 import type {
 	Action,
-	Card,
 	DealAction,
 	DeclareTurupAction,
 	EngineError,
@@ -18,9 +17,6 @@ import type {
 	PlayCardAction,
 	Player,
 	PlayerPosition,
-	PlayGhopteAction,
-	Suit,
-	ValidationResult,
 } from "../types/index";
 
 import type { LegalPlayableCard } from "./legal-moves";
@@ -55,10 +51,7 @@ function resolveState(dmnOrState: string | GameState): GameState {
  * Create a new game. Returns initial DMN + state (pre-deal, like FEN starting position).
  */
 export function createGame(options: CreateGameOptions): ActionResult {
-	const validation = validateCreateGame({
-		id: "game",
-		...options,
-	});
+	const validation = validateCreateGame(options);
 
 	if (!validation.success) {
 		return { success: false, error: validation.error };
@@ -123,9 +116,7 @@ export function playCard(dmnOrState: string | GameState, payload: PlayCardAction
 
 export function getLegalMoves(dmnOrState: string | GameState, playerPosition: PlayerPosition): LegalPlayableCard[] {
 	const state = resolveState(dmnOrState);
-	const player = state.players.find((p) => p.position === playerPosition);
-	if (!player) return [];
-	return getLegalMovesInternal(state, player.id);
+	return getLegalMovesInternal(state, playerPosition);
 }
 
 export function getCurrentPlayer(dmnOrState: string | GameState): Player | null {

@@ -29,9 +29,8 @@ export function validatePlayCard({ state, action }: { state: GameState; action: 
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Player not found");
 	}
 
-	const playerId = player.id;
-	const hand = state.hands[playerId] ?? [];
-	const stacks = state.stacks[playerId] ?? [];
+	const hand = state.hands[playerPosition] ?? [];
+	const stacks = state.stacks[playerPosition] ?? [];
 
 	let cardToPlay: Card | null = null;
 
@@ -94,10 +93,9 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 
 	const currentPlayer = state.players.find((p) => p.position === playerPosition);
 	if (!currentPlayer) return state;
-	const playerId = currentPlayer.id;
 	const playerPos = currentPlayer.position;
 
-	const hand = state.hands[playerId];
+	const hand = state.hands[playerPos];
 	if (!hand) return state;
 
 	const playedCardObj = hand.find((c) => c === card);
@@ -105,11 +103,11 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 
 	const updatedHands = {
 		...state.hands,
-		[playerId]: hand.filter((c) => c !== card),
+		[playerPos]: hand.filter((c) => c !== card),
 	};
 
 	const playedCardItem: PlayedCard = {
-		playerId,
+		playerPosition: playerPos,
 		card: playedCardObj,
 		playOrder: state.trick.cards.length + 1,
 	};
@@ -132,7 +130,7 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 				newTurup = cardSuit;
 			} else if (newTurup !== cardSuit) {
 				// Turup was created in this same trick. Check if player can override it.
-				const playerHand = updatedHands[playerId] ?? [];
+				const playerHand = updatedHands[playerPos] ?? [];
 				const hasExistingTurupInHand = playerHand.some((c) => parseCard(c).suit === newTurup);
 				if (!hasExistingTurupInHand) {
 					newTurup = cardSuit;
@@ -157,14 +155,10 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 
 	// if trick is completed
 	if (isTrickComplete) {
-		const winnerId = resolve4PTrickWinner({
+		const winnerPos = resolve4PTrickWinner({
 			trick: currentTrickSnapshot,
 			currentTurup: newTurup,
 		});
-
-		const winnerPlayer = state.players.find((p) => p.id === winnerId);
-		if (!winnerPlayer) return state;
-		const winnerPos = winnerPlayer.position;
 
 		// Check if game is finished (all hands empty after this play)
 		const allHandsEmpty = Object.values(updatedHands).every((h) => h.length === 0);
@@ -247,13 +241,12 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 
 	const currentPlayer = state.players.find((p) => p.position === playerPosition);
 	if (!currentPlayer) return state;
-	const playerId = currentPlayer.id;
 	const playerPos = currentPlayer.position;
 
 	let playedCardObj: Card | null = null;
 	const updatedHands = { ...state.hands };
 	const updatedStacks = { ...state.stacks };
-	const playerStacks = [...(updatedStacks[playerId] ?? [])];
+	const playerStacks = [...(updatedStacks[playerPos] ?? [])];
 
 	// 1. Play from stack if card belongs to stack
 	const targetStackIndex = playerStacks.findIndex((s) => s.faceUpCard === card);
@@ -270,17 +263,17 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 				faceUpCard: nextFaceUp,
 			};
 
-			updatedStacks[playerId] = playerStacks;
+			updatedStacks[playerPos] = playerStacks;
 		}
 	}
 
 	// 2. Play from hand if not played from stack
 	if (!playedCardObj) {
-		const hand = updatedHands[playerId] ?? [];
+		const hand = updatedHands[playerPos] ?? [];
 		playedCardObj = hand.find((c) => c === card) ?? null;
 
 		if (playedCardObj) {
-			updatedHands[playerId] = hand.filter((c) => c !== card);
+			updatedHands[playerPos] = hand.filter((c) => c !== card);
 		}
 	}
 
@@ -288,7 +281,7 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 	if (!playedCardObj) return state;
 
 	const playedCardItem: PlayedCard = {
-		playerId,
+		playerPosition: playerPos,
 		card: playedCardObj,
 		playOrder: state.trick.cards.length + 1,
 	};
@@ -311,14 +304,10 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 	};
 
 	if (isTrickComplete) {
-		const winnerId = resolve2PTrickWinner({
+		const winnerPos = resolve2PTrickWinner({
 			trick: currentTrickSnapshot,
 			currentTurup: state.game.turup,
 		});
-
-		const winnerPlayer = state.players.find((p) => p.id === winnerId);
-		if (!winnerPlayer) return state;
-		const winnerPos = winnerPlayer.position;
 
 		// Check if game is finished
 		const allHandsEmpty = Object.values(updatedHands).every((h) => h.length === 0);

@@ -7,11 +7,13 @@ const deck = createDeck();
 describe("Ghopte Phase Mechanics", () => {
 	it("should correctly detect Ghopte when a player holds single 10 of a suit", () => {
 		const hands = {
-			p1: ["10s", "Ah", "Kd"] as const,
-			p2: ["2s", "3s"] as const,
+			0: ["10s", "Ah", "Kd"] as const,
+			1: ["2s", "3s"] as const,
+			2: [] as const,
+			3: [] as const,
 		};
 
-		const ghoptes = detectGhopte({ hands });
+		const ghoptes = detectGhopte({ hands, dealerPosition: 3 });
 		expect(ghoptes).not.toBeNull();
 		const activeGhopte = ghoptes?.[0];
 		expect(activeGhopte?.playerPosition).toBe(0);
@@ -24,10 +26,10 @@ describe("Ghopte Phase Mechanics", () => {
 			mode: "4p",
 			dealerPosition: 0,
 			players: [
-				{ id: "p1", name: "Alice", position: 0, team: "red" },
-				{ id: "p2", name: "Bob", position: 1, team: "blue" },
-				{ id: "p3", name: "Charlie", position: 2, team: "red" },
-				{ id: "p4", name: "Dave", position: 3, team: "blue" },
+				{ position: 0, team: "02" },
+				{ position: 1, team: "13" },
+				{ position: 2, team: "02" },
+				{ position: 3, team: "13" },
 			],
 		});
 		if (!gameResult.success) return;
@@ -39,7 +41,7 @@ describe("Ghopte Phase Mechanics", () => {
 			const turnP = getCurrentPlayer(dealRes.state);
 			if (turnP) {
 				const moves = getLegalMoves(dealRes.state, turnP.position);
-				const hand = dealRes.state.hands[turnP.id] ?? [];
+				const hand = dealRes.state.hands[turnP.position] ?? [];
 				// All hand cards are legal for guessing player
 				expect(moves.length).toBe(hand.length);
 			}
