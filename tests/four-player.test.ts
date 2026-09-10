@@ -7,19 +7,19 @@ describe("4-Player Game Mode", () => {
 	it("should initialize a 4-player game with 4 players and deal 13 cards each", () => {
 		const gameResult = createGame({
 			mode: "4p",
-			dealerPosition: 0,
+			dealerSeat: 0,
 			players: [
-				{ position: 0, team: "red" },
-				{ position: 1, team: "blue" },
-				{ position: 2, team: "red" },
-				{ position: 3, team: "blue" },
+				{ seat: 0, team: "red" },
+				{ seat: 1, team: "blue" },
+				{ seat: 2, team: "red" },
+				{ seat: 3, team: "blue" },
 			],
 		});
 
 		expect(gameResult.success).toBe(true);
 		if (!gameResult.success) return;
 
-		const dealRes = deal(gameResult.state, { deck, playerPosition: 0 });
+		const dealRes = deal(gameResult.state, { deck, seat: 0 });
 		expect(dealRes.success).toBe(true);
 		if (!dealRes.success) return;
 
@@ -37,10 +37,10 @@ describe("4-Player Game Mode", () => {
 	it("should return validation error with invalid player count", () => {
 		const result = createGame({
 			mode: "4p",
-			dealerPosition: 0,
+			dealerSeat: 0,
 			players: [
-				{ position: 0, team: "red" },
-				{ position: 1, team: "blue" },
+				{ seat: 0, team: "red" },
+				{ seat: 1, team: "blue" },
 			],
 		});
 		expect(result.success).toBe(false);
@@ -49,35 +49,35 @@ describe("4-Player Game Mode", () => {
 	it("should enforce strict follow-suit validation", () => {
 		const gameResult = createGame({
 			mode: "4p",
-			dealerPosition: 0,
+			dealerSeat: 0,
 			players: [
-				{ position: 0, team: "red" },
-				{ position: 1, team: "blue" },
-				{ position: 2, team: "red" },
-				{ position: 3, team: "blue" },
+				{ seat: 0, team: "red" },
+				{ seat: 1, team: "blue" },
+				{ seat: 2, team: "red" },
+				{ seat: 3, team: "blue" },
 			],
 		});
 		if (!gameResult.success) return;
 
-		const dealRes = deal(gameResult.state, { deck, playerPosition: 0 });
+		const dealRes = deal(gameResult.state, { deck, seat: 0 });
 		if (!dealRes.success) return;
 
 		let state = dealRes.state;
 		const turnP = getCurrentPlayer(state);
 		if (!turnP) return;
 
-		const hand = state.hands[turnP.position] ?? [];
+		const hand = state.hands[turnP.seat] ?? [];
 		const leadCard = hand[0];
 		if (!leadCard) return;
 
-		const playRes = playCard(state, { playerPosition: turnP.position, card: leadCard });
+		const playRes = playCard(state, { seat: turnP.seat, card: leadCard });
 		if (!playRes.success) return;
 		state = playRes.state;
 
 		const nextP = getCurrentPlayer(state);
 		if (!nextP) return;
 
-		const nextHand = state.hands[nextP.position] ?? [];
+		const nextHand = state.hands[nextP.seat] ?? [];
 		const leadSuit = state.trick.leadSuit;
 		if (!leadSuit) return;
 
@@ -86,7 +86,7 @@ describe("4-Player Game Mode", () => {
 
 		if (matchingCard && nonMatchingCard) {
 			const illegalRes = playCard(state, {
-				playerPosition: nextP.position,
+				seat: nextP.seat,
 				card: nonMatchingCard,
 			});
 			expect(illegalRes.success).toBe(false);
@@ -99,17 +99,17 @@ describe("4-Player Game Mode", () => {
 	it("should initialize game with Turup as null before void suit play", () => {
 		const gameResult = createGame({
 			mode: "4p",
-			dealerPosition: 0,
+			dealerSeat: 0,
 			players: [
-				{ position: 0, team: "red" },
-				{ position: 1, team: "blue" },
-				{ position: 2, team: "red" },
-				{ position: 3, team: "blue" },
+				{ seat: 0, team: "red" },
+				{ seat: 1, team: "blue" },
+				{ seat: 2, team: "red" },
+				{ seat: 3, team: "blue" },
 			],
 		});
 		if (!gameResult.success) return;
 
-		const dealRes = deal(gameResult.state, { deck, playerPosition: 0 });
+		const dealRes = deal(gameResult.state, { deck, seat: 0 });
 		if (!dealRes.success) return;
 
 		expect(dealRes.state.game.turup).toBeNull();
@@ -118,22 +118,22 @@ describe("4-Player Game Mode", () => {
 	it("should start in DEAL phase and allow dealer to deal", () => {
 		const gameResult = createGame({
 			mode: "4p",
-			dealerPosition: 0,
+			dealerSeat: 0,
 			players: [
-				{ position: 0, team: "red" },
-				{ position: 1, team: "blue" },
-				{ position: 2, team: "red" },
-				{ position: 3, team: "blue" },
+				{ seat: 0, team: "red" },
+				{ seat: 1, team: "blue" },
+				{ seat: 2, team: "red" },
+				{ seat: 3, team: "blue" },
 			],
 		});
 		if (!gameResult.success) return;
 
 		expect(gameResult.state.game.phase).toBe("DEAL");
 
-		const nonDealerDeal = deal(gameResult.state, { deck, playerPosition: 1 });
+		const nonDealerDeal = deal(gameResult.state, { deck, seat: 1 });
 		expect(nonDealerDeal.success).toBe(false);
 
-		const dealRes = deal(gameResult.state, { deck, playerPosition: 0 });
+		const dealRes = deal(gameResult.state, { deck, seat: 0 });
 		expect(dealRes.success).toBe(true);
 		if (dealRes.success) {
 			expect(dealRes.state.game.phase).not.toBe("DEAL");

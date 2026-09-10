@@ -4,13 +4,13 @@ import { createValidationError } from "../errors";
 import { ENGINE_ERROR_CODES, GAME_MODES, GAME_PHASES } from "../const";
 import { validateFollowSuit, resolve4PTrickWinner } from "../rules/four-player";
 import { validate2PFollowSuit, resolve2PTrickWinner } from "../rules/two-player";
-import type { Card, GameState, PlayCardAction, PlayedCard, PlayerPosition, Trick, ValidationResult } from "../../types/index";
+import type { Card, GameState, PlayCardAction, PlayedCard, Seat, Trick, ValidationResult } from "../../types/index";
 
 // Validation
 
 export function validatePlayCard({ state, action }: { state: GameState; action: PlayCardAction }): ValidationResult {
 	const currentTurnPlayer = getCurrentTurnPlayer(state);
-	const { playerPosition, card } = action.payload;
+	const { seat, card } = action.payload;
 
 	if (state.ghoptes.some((g) => !g.resolved)) {
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "Cannot play card while there are unresolved Ghoptes");
@@ -20,17 +20,17 @@ export function validatePlayCard({ state, action }: { state: GameState; action: 
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "Cannot play cards outside PLAYING phase");
 	}
 
-	if (currentTurnPlayer?.position !== playerPosition) {
-		return createValidationError(ENGINE_ERROR_CODES.NOT_PLAYER_TURN, `Not turn for player at position ${playerPosition}`);
+	if (currentTurnPlayer?.seat !== seat) {
+		return createValidationError(ENGINE_ERROR_CODES.NOT_PLAYER_TURN, `Not turn for player at seat ${seat}`);
 	}
 
-	const player = state.players.find((p) => p.position === playerPosition);
+	const player = state.players.find((p) => p.seat === seat);
 	if (!player) {
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Player not found");
 	}
 
-	const hand = state.hands[playerPosition] ?? [];
-	const stacks = state.stacks[playerPosition] ?? [];
+	const hand = state.hands[seat] ?? [];
+	const stacks = state.stacks[seat] ?? [];
 
 	let cardToPlay: Card | null = null;
 
@@ -89,13 +89,13 @@ export function validatePlayCard({ state, action }: { state: GameState; action: 
 // Reducer (4-Player)
 
 export function reducePlayCard4P(state: GameState, action: PlayCardAction): GameState {
-	const { playerPosition, card } = action.payload;
+	const { seat, card } = action.payload;
 
-	const currentPlayer = state.players.find((p) => p.position === playerPosition);
+	const currentPlayer = state.players.find((p) => p.seat === seat);
 	if (!currentPlayer) return state;
-	const playerPos = currentPlayer.position;
+	const playerSeat = currentPlayer.seat;
 
-	const hand = state.hands[playerPos];
+	const hand = state.hands[playerSeat];
 	if (!hand) return state;
 
 	const playedCardObj = hand.find((c) => c === card);
@@ -103,11 +103,11 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 
 	const updatedHands = {
 		...state.hands,
-		[playerPos]: hand.filter((c) => c !== card),
+		[playerSeat]: hand.filter((c) => c !== card),
 	};
 
 	const playedCardItem: PlayedCard = {
-		playerPosition: playerPos,
+		seat: playerSeat,
 		card: playedCardObj,
 		playOrder: state.trick.cards.length + 1,
 	};
@@ -130,7 +130,7 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 				newTurup = cardSuit;
 			} else if (newTurup !== cardSuit) {
 				// Turup was created in this same trick. Check if player can override it.
-				const playerHand = updatedHands[playerPos] ?? [];
+				const playerHand = updatedHands[playerSeat] ?? [];
 				const hasExistingTurupInHand = playerHand.some((c) => parseCard(c).suit === newTurup);
 				if (!hasExistingTurupInHand) {
 					newTurup = cardSuit;
@@ -174,7 +174,7 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 				hands: updatedHands,
 				moveNumber: newMoveNumber,
 				moveDetail: {
-					playerPosition: playerPos,
+					seat: playerSeat,
 					card: playedCardObj,
 					makesTurup,
 				},
@@ -185,7 +185,7 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 					isGhopte: false,
 					cards: [],
 				},
-				nextMovePlayerPosition: winnerPos,
+				nextMoveSeat: winnerPos,
 			};
 		}
 
@@ -198,7 +198,7 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 			hands: updatedHands,
 			moveNumber: newMoveNumber,
 			moveDetail: {
-				playerPosition: playerPos,
+				seat: playerSeat,
 				card: playedCardObj,
 				makesTurup,
 			},
@@ -209,12 +209,12 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 				isGhopte: false,
 				cards: [],
 			},
-			nextMovePlayerPosition: winnerPos,
+			nextMoveSeat: winnerPos,
 		};
 	}
 
 	// trick not complete: advance turn to next player
-	const nextPos = ((playerPos + 1) % 4) as PlayerPosition;
+	const nextSeat = ((playerSeat + 1) % 4) as Seat;
 
 	return {
 		...state,
@@ -225,28 +225,28 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 		hands: updatedHands,
 		moveNumber: newMoveNumber,
 		moveDetail: {
-			playerPosition: playerPos,
+			seat: playerSeat,
 			card: playedCardObj,
 			makesTurup,
 		},
 		trick: currentTrickSnapshot,
-		nextMovePlayerPosition: nextPos,
+		nextMoveSeat: nextSeat,
 	};
 }
 
 // Reducer (2-Player)
 
 export function reducePlayCard2P(state: GameState, action: PlayCardAction): GameState {
-	const { playerPosition, card } = action.payload;
+	const { seat, card } = action.payload;
 
-	const currentPlayer = state.players.find((p) => p.position === playerPosition);
+	const currentPlayer = state.players.find((p) => p.seat === seat);
 	if (!currentPlayer) return state;
-	const playerPos = currentPlayer.position;
+	const playerSeat = currentPlayer.seat;
 
 	let playedCardObj: Card | null = null;
 	const updatedHands = { ...state.hands };
 	const updatedStacks = { ...state.stacks };
-	const playerStacks = [...(updatedStacks[playerPos] ?? [])];
+	const playerStacks = [...(updatedStacks[playerSeat] ?? [])];
 
 	// 1. Play from stack if card belongs to stack
 	const targetStackIndex = playerStacks.findIndex((s) => s.faceUpCard === card);
@@ -263,17 +263,17 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 				faceUpCard: nextFaceUp,
 			};
 
-			updatedStacks[playerPos] = playerStacks;
+			updatedStacks[playerSeat] = playerStacks;
 		}
 	}
 
 	// 2. Play from hand if not played from stack
 	if (!playedCardObj) {
-		const hand = updatedHands[playerPos] ?? [];
+		const hand = updatedHands[playerSeat] ?? [];
 		playedCardObj = hand.find((c) => c === card) ?? null;
 
 		if (playedCardObj) {
-			updatedHands[playerPos] = hand.filter((c) => c !== card);
+			updatedHands[playerSeat] = hand.filter((c) => c !== card);
 		}
 	}
 
@@ -281,7 +281,7 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 	if (!playedCardObj) return state;
 
 	const playedCardItem: PlayedCard = {
-		playerPosition: playerPos,
+		seat: playerSeat,
 		card: playedCardObj,
 		playOrder: state.trick.cards.length + 1,
 	};
@@ -327,7 +327,7 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 				stacks: updatedStacks,
 				moveNumber: newMoveNumber,
 				moveDetail: {
-					playerPosition: playerPos,
+					seat: playerSeat,
 					card: playedCardObj,
 					makesTurup: false,
 				},
@@ -338,7 +338,7 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 					isGhopte: false,
 					cards: [],
 				},
-				nextMovePlayerPosition: winnerPos,
+				nextMoveSeat: winnerPos,
 			};
 		}
 
@@ -348,7 +348,7 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 			stacks: updatedStacks,
 			moveNumber: newMoveNumber,
 			moveDetail: {
-				playerPosition: playerPos,
+				seat: playerSeat,
 				card: playedCardObj,
 				makesTurup: false,
 			},
@@ -359,12 +359,12 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 				isGhopte: false,
 				cards: [],
 			},
-			nextMovePlayerPosition: winnerPos,
+			nextMoveSeat: winnerPos,
 		};
 	}
 
 	// Trick not complete: advance turn to other player
-	const nextPos = ((playerPos + 1) % 2) as PlayerPosition;
+	const nextSeat = ((playerSeat + 1) % 2) as Seat;
 
 	return {
 		...state,
@@ -372,11 +372,11 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 		stacks: updatedStacks,
 		moveNumber: newMoveNumber,
 		moveDetail: {
-			playerPosition: playerPos,
+			seat: playerSeat,
 			card: playedCardObj,
 			makesTurup: false,
 		},
 		trick: currentTrickSnapshot,
-		nextMovePlayerPosition: nextPos,
+		nextMoveSeat: nextSeat,
 	};
 }

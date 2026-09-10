@@ -4,9 +4,9 @@
 
 Dal Mara Notation (DMN) represents the complete game state using a fixed-order, pipe-separated format.
 
-<game> | <ghoptes> | <hands> | <stacks> | <move_number> | <trick> | <move_detail> | <next_move>
+<game> | <ghoptes> | <hands> | <stacks> | <move_number> | <trick> | <move_detail> | <next_move_seat>
 
-The fixed section order makes parsing deterministic while positional ordering avoids unnecessary identifiers where ownership or identity is already implied by position.
+The fixed section order makes parsing deterministic while positional ordering avoids unnecessary identifiers where ownership or identity is already implied by seat.
 
 ## Delimiters
 
@@ -44,7 +44,7 @@ c = clubs
 
 Format:
 
-<mode>,<dealer_position>,<turup_suit>
+<mode>,<dealer_seat>,<turup_suit>
 
 Examples:
 
@@ -56,7 +56,7 @@ Values:
 mode:
 2p | 4p
 
-dealer_position:
+dealer_seat:
 0 | 1 | 2 | 3
 
 turup_suit:
@@ -69,14 +69,14 @@ Example:
 Means:
 
 - 4-player game
-- Dealer is player position 2
+- Dealer is player seat 2
 - Hearts is the turup suit
 
 ## 2. Ghoptes
 
 Ghoptes are applicable only in 4-player mode.
 
-For 4-player games, ghoptes are grouped by player position:
+For 4-player games, ghoptes are grouped by player seat:
 
 <player_0_ghoptes>/<player_1_ghoptes>/<player_2_ghoptes>/<player_3_ghoptes>
 
@@ -134,7 +134,7 @@ For 2-player mode, ghoptes do not exist. The ghoptes section is:
 
 ## 3. Hands
 
-Hands are grouped by player position and separated by `/`.
+Hands are grouped by player seat and separated by `/`.
 
 Format:
 
@@ -144,12 +144,13 @@ Example:
 
 As,Qh,10d/7c,Js/Kd,8d/9s,Ad
 
-Player ownership is determined by segment position:
+Player ownership is determined by segment index (seat):
 
-Segment 0 = player 0
-Segment 1 = player 1
-Segment 2 = player 2
-Segment 3 = player 3
+Segment 0 = seat 0
+Segment 1 = seat 1
+Segment 2 = seat 2
+Segment 3 = seat 3
+
 
 When a player plays a card, that card is removed from the corresponding player's hand.
 
@@ -230,7 +231,7 @@ ghopte_flag:
 g = ghopte trick
 
 trick_cards:
-Cards played to this trick in order, formatted as `<player_position>:<card>`, separated by `/`. If no cards have been played to the trick yet, this is `-`.
+Cards played to this trick in order, formatted as `<seat>:<card>`, separated by `/`. If no cards have been played to the trick yet, this is `-`.
 
 ## 7. Move Detail
 
@@ -238,7 +239,7 @@ The move detail represents the move that produced the current DMN state.
 
 Format:
 
-<player_position>,<card>,<makes_turup>
+<seat>,<card>,<makes_turup>
 
 Examples:
 
@@ -252,37 +253,37 @@ t = this move established/made turup
 
 ## 8. Next Move
 
-A standalone player position representing who must make the next move.
+A standalone seat representing who must make the next move.
 
 Format:
 
-<next_move_player_position>
+<next_move_seat>
 
 Example:
 
 3
 
-The initial DMN must populate next_move_player_position immediately when the game is created or the dealing is done.
+The initial DMN must populate next_move_seat immediately when the game is created or the dealing is done.
 
-For a 4-player game with ghoptes, next_move_player_position is the player whose unresolved ghopte has the next resolution order.
+For a 4-player game with ghoptes, next_move_seat is the player whose unresolved ghopte has the next resolution order.
 
 For example, if the first unresolved ghopte is:
 
 7s,1,-
 
-and belongs to player 1, then:
+and belongs to player at seat 1, then:
 
-next_move_player_position = 1
+next_move_seat = 1
 
-If there are no ghoptes, next_move_player_position is the player next to the dealer in anti-clockwise order.
+If there are no ghoptes, next_move_seat is the player next to the dealer in anti-clockwise order.
 
-For subsequent game states, next_move_player_position represents the player expected to make the next valid move.
+For subsequent game states, next_move_seat represents the player expected to make the next valid move.
 
-In 2-player mode, non dealer is the next_move_player_position
+In 2-player mode, non-dealer is the next_move_seat
 
 ## Complete Format
 
-<game> | <ghoptes> | <hands> | <stacks> | <move_number> | <trick> | <move_detail> | <next_move_player_position>
+<game> | <ghoptes> | <hands> | <stacks> | <move_number> | <trick> | <move_detail> | <next_move_seat>
 
 ## Example
 

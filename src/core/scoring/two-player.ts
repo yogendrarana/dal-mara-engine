@@ -1,15 +1,16 @@
-import type { Card, Player, PlayerPosition, PlayerStack, ScoreState } from "../../types/index";
+import type { Card, Player, Seat, PlayerStack, ScoreState } from "../../types/index";
 import { createInitialScoreState } from "./scoring";
 
 export interface GameWinnerResult2P {
-	readonly winnerPosition: PlayerPosition | null;
+	readonly winnerSeat: Seat | null;
+	readonly winnerPosition?: Seat | null;
 	readonly reason?: string;
 }
 
 export function isGameFinished2P(options: {
 	totalTricksPlayed: number;
-	hands?: Record<PlayerPosition, readonly Card[]>;
-	stacks?: Record<PlayerPosition, readonly PlayerStack[]>;
+	hands?: Record<Seat, readonly Card[]>;
+	stacks?: Record<Seat, readonly PlayerStack[]>;
 }): boolean {
 	const { totalTricksPlayed, hands, stacks } = options;
 
@@ -32,7 +33,7 @@ export function isGameFinished2P(options: {
 }
 
 export function evaluateGameWinner2P(options: {
-	scores: Record<PlayerPosition, ScoreState>;
+	scores: Record<Seat, ScoreState>;
 	players: readonly Player[];
 }): GameWinnerResult2P {
 	const { scores, players } = options;
@@ -44,42 +45,47 @@ export function evaluateGameWinner2P(options: {
 		throw new Error("2-Player mode requires exactly 2 players in evaluation");
 	}
 
-	const p0Score = scores[p0.position] ?? createInitialScoreState();
-	const p1Score = scores[p1.position] ?? createInitialScoreState();
+	const p0Score = scores[p0.seat] ?? createInitialScoreState();
+	const p1Score = scores[p1.seat] ?? createInitialScoreState();
 
 	const p0Tricks = p0Score.capturedTricksCount;
 	const p1Tricks = p1Score.capturedTricksCount;
 
 	if (p0Score.capturedTensCount > p1Score.capturedTensCount) {
 		return {
-			winnerPosition: p0.position,
-			reason: `Player at position ${p0.position} wins with ${p0Score.capturedTensCount} tens`,
+			winnerSeat: p0.seat,
+			winnerPosition: p0.seat,
+			reason: `Player at seat ${p0.seat} wins with ${p0Score.capturedTensCount} tens`,
 		};
 	}
 
 	if (p1Score.capturedTensCount > p0Score.capturedTensCount) {
 		return {
-			winnerPosition: p1.position,
-			reason: `Player at position ${p1.position} wins with ${p1Score.capturedTensCount} tens`,
+			winnerSeat: p1.seat,
+			winnerPosition: p1.seat,
+			reason: `Player at seat ${p1.seat} wins with ${p1Score.capturedTensCount} tens`,
 		};
 	}
 
 	// 2-2 tens tie broken by tricks
 	if (p0Tricks > p1Tricks) {
 		return {
-			winnerPosition: p0.position,
-			reason: `2-2 tie broken by tricks: Player at position ${p0.position} (${p0Tricks}) vs Player at position ${p1.position} (${p1Tricks})`,
+			winnerSeat: p0.seat,
+			winnerPosition: p0.seat,
+			reason: `2-2 tie broken by tricks: Player at seat ${p0.seat} (${p0Tricks}) vs Player at seat ${p1.seat} (${p1Tricks})`,
 		};
 	}
 
 	if (p1Tricks > p0Tricks) {
 		return {
-			winnerPosition: p1.position,
-			reason: `2-2 tie broken by tricks: Player at position ${p1.position} (${p1Tricks}) vs Player at position ${p0.position} (${p0Tricks})`,
+			winnerSeat: p1.seat,
+			winnerPosition: p1.seat,
+			reason: `2-2 tie broken by tricks: Player at seat ${p1.seat} (${p1Tricks}) vs Player at seat ${p0.seat} (${p0Tricks})`,
 		};
 	}
 
 	return {
+		winnerSeat: null,
 		winnerPosition: null,
 		reason: `Game ended in a draw (equal tens: ${p0Score.capturedTensCount}, equal tricks: ${p0Tricks})`,
 	};

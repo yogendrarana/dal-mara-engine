@@ -16,7 +16,7 @@ import type {
 	PickupTurupCardAction,
 	PlayCardAction,
 	Player,
-	PlayerPosition,
+	Seat,
 } from "../types/index";
 
 import type { LegalPlayableCard } from "./legal-moves";
@@ -32,7 +32,7 @@ export type ActionResult =
 export interface CreateGameOptions {
 	readonly mode: GameMode;
 	readonly players: readonly Player[];
-	readonly dealerPosition: PlayerPosition;
+	readonly dealerSeat: Seat;
 }
 
 // ---------------------------------------------------------------------------
@@ -114,9 +114,9 @@ export function playCard(dmnOrState: string | GameState, payload: PlayCardAction
 // Query Functions
 // ---------------------------------------------------------------------------
 
-export function getLegalMoves(dmnOrState: string | GameState, playerPosition: PlayerPosition): LegalPlayableCard[] {
+export function getLegalMoves(dmnOrState: string | GameState, seat: Seat): LegalPlayableCard[] {
 	const state = resolveState(dmnOrState);
-	return getLegalMovesInternal(state, playerPosition);
+	return getLegalMovesInternal(state, seat);
 }
 
 export function getCurrentPlayer(dmnOrState: string | GameState): Player | null {

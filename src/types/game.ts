@@ -1,4 +1,4 @@
-import type { Player, PlayerPosition } from "./player";
+import type { Player, Seat } from "./player";
 import type { Card, Suit } from "./card";
 
 import type { GAME_MODES, GAME_PHASES } from "../core/const";
@@ -10,7 +10,7 @@ export type GamePhase = (typeof GAME_PHASES)[keyof typeof GAME_PHASES];
 
 export interface PlayedCard {
 	readonly card: Card;
-	readonly playerPosition: PlayerPosition;
+	readonly seat: Seat;
 	readonly playOrder: number;
 }
 
@@ -24,7 +24,7 @@ export interface Trick {
 }
 
 export interface Ghopte {
-	readonly playerPosition: PlayerPosition;
+	readonly seat: Seat;
 	readonly card: Card;
 	readonly order: number;
 	readonly resolved: boolean;
@@ -46,7 +46,7 @@ export interface GameState {
 	// DMN Section 1: Game
 	readonly game: {
 		readonly mode: GameMode;
-		readonly dealerPosition: PlayerPosition;
+		readonly dealerSeat: Seat;
 		readonly turup: Suit | null;
 		readonly phase: GamePhase; // internal, not in DMN
 	};
@@ -54,14 +54,14 @@ export interface GameState {
 	// Player roster (derived from mode, not in DMN)
 	readonly players: readonly Player[];
 
-	// DMN Section 3: Hands (keyed by player position)
-	readonly hands: Record<PlayerPosition, readonly Card[]>;
+	// DMN Section 3: Hands (keyed by player seat)
+	readonly hands: Record<Seat, readonly Card[]>;
 
 	// DMN Section 2: Ghoptes
 	readonly ghoptes: readonly Ghopte[];
 
-	// DMN Section 4: Stacks (2p only, keyed by player position)
-	readonly stacks: Record<PlayerPosition, readonly PlayerStack[]>;
+	// DMN Section 4: Stacks (2p only, keyed by player seat)
+	readonly stacks: Record<Seat, readonly PlayerStack[]>;
 
 	// DMN Section 5: Move Number
 	readonly moveNumber: number;
@@ -71,11 +71,11 @@ export interface GameState {
 
 	// DMN Section 7: Move Detail
 	readonly moveDetail: {
-		readonly playerPosition: PlayerPosition | null;
+		readonly seat: Seat | null;
 		readonly card: Card | null;
 		readonly makesTurup: boolean;
 	};
 
-	// DMN Section 8: Next Move Player Position
-	readonly nextMovePlayerPosition: PlayerPosition;
+	// DMN Section 8: Next Move Seat
+	readonly nextMoveSeat: Seat;
 }

@@ -3,13 +3,13 @@ import { createValidationError } from "../errors";
 import { ENGINE_ERROR_CODES, GAME_MODES, GAME_PHASES } from "../const";
 import { resolve4PTrickWinner } from "../rules/four-player";
 import { getCurrentTurnPlayer } from "../turn";
-import type { GameState, PlayedCard, PlayerPosition, PlayGhopteAction, Trick, ValidationResult } from "../../types/index";
+import type { GameState, PlayedCard, Seat, PlayGhopteAction, Trick, ValidationResult } from "../../types/index";
 
 // Validation
 
 export function validatePlayGhopte({ state, action }: { state: GameState; action: PlayGhopteAction }): ValidationResult {
 	const currentTurnPlayer = getCurrentTurnPlayer(state);
-	const { playerPosition, card } = action.payload;
+	const { seat, card } = action.payload;
 
 	if (state.game.mode !== GAME_MODES.FOUR_PLAYER) {
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Ghopte is only valid in 4-Player mode");
@@ -19,16 +19,16 @@ export function validatePlayGhopte({ state, action }: { state: GameState; action
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "PLAY_GHOPTE action is only valid during GHOPTE phase");
 	}
 
-	if (currentTurnPlayer?.position !== playerPosition) {
-		return createValidationError(ENGINE_ERROR_CODES.NOT_PLAYER_TURN, `Not turn for player at position ${playerPosition}`);
+	if (currentTurnPlayer?.seat !== seat) {
+		return createValidationError(ENGINE_ERROR_CODES.NOT_PLAYER_TURN, `Not turn for player at seat ${seat}`);
 	}
 
-	const player = state.players.find((p) => p.position === playerPosition);
+	const player = state.players.find((p) => p.seat === seat);
 	if (!player) {
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Player not found");
 	}
 
-	const hand = state.hands[playerPosition] ?? [];
+	const hand = state.hands[seat] ?? [];
 	const cardToPlay = hand.find((c) => c === card) ?? null;
 
 	if (!cardToPlay) {
@@ -42,7 +42,7 @@ export function validatePlayGhopte({ state, action }: { state: GameState; action
 			return createValidationError(ENGINE_ERROR_CODES.INVALID_GHOPTE_SUBMISSION, "Active ghopte is not found.");
 		}
 
-		const isPlayerGhopteDeclarer = activeGhopte.playerPosition === playerPosition;
+		const isPlayerGhopteDeclarer = activeGhopte.seat === seat;
 
 		if (isPlayerGhopteDeclarer) {
 			if (cardToPlay !== activeGhopte.card) {
@@ -55,9 +55,7 @@ export function validatePlayGhopte({ state, action }: { state: GameState; action
 
 		if (!isPlayerGhopteDeclarer) {
 			// player cannot throw their own pending Ghopte 10 for another player's Ghopte
-			const isPendingOwnGhopte = state.ghoptes.some(
-				(g) => g.playerPosition === playerPosition && !g.resolved && g.card === cardToPlay,
-			);
+			const isPendingOwnGhopte = state.ghoptes.some((g) => g.seat === seat && !g.resolved && g.card === cardToPlay);
 
 			if (isPendingOwnGhopte) {
 				return createValidationError(
@@ -74,13 +72,13 @@ export function validatePlayGhopte({ state, action }: { state: GameState; action
 // Reducer (4-Player only)
 
 export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): GameState {
-	const { playerPosition, card } = action.payload;
+	const { seat, card } = action.payload;
 
-	const currentPlayer = state.players.find((p) => p.position === playerPosition);
+	const currentPlayer = state.players.find((p) => p.seat === seat);
 	if (!currentPlayer) return state;
-	const playerPos = currentPlayer.position;
+	const playerSeat = currentPlayer.seat;
 
-	const hand = state.hands[playerPos];
+	const hand = state.hands[playerSeat];
 	if (!hand) return state;
 
 	const playedCardObj = hand.find((c) => c === card);
@@ -88,11 +86,11 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 
 	const updatedHands = {
 		...state.hands,
-		[playerPos]: hand.filter((c) => c !== card),
+		[playerSeat]: hand.filter((c) => c !== card),
 	};
 
 	const playedCardItem: PlayedCard = {
-		playerPosition: playerPos,
+		seat: playerSeat,
 		card: playedCardObj,
 		playOrder: state.trick.cards.length + 1,
 	};
@@ -139,7 +137,7 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 				ghoptes: updatedGhoptes,
 				moveNumber: newMoveNumber,
 				moveDetail: {
-					playerPosition: playerPos,
+					seat: playerSeat,
 					card: playedCardObj,
 					makesTurup: false,
 				},
@@ -150,7 +148,7 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 					isGhopte: true,
 					cards: [],
 				},
-				nextMovePlayerPosition: nextGhopte.playerPosition,
+				nextMoveSeat: nextGhopte.seat,
 			};
 		}
 
@@ -165,7 +163,7 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 			ghoptes: updatedGhoptes,
 			moveNumber: newMoveNumber,
 			moveDetail: {
-				playerPosition: playerPos,
+				seat: playerSeat,
 				card: playedCardObj,
 				makesTurup: false,
 			},
@@ -176,23 +174,23 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 				isGhopte: false,
 				cards: [],
 			},
-			nextMovePlayerPosition: winnerPos,
+			nextMoveSeat: winnerPos,
 		};
 	}
 
 	// Ghopte trick in progress: advance turn to next player
-	const nextPos = ((playerPos + 1) % 4) as PlayerPosition;
+	const nextSeat = ((playerSeat + 1) % 4) as Seat;
 
 	return {
 		...state,
 		hands: updatedHands,
 		moveNumber: newMoveNumber,
 		moveDetail: {
-			playerPosition: playerPos,
+			seat: playerSeat,
 			card: playedCardObj,
 			makesTurup: false,
 		},
 		trick: currentTrickSnapshot,
-		nextMovePlayerPosition: nextPos,
+		nextMoveSeat: nextSeat,
 	};
 }

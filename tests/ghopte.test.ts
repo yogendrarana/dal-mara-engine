@@ -13,10 +13,10 @@ describe("Ghopte Phase Mechanics", () => {
 			3: [] as const,
 		};
 
-		const ghoptes = detectGhopte({ hands, dealerPosition: 3 });
+		const ghoptes = detectGhopte({ hands, dealerSeat: 3 });
 		expect(ghoptes).not.toBeNull();
 		const activeGhopte = ghoptes?.[0];
-		expect(activeGhopte?.playerPosition).toBe(0);
+		expect(activeGhopte?.seat).toBe(0);
 		expect(activeGhopte && parseCard(activeGhopte.card).suit).toBe("spades");
 		expect(activeGhopte?.card).toBe("10s");
 	});
@@ -24,24 +24,24 @@ describe("Ghopte Phase Mechanics", () => {
 	it("should allow guessing players to play any hand card during Ghopte round", () => {
 		const gameResult = createGame({
 			mode: "4p",
-			dealerPosition: 0,
+			dealerSeat: 0,
 			players: [
-				{ position: 0, team: "02" },
-				{ position: 1, team: "13" },
-				{ position: 2, team: "02" },
-				{ position: 3, team: "13" },
+				{ seat: 0, team: "02" },
+				{ seat: 1, team: "13" },
+				{ seat: 2, team: "02" },
+				{ seat: 3, team: "13" },
 			],
 		});
 		if (!gameResult.success) return;
 
-		const dealRes = deal(gameResult.state, { deck, playerPosition: 0 });
+		const dealRes = deal(gameResult.state, { deck, seat: 0 });
 		if (!dealRes.success) return;
 
 		if (dealRes.state.game.phase === "GHOPTE") {
 			const turnP = getCurrentPlayer(dealRes.state);
 			if (turnP) {
-				const moves = getLegalMoves(dealRes.state, turnP.position);
-				const hand = dealRes.state.hands[turnP.position] ?? [];
+				const moves = getLegalMoves(dealRes.state, turnP.seat);
+				const hand = dealRes.state.hands[turnP.seat] ?? [];
 				// All hand cards are legal for guessing player
 				expect(moves.length).toBe(hand.length);
 			}

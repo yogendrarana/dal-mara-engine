@@ -1,28 +1,35 @@
 import { compareCardRanks, parseCard } from "../card";
 import { RANKS, SUITS } from "../const";
-import type { Card, Ghopte, PlayedCard, Player, PlayerPosition, Suit, Trick } from "../../types/index";
+import type { Card, Ghopte, PlayedCard, Player, Seat, Suit, Trick } from "../../types/index";
 
 /**
  * Get anti-clockwise next seat in square arrangement [P0, P1, P2, P3].
  * Sequence: P0 (0) -> P1 (1) -> P2 (2) -> P3 (3) -> P0 (0).
  */
-export function getAnticlockwiseNextPosition(currentPos: number, totalPlayers = 4): number {
-	return (currentPos + 1) % totalPlayers;
+export function getAnticlockwiseNextSeat(currentSeat: number, totalPlayers = 4): number {
+	return (currentSeat + 1) % totalPlayers;
 }
 
+export const getAnticlockwiseNextPosition = getAnticlockwiseNextSeat;
+
 /**
- * Get first player index to receive cards / start play.
+ * Get first player seat to receive cards / start play.
  * Starts from the player immediately to the dealer's right (anti-clockwise).
  */
-export function getFirstPlayerPosition({
+export function getFirstPlayerSeat({
+	dealerSeat,
 	dealerPosition,
 	totalPlayers = 4,
 }: {
-	dealerPosition: number;
-	totalPlayers: number;
+	dealerSeat?: number;
+	dealerPosition?: number;
+	totalPlayers?: number;
 }): number {
-	return (dealerPosition + 1) % totalPlayers;
+	const seat = dealerSeat ?? dealerPosition ?? 0;
+	return (seat + 1) % totalPlayers;
 }
+
+export const getFirstPlayerPosition = getFirstPlayerSeat;
 
 /**
  * 4-Player Deal distribution:
@@ -34,54 +41,57 @@ export function getFirstPlayerPosition({
  */
 export function dealFourPlayer({
 	deck,
+	dealerSeat,
 	dealerPosition,
 }: {
 	deck: readonly Card[];
-	dealerPosition: number;
-}): Record<PlayerPosition, Card[]> {
-	// initialize empty hands keyed by position
-	const hands = {} as Record<PlayerPosition, Card[]>;
+	dealerSeat?: number;
+	dealerPosition?: number;
+}): Record<Seat, Card[]> {
+	const seat = dealerSeat ?? dealerPosition ?? 0;
+	// initialize empty hands keyed by seat
+	const hands = {} as Record<Seat, Card[]>;
 	for (let i = 0; i < 4; i++) {
-		hands[i as PlayerPosition] = [];
+		hands[i as Seat] = [];
 	}
 
 	let deckIndex = 0;
-	const startPos = getFirstPlayerPosition({ dealerPosition, totalPlayers: 4 });
+	const startPos = getFirstPlayerSeat({ dealerSeat: seat, totalPlayers: 4 });
 
 	// deal pass 1: 5 cards each
 	let currPos = startPos;
 	for (let i = 0; i < 4; i++) {
-		const targetHand = hands[currPos as PlayerPosition];
+		const targetHand = hands[currPos as Seat];
 		if (!targetHand) {
-			throw new Error(`Hand not initialized for position ${currPos}`);
+			throw new Error(`Hand not initialized for seat ${currPos}`);
 		}
 		targetHand.push(...deck.slice(deckIndex, deckIndex + 5));
 		deckIndex += 5;
-		currPos = getAnticlockwiseNextPosition(currPos, 4);
+		currPos = getAnticlockwiseNextSeat(currPos, 4);
 	}
 
 	// deal pass 2: 4 cards each
 	currPos = startPos;
 	for (let i = 0; i < 4; i++) {
-		const targetHand = hands[currPos as PlayerPosition];
+		const targetHand = hands[currPos as Seat];
 		if (!targetHand) {
-			throw new Error(`Hand not initialized for position ${currPos}`);
+			throw new Error(`Hand not initialized for seat ${currPos}`);
 		}
 		targetHand.push(...deck.slice(deckIndex, deckIndex + 4));
 		deckIndex += 4;
-		currPos = getAnticlockwiseNextPosition(currPos, 4);
+		currPos = getAnticlockwiseNextSeat(currPos, 4);
 	}
 
 	// deal pass 3: 4 cards each
 	currPos = startPos;
 	for (let i = 0; i < 4; i++) {
-		const targetHand = hands[currPos as PlayerPosition];
+		const targetHand = hands[currPos as Seat];
 		if (!targetHand) {
-			throw new Error(`Hand not initialized for position ${currPos}`);
+			throw new Error(`Hand not initialized for seat ${currPos}`);
 		}
 		targetHand.push(...deck.slice(deckIndex, deckIndex + 4));
 		deckIndex += 4;
-		currPos = getAnticlockwiseNextPosition(currPos, 4);
+		currPos = getAnticlockwiseNextSeat(currPos, 4);
 	}
 
 	return hands;
@@ -95,19 +105,22 @@ export function dealFourPlayer({
  * - "dealer-first": starts from dealer
  */
 export function detectGhopte({
-	hands = {} as Record<PlayerPosition, readonly Card[]>,
-	dealerPosition = 0,
+	hands = {} as Record<Seat, readonly Card[]>,
+	dealerSeat,
+	dealerPosition,
 }: {
-	hands: Record<PlayerPosition, readonly Card[]>;
+	hands: Record<Seat, readonly Card[]>;
+	dealerSeat?: number;
 	dealerPosition?: number;
 }): Ghopte[] | null {
 	const allGhoptes: Ghopte[] = [];
+	const dSeat = dealerSeat ?? dealerPosition ?? 0;
 
 	const total = 4;
 
 	for (let i = 0; i < total; i++) {
 		// Normal anti-clockwise direction starting after the dealer (dealer is last)
-		const pos = ((dealerPosition + 1 + i) % total) as PlayerPosition;
+		const pos = ((dSeat + 1 + i) % total) as Seat;
 
 		const hand = hands[pos] ?? [];
 		const suitCounts: Record<Suit, Card[]> = {
@@ -128,7 +141,7 @@ export function detectGhopte({
 				if (card && parseCard(card).rank === RANKS.TEN) {
 					allGhoptes.push({
 						order: allGhoptes.length,
-						playerPosition: pos,
+						seat: pos,
 						card,
 						resolved: false,
 					});
@@ -166,9 +179,9 @@ export function validateFollowSuit({
 /**
  * Determine winner of a completed 4-Player trick.
  * In 4P mode, active Turup is passed in `currentTurup`.
- * Returns the winning player's position.
+ * Returns the winning player's seat.
  */
-export function resolve4PTrickWinner(options: { trick: Trick; currentTurup: Suit | null }): PlayerPosition {
+export function resolve4PTrickWinner(options: { trick: Trick; currentTurup: Suit | null }): Seat {
 	const { trick, currentTurup } = options;
 
 	const firstCard = trick.cards[0];
@@ -205,5 +218,5 @@ export function resolve4PTrickWinner(options: { trick: Trick; currentTurup: Suit
 		}
 	}
 
-	return winningPlayedCard.playerPosition;
+	return winningPlayedCard.seat;
 }

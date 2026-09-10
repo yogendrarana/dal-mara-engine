@@ -1,16 +1,25 @@
 import { compareCardRanks, parseCard } from "../card";
-import type { Card, Player, PlayerPosition, PlayerStack, Suit, Trick } from "../../types/index";
+import type { Card, Player, Seat, PlayerStack, Suit, Trick } from "../../types/index";
 
 /**
  * 2-Player initial deal:
  * 6 cards to opponent (non-dealer), 6 cards to dealer.
  */
-export function dealTwoPlayer({ deck, dealerPosition }: { deck: readonly Card[]; dealerPosition: number }): {
-	hands: Record<PlayerPosition, Card[]>;
+export function dealTwoPlayer({
+	deck,
+	dealerSeat,
+	dealerPosition,
+}: {
+	deck: readonly Card[];
+	dealerSeat?: number;
+	dealerPosition?: number;
+}): {
+	hands: Record<Seat, Card[]>;
 	remainingDeck: Card[];
 } {
-	const nonDealerPosition = ((dealerPosition + 1) % 2) as PlayerPosition;
-	const dealerPos = dealerPosition as PlayerPosition;
+	const dSeat = dealerSeat ?? dealerPosition ?? 0;
+	const nonDealerSeat = ((dSeat + 1) % 2) as Seat;
+	const dealerSeatVal = dSeat as Seat;
 
 	const nonDealerHand = deck.slice(0, 6);
 	const dealerHand = deck.slice(6, 12);
@@ -18,9 +27,9 @@ export function dealTwoPlayer({ deck, dealerPosition }: { deck: readonly Card[];
 
 	return {
 		hands: {
-			[nonDealerPosition]: nonDealerHand,
-			[dealerPos]: dealerHand,
-		} as Record<PlayerPosition, Card[]>,
+			[nonDealerSeat]: nonDealerHand,
+			[dealerSeatVal]: dealerHand,
+		} as Record<Seat, Card[]>,
 		remainingDeck,
 	};
 }
@@ -50,13 +59,16 @@ const buildPlayerStacks = (stacks: Card[][]): PlayerStack[] => {
 
 export function create2PStacks({
 	remainingDeck,
+	dealerSeat,
 	dealerPosition,
 }: {
 	remainingDeck: readonly Card[];
-	dealerPosition: number;
-}): Record<PlayerPosition, PlayerStack[]> {
-	const nonDealerPosition = ((dealerPosition + 1) % 2) as PlayerPosition;
-	const dealerPos = dealerPosition as PlayerPosition;
+	dealerSeat?: number;
+	dealerPosition?: number;
+}): Record<Seat, PlayerStack[]> {
+	const dSeat = dealerSeat ?? dealerPosition ?? 0;
+	const nonDealerSeat = ((dSeat + 1) % 2) as Seat;
+	const dealerSeatVal = dSeat as Seat;
 
 	const dealerStacks: Card[][] = [[], [], [], []];
 	const nonDealerStacks: Card[][] = [[], [], [], []];
@@ -73,9 +85,9 @@ export function create2PStacks({
 	}
 
 	return {
-		[nonDealerPosition]: buildPlayerStacks(nonDealerStacks),
-		[dealerPos]: buildPlayerStacks(dealerStacks),
-	} as Record<PlayerPosition, PlayerStack[]>;
+		[nonDealerSeat]: buildPlayerStacks(nonDealerStacks),
+		[dealerSeatVal]: buildPlayerStacks(dealerStacks),
+	} as Record<Seat, PlayerStack[]>;
 }
 
 /**
@@ -104,9 +116,9 @@ export function validate2PFollowSuit({
 
 /**
  * Determine winner of a completed 2-Player trick.
- * Returns the winning player's position.
+ * Returns the winning player's seat.
  */
-export function resolve2PTrickWinner(options: { trick: Trick; currentTurup: Suit | null }): PlayerPosition {
+export function resolve2PTrickWinner(options: { trick: Trick; currentTurup: Suit | null }): Seat {
 	const { trick, currentTurup } = options;
 	const card1 = trick.cards[0];
 	const card2 = trick.cards[1];
@@ -120,25 +132,25 @@ export function resolve2PTrickWinner(options: { trick: Trick; currentTurup: Suit
 	const leadSuit = trick.leadSuit ?? card1Suit;
 
 	if (card1Suit === currentTurup && card2Suit !== currentTurup) {
-		return card1.playerPosition;
+		return card1.seat;
 	}
 
 	if (card2Suit === currentTurup && card1Suit !== currentTurup) {
-		return card2.playerPosition;
+		return card2.seat;
 	}
 
 	if (card1Suit === currentTurup && card2Suit === currentTurup) {
-		return compareCardRanks(card1.card, card2.card) >= 0 ? card1.playerPosition : card2.playerPosition;
+		return compareCardRanks(card1.card, card2.card) >= 0 ? card1.seat : card2.seat;
 	}
 
 	// Neither is Turup
 	if (card2Suit === leadSuit && card1Suit === leadSuit) {
-		return compareCardRanks(card1.card, card2.card) >= 0 ? card1.playerPosition : card2.playerPosition;
+		return compareCardRanks(card1.card, card2.card) >= 0 ? card1.seat : card2.seat;
 	}
 
 	if (card1Suit === leadSuit && card2Suit !== leadSuit) {
-		return card1.playerPosition;
+		return card1.seat;
 	}
 
-	return card1.playerPosition;
+	return card1.seat;
 }

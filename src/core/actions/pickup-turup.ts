@@ -6,18 +6,18 @@ import type { GameState, PickupTurupCardAction, ValidationResult } from "../../t
 // Validation
 
 export function validatePickupTurup({ state, action }: { state: GameState; action: PickupTurupCardAction }): ValidationResult {
-	const { playerPosition, card } = action.payload;
+	const { seat, card } = action.payload;
 
 	if (state.game.mode !== GAME_MODES.TWO_PLAYER) {
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Pickup Turup action is only valid in 2-Player mode");
 	}
 
-	const player = state.players.find((p) => p.position === playerPosition);
+	const player = state.players.find((p) => p.seat === seat);
 	if (!player) {
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Player not found");
 	}
 
-	const playerStacks = state.stacks[playerPosition];
+	const playerStacks = state.stacks[seat];
 	if (!playerStacks) {
 		return createValidationError(ENGINE_ERROR_CODES.STACK_NOT_FOUND, "Player stacks not found");
 	}
@@ -38,14 +38,14 @@ export function validatePickupTurup({ state, action }: { state: GameState; actio
 // Reducer (2-Player only)
 
 export function reducePickupTurup2P(state: GameState, action: PickupTurupCardAction): GameState {
-	const { playerPosition, card } = action.payload;
+	const { seat, card } = action.payload;
 
 	if (!state.game.turup) return state;
 
-	const player = state.players.find((p) => p.position === playerPosition);
+	const player = state.players.find((p) => p.seat === seat);
 	if (!player) return state;
 
-	const playerStacks = state.stacks[playerPosition];
+	const playerStacks = state.stacks[seat];
 	if (!playerStacks) return state;
 
 	const targetStack = playerStacks.find((s) => s.faceUpCard === card && parseCard(s.faceUpCard).suit === state.game.turup);
@@ -54,7 +54,7 @@ export function reducePickupTurup2P(state: GameState, action: PickupTurupCardAct
 	const targetCard = targetStack.faceUpCard;
 	if (!targetCard) return state;
 
-	const currentHand = state.hands[playerPosition] ?? [];
+	const currentHand = state.hands[seat] ?? [];
 	const newHand = [...currentHand, targetCard];
 
 	const newHidden = [...targetStack.hiddenCards];
@@ -73,11 +73,11 @@ export function reducePickupTurup2P(state: GameState, action: PickupTurupCardAct
 		...state,
 		hands: {
 			...state.hands,
-			[playerPosition]: newHand,
+			[seat]: newHand,
 		},
 		stacks: {
 			...state.stacks,
-			[playerPosition]: newPlayerStacks,
+			[seat]: newPlayerStacks,
 		},
 	};
 }

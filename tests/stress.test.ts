@@ -21,18 +21,18 @@ describe("Stress & Determinism Testing", () => {
 		for (let i = 1; i <= gameCount; i++) {
 			const gameResult = createGame({
 				mode: "4p",
-				dealerPosition: 0,
+				dealerSeat: 0,
 				players: [
-					{ position: 0, team: "red" },
-					{ position: 1, team: "blue" },
-					{ position: 2, team: "red" },
-					{ position: 3, team: "blue" },
+					{ seat: 0, team: "red" },
+					{ seat: 1, team: "blue" },
+					{ seat: 2, team: "red" },
+					{ seat: 3, team: "blue" },
 				],
 			});
 			if (!gameResult.success) throw new Error("Create failed");
 
 			const shuffledDeck = shuffleDeck(deck);
-			const dealRes = deal(gameResult.state, { deck: shuffledDeck, playerPosition: 0 });
+			const dealRes = deal(gameResult.state, { deck: shuffledDeck, seat: 0 });
 			expect(dealRes.success).toBe(true);
 			if (!dealRes.success) throw new Error("Deal failed");
 
@@ -45,14 +45,14 @@ describe("Stress & Determinism Testing", () => {
 				const turnP = getCurrentPlayer(state);
 				if (!turnP) break;
 
-				const legalMoves = getLegalMoves(state, turnP.position);
+				const legalMoves = getLegalMoves(state, turnP.seat);
 				expect(legalMoves.length).toBeGreaterThan(0);
 
 				const move = legalMoves[0];
 				if (!move) break;
 
 				const playRes = playCard(state, {
-					playerPosition: turnP.position,
+					seat: turnP.seat,
 					card: move.card,
 				});
 				expect(playRes.success).toBe(true);
@@ -75,16 +75,16 @@ describe("Stress & Determinism Testing", () => {
 		for (let i = 1; i <= gameCount; i++) {
 			const gameResult = createGame({
 				mode: "2p",
-				dealerPosition: 0,
+				dealerSeat: 0,
 				players: [
-					{ position: 0, team: "p1" },
-					{ position: 1, team: "p2" },
+					{ seat: 0, team: "p1" },
+					{ seat: 1, team: "p2" },
 				],
 			});
 			if (!gameResult.success) throw new Error("Create failed");
 
 			const shuffledDeck = shuffleDeck(deck);
-			const dealRes = deal(gameResult.state, { deck: shuffledDeck, playerPosition: 0 });
+			const dealRes = deal(gameResult.state, { deck: shuffledDeck, seat: 0 });
 			expect(dealRes.success).toBe(true);
 			if (!dealRes.success) throw new Error("Deal failed");
 
@@ -95,7 +95,7 @@ describe("Stress & Determinism Testing", () => {
 
 			const suits = ["spades", "hearts", "diamonds", "clubs"] as const;
 			const suitToDeclare = suits[i % 4] ?? "spades";
-			const declRes = declareTurup(state, { playerPosition: declP.position, suit: suitToDeclare });
+			const declRes = declareTurup(state, { seat: declP.seat, suit: suitToDeclare });
 			expect(declRes.success).toBe(true);
 			if (!declRes.success) throw new Error("Declare turup failed");
 
@@ -108,14 +108,14 @@ describe("Stress & Determinism Testing", () => {
 				const turnP = getCurrentPlayer(state);
 				if (!turnP) break;
 
-				const legalMoves = getLegalMoves(state, turnP.position);
+				const legalMoves = getLegalMoves(state, turnP.seat);
 				expect(legalMoves.length).toBeGreaterThan(0);
 
 				const move = legalMoves[0];
 				if (!move) break;
 
 				const playRes = playCard(state, {
-					playerPosition: turnP.position,
+					seat: turnP.seat,
 					card: move.card,
 				});
 				expect(playRes.success).toBe(true);

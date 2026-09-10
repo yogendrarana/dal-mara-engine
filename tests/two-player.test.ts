@@ -7,22 +7,22 @@ describe("2-Player Game Mode", () => {
 	it("should initialize 2-player deal, turup declaration, and stack setup", () => {
 		const gameResult = createGame({
 			mode: "2p",
-			dealerPosition: 0,
-			players: [{ position: 0 }, { position: 1 }],
+			dealerSeat: 0,
+			players: [{ seat: 0 }, { seat: 1 }],
 		});
 		if (!gameResult.success) throw new Error("Create failed");
 
-		const dealRes = deal(gameResult.state, { deck, playerPosition: 0 });
+		const dealRes = deal(gameResult.state, { deck, seat: 0 });
 		expect(dealRes.success).toBe(true);
 		if (!dealRes.success) return;
 
 		expect(dealRes.state.game.phase).toBe("TURUP_DECLARATION");
 
 		const declP = getCurrentPlayer(dealRes.state);
-		expect(declP?.position).toBe(1);
+		expect(declP?.seat).toBe(1);
 
 		if (declP) {
-			const declRes = declareTurup(dealRes.state, { playerPosition: declP.position, suit: "spades" });
+			const declRes = declareTurup(dealRes.state, { seat: declP.seat, suit: "spades" });
 			expect(declRes.success).toBe(true);
 			if (!declRes.success) return;
 

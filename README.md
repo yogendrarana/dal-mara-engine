@@ -28,7 +28,7 @@
   - **4-Player Team Mode (`4p`)**: 2 vs 2 diagonal team play, singleton 10 **Ghopte** guessing rounds, dynamic Turup creation, and same-trick Turup overrides.
   - **2-Player Mode (`2p`)**: Head-to-head match with 6-card hands, 4 hidden stacks per player, face-up Turup stack pickups, and upfront Turup declaration.
 - **App-Controlled Shuffling**: Built-in Fisher-Yates deck utilities (`createDeck`, `shuffleDeck`). Applications manage shuffling entropy and pass the deck to the engine on deal.
-- **Legal Move Generator**: Built-in `getLegalMoves(dmnOrState, playerPosition)` helper for driving UI interaction states, move validation, and AI bot runners.
+- **Legal Move Generator**: Built-in `getLegalMoves(dmnOrState, seat)` helper for driving UI interaction states, move validation, and AI bot runners.
 - **Externalized Scoring**: Scoring functions (`evaluateGameWinner4P`, `evaluateGameWinner2P`, `updateScoreOnTrickWon`) are pure utilities that evaluate game winners from trick history.
 
 ---
@@ -64,12 +64,12 @@ import {
 // 1. Initialize a 4-player game (returns initial DMN and state)
 const gameResult = createGame({
   mode: "4p", // "4p" | "2p"
-  dealerPosition: 0,
+  dealerSeat: 0,
   players: [
-    { position: 0, team: "red" },
-    { position: 1, team: "blue" },
-    { position: 2, team: "red" },
-    { position: 3, team: "blue" },
+    { seat: 0, team: "red" },
+    { seat: 1, team: "blue" },
+    { seat: 2, team: "red" },
+    { seat: 3, team: "blue" },
   ],
 });
 
@@ -82,7 +82,7 @@ if (!gameResult.success) {
 const deck = shuffleDeck(createDeck());
 
 // 3. Dealer deals the cards (pure transition: pass state or DMN string)
-const dealResult = deal(gameResult.state, { deck, playerPosition: 0 });
+const dealResult = deal(gameResult.state, { deck, seat: 0 });
 if (!dealResult.success) {
   console.error("Deal failed:", dealResult.error);
   process.exit(1);
@@ -96,11 +96,11 @@ const activePlayer = getCurrentPlayer(dealResult.state);
 
 // 5. Query legal moves for the active player
 if (activePlayer) {
-  const legalMoves = getLegalMoves(dealResult.state, activePlayer.position);
+  const legalMoves = getLegalMoves(dealResult.state, activePlayer.seat);
 
   // 6. Play a card (returns new { dmn, state })
   const playResult = playCard(dealResult.state, {
-    playerPosition: activePlayer.position,
+    seat: activePlayer.seat,
     card: legalMoves[0].card,
   });
 
@@ -110,6 +110,7 @@ if (activePlayer) {
   }
 }
 ```
+
 
 ---
 
@@ -140,8 +141,8 @@ $$\text{A} > \text{K} > \text{Q} > \text{J} > \mathbf{10} > \text{9} > \text{8} 
 #### Seating & Teams
 - 4 players sit in a square or diamond formation.
 - Diagonally opposite players form a team:
-  - **Team 02**: Position 0 and Position 2
-  - **Team 13**: Position 1 and Position 3
+  - **Team 02**: Seat 0 and Seat 2
+  - **Team 13**: Seat 1 and Seat 3
 
 #### Dealing
 - Handed out anti-clockwise starting from the player to the dealer's right.
@@ -177,7 +178,8 @@ $$\text{A} > \text{K} > \text{Q} > \text{J} > \mathbf{10} > \text{9} > \text{8} 
 ### 5. Two-Player Mode (`2p`)
 
 #### Dealing & Setup
-1. **Initial Hand**: Dealer deals 6 cards to opponent (position 1) first, then 6 cards to dealer (position 0).
+1. **Initial Hand**: Dealer deals 6 cards to opponent (seat 1) first, then 6 cards to dealer (seat 0).
+
 2. **Turup Declaration**: Opponent inspects their 6-card hand and declares the Turup suit upfront (`declareTurup(...)`). Turup is fixed immediately and cannot be overridden.
 3. **Hidden Stacks**: The remaining 40 cards are dealt into **4 personal stacks** per player (5 cards per stack). Only the top card of each stack is turned face up; cards underneath remain face down.
 
@@ -216,12 +218,12 @@ import { createGame } from "dal-mara-engine";
 
 const result = createGame({
   mode: "4p", // "4p" | "2p"
-  dealerPosition: 0, // 0..3 (4p) or 0..1 (2p)
+  dealerSeat: 0, // 0..3 (4p) or 0..1 (2p)
   players: [
-    { position: 0, team: "red" },
-    { position: 1, team: "blue" },
-    { position: 2, team: "red" },
-    { position: 3, team: "blue" },
+    { seat: 0, team: "red" },
+    { seat: 1, team: "blue" },
+    { seat: 2, team: "red" },
+    { seat: 3, team: "blue" },
   ],
 });
 ```
@@ -237,7 +239,7 @@ Deals cards to players. Only the designated dealer can deal. The deck must conta
 import { deal, createDeck, shuffleDeck } from "dal-mara-engine";
 
 const deck = shuffleDeck(createDeck());
-const result = deal(currentState, { deck, playerPosition: 0 });
+const result = deal(currentState, { deck, seat: 0 });
 ```
 
 #### `playCard(dmnOrState, payload): ActionResult`
@@ -249,7 +251,7 @@ Plays a card for the active turn player.
 import { playCard } from "dal-mara-engine";
 
 const result = playCard(currentState, {
-  playerPosition: 1,
+  seat: 1,
   card: "10s",
 });
 ```
@@ -261,7 +263,7 @@ Declares the Turup suit during the `TURUP_DECLARATION` phase.
 import { declareTurup } from "dal-mara-engine";
 
 const result = declareTurup(currentState, {
-  playerPosition: 1,
+  seat: 1,
   suit: "hearts", // "spades" | "hearts" | "diamonds" | "clubs"
 });
 ```
@@ -273,7 +275,7 @@ Picks up a face-up Turup card from a player's stack into their hand.
 import { pickupTurupCard } from "dal-mara-engine";
 
 const result = pickupTurupCard(currentState, {
-  playerPosition: 0,
+  seat: 0,
   card: "Kh",
 });
 ```
@@ -286,7 +288,7 @@ import { dispatch, ACTION_TYPES } from "dal-mara-engine";
 
 const result = dispatch(currentState, {
   type: ACTION_TYPES.PLAY_CARD,
-  payload: { playerPosition: 0, card: "As" },
+  payload: { seat: 0, card: "As" },
 });
 ```
 
@@ -295,17 +297,17 @@ const result = dispatch(currentState, {
 ### 3. Inspection & Query Functions
 
 #### `getCurrentPlayer(dmnOrState): Player | null`
-Returns the `Player` whose turn it currently is (derived from `state.nextMovePlayerPosition`).
+Returns the `Player` whose turn it currently is (derived from `state.nextMoveSeat`).
 
 ```ts
 import { getCurrentPlayer } from "dal-mara-engine";
 
 const activePlayer = getCurrentPlayer(currentState);
-console.log("Active player position:", activePlayer?.position);
+console.log("Active player seat:", activePlayer?.seat);
 ```
 
-#### `getLegalMoves(dmnOrState, playerPosition): LegalPlayableCard[]`
-Calculates all legal moves for the given player position based on phase, hand, stacks, and follow-suit rules.
+#### `getLegalMoves(dmnOrState, seat): LegalPlayableCard[]`
+Calculates all legal moves for the given player seat based on phase, hand, stacks, and follow-suit rules.
 
 ```ts
 import { getLegalMoves } from "dal-mara-engine";
@@ -313,6 +315,7 @@ import { getLegalMoves } from "dal-mara-engine";
 const moves = getLegalMoves(currentState, 1);
 // Returns: Array<{ card: Card, stackPosition?: number, stackId?: string }>
 ```
+
 
 #### `isFinished(dmnOrState): boolean`
 Returns `true` if the game has reached the `END` phase (all 13 rounds completed).
@@ -336,7 +339,7 @@ interface GameState {
   // Section 1: Game
   readonly game: {
     readonly mode: "4p" | "2p";
-    readonly dealerPosition: PlayerPosition;
+    readonly dealerSeat: Seat;
     readonly turup: Suit | null;
     readonly phase: "DEAL" | "TURUP_DECLARATION" | "GHOPTE" | "PLAYING" | "END";
   };
@@ -344,14 +347,14 @@ interface GameState {
   // Player roster
   readonly players: readonly Player[];
 
-  // Section 3: Hands (keyed by PlayerPosition 0..3)
-  readonly hands: Record<PlayerPosition, readonly Card[]>;
+  // Section 3: Hands (keyed by Seat 0..3)
+  readonly hands: Record<Seat, readonly Card[]>;
 
   // Section 2: Ghoptes (4p only)
   readonly ghoptes: readonly Ghopte[];
 
   // Section 4: Stacks (2p only, 4 stacks per player)
-  readonly stacks: Record<PlayerPosition, readonly PlayerStack[]>;
+  readonly stacks: Record<Seat, readonly PlayerStack[]>;
 
   // Section 5: Move Number (total cards played)
   readonly moveNumber: number;
@@ -367,13 +370,13 @@ interface GameState {
 
   // Section 7: Move Detail (the move that produced this state)
   readonly moveDetail: {
-    readonly playerPosition: PlayerPosition | null;
+    readonly seat: Seat | null;
     readonly card: Card | null;
     readonly makesTurup: boolean;
   };
 
-  // Section 8: Next Move Player Position
-  readonly nextMovePlayerPosition: PlayerPosition;
+  // Section 8: Next Move Seat
+  readonly nextMoveSeat: Seat;
 }
 ```
 
@@ -384,7 +387,7 @@ interface GameState {
 Dal Mara Notation (DMN) is a fixed-order, pipe-separated state representation designed for deterministic serialization, network transmission, and rehydration:
 
 ```
-<game> | <ghoptes> | <hands> | <stacks> | <move_number> | <trick> | <move_detail> | <next_move_player_position>
+<game> | <ghoptes> | <hands> | <stacks> | <move_number> | <trick> | <move_detail> | <next_move_seat>
 ```
 
 ### Parsing & Serialization
@@ -403,14 +406,15 @@ const canonicalDmn = serializeDMN(state);
 
 | # | Section | Format | Example | Description |
 |---|---------|--------|---------|-------------|
-| **1** | `<game>` | `<mode>,<dealer>,<turup>` | `4p,2,h` | Mode (`4p`/`2p`), dealer position (`0`..`3`), Turup suit (`s`/`h`/`d`/`c` or `-`) |
+| **1** | `<game>` | `<mode>,<dealer>,<turup>` | `4p,2,h` | Mode (`4p`/`2p`), dealer seat (`0`..`3`), Turup suit (`s`/`h`/`d`/`c` or `-`) |
 | **2** | `<ghoptes>` | `<p0>/<p1>/<p2>/<p3>` or `-` | `-/Kh,1,-:7s,1,-/Qd,2,-/-` | 4P Ghoptes grouped by player, `:` separated for multiple (`<card>,<order>,<resolved: r/->`). `-` in 2p. |
 | **3** | `<hands>` | `<p0>/<p1>/<p2>/<p3>` | `As,Qh,10d/7c,Js/Kd,8d/9s,Ad` | Cards currently held in each player's hand, separated by commas |
 | **4** | `<stacks>` | 8 `/`-separated slots or `-` | `7h,Kc,As,4d,10s/...` | 2P personal stacks (4 for P0, 4 for P1), ordered bottom-to-top (last card is face up). `-` in 4p. |
 | **5** | `<move_number>` | `<integer>` | `12` | Total cards played across the game (0 to 52) |
-| **6** | `<trick>` | `<num>,<play>,<lead>,<ghopte>,<cards>` | `3,2,h,-,1:Kh/2:4h` | Trick number, play number (1..4), lead suit, Ghopte flag (`g`/`-`), and trick cards (`<pos>:<card>/...` or `-`) |
-| **7** | `<move_detail>` | `<pos>,<card>,<makes_turup>` | `2,4s,-` | Move that created this state: player position, card played, and Turup establishment flag (`t`/`-`), or `-,-,-` |
-| **8** | `<next_move>` | `<position>` | `3` | Player position expected to play next |
+| **6** | `<trick>` | `<num>,<play>,<lead>,<ghopte>,<cards>` | `3,2,h,-,1:Kh/2:4h` | Trick number, play number (1..4), lead suit, Ghopte flag (`g`/`-`), and trick cards (`<seat>:<card>/...` or `-`) |
+| **7** | `<move_detail>` | `<seat>,<card>,<makes_turup>` | `2,4s,-` | Move that created this state: player seat, card played, and Turup establishment flag (`t`/`-`), or `-,-,-` |
+| **8** | `<next_move>` | `<seat>` | `3` | Player seat expected to play next |
+
 
 ### Delimiters
 - `|` Top-level section separator
@@ -509,9 +513,10 @@ All validation checks return `{ success: false, error: DalMaraError }` instead o
 ```ts
 import { playCard, ENGINE_ERROR_CODES } from "dal-mara-engine";
 
-const result = playCard(currentState, { playerPosition: 0, card: "2s" });
+const result = playCard(currentState, { seat: 0, card: "2s" });
 
 if (!result.success) {
+
   switch (result.error.code) {
     case ENGINE_ERROR_CODES.MUST_FOLLOW_SUIT:
       console.warn("You must follow the lead suit!");

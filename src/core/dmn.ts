@@ -10,7 +10,7 @@ import type {
 	GameState,
 	PlayedCard,
 	Player,
-	PlayerPosition,
+	Seat,
 	PlayerStack,
 	Suit,
 	SuitAbbreviation,
@@ -42,14 +42,14 @@ function tokenToSuit(token: string): Suit | null {
  * Serialize a GameState into the pipe-separated DMN string format.
  *
  * Format:
- * <game> | <ghoptes> | <hands> | <stacks> | <move_number> | <trick> | <move_detail> | <next_move_player_position>
+ * <game> | <ghoptes> | <hands> | <stacks> | <move_number> | <trick> | <move_detail> | <next_move_seat>
  */
 export function serializeDMN(state: GameState): string {
 	const numPlayers = state.game.mode === GAME_MODES.FOUR_PLAYER ? 4 : 2;
 
 	// --- Section 1: Game ---
 	const modeToken = state.game.mode;
-	const dealerPos = String(state.game.dealerPosition);
+	const dealerPos = String(state.game.dealerSeat);
 	const turupToken = suitToToken(state.game.turup);
 	const gameSection = `${modeToken},${dealerPos},${turupToken}`;
 
@@ -60,7 +60,7 @@ export function serializeDMN(state: GameState): string {
 	} else {
 		const groups: string[] = [];
 		for (let pos = 0; pos < 4; pos++) {
-			const playerGhoptes = state.ghoptes.filter((g) => g.playerPosition === pos);
+			const playerGhoptes = state.ghoptes.filter((g) => g.seat === pos);
 			if (playerGhoptes.length === 0) {
 				groups.push("-");
 			} else {
@@ -74,7 +74,7 @@ export function serializeDMN(state: GameState): string {
 	// --- Section 3: Hands ---
 	const handParts: string[] = [];
 	for (let i = 0; i < numPlayers; i++) {
-		const hand = state.hands[i as PlayerPosition] ?? [];
+		const hand = state.hands[i as Seat] ?? [];
 		handParts.push(hand.join(",") || "");
 	}
 	const handsSection = handParts.join("/");
@@ -86,7 +86,7 @@ export function serializeDMN(state: GameState): string {
 	} else {
 		const stackParts: string[] = [];
 		for (let playerIdx = 0; playerIdx < 2; playerIdx++) {
-			const playerStacks = state.stacks[playerIdx as PlayerPosition] ?? [];
+			const playerStacks = state.stacks[playerIdx as Seat] ?? [];
 			for (let s = 0; s < 4; s++) {
 				const stack = playerStacks.find((st) => st.position === s);
 				if (!stack || (stack.hiddenCards.length === 0 && !stack.faceUpCard)) {
@@ -118,7 +118,7 @@ export function serializeDMN(state: GameState): string {
 		trickCardsToken = "-";
 	} else {
 		const cardEntries = state.trick.cards.map((pc) => {
-			return `${pc.playerPosition}:${pc.card}`;
+			return `${pc.seat}:${pc.card}`;
 		});
 		trickCardsToken = cardEntries.join("/");
 	}
@@ -126,15 +126,15 @@ export function serializeDMN(state: GameState): string {
 
 	// --- Section 7: Move Detail ---
 	let moveDetailSection: string;
-	if (state.moveDetail.playerPosition === null || state.moveDetail.card === null) {
+	if (state.moveDetail.seat === null || state.moveDetail.card === null) {
 		moveDetailSection = "-,-,-";
 	} else {
 		const makesTurupToken = state.moveDetail.makesTurup ? "t" : "-";
-		moveDetailSection = `${state.moveDetail.playerPosition},${state.moveDetail.card},${makesTurupToken}`;
+		moveDetailSection = `${state.moveDetail.seat},${state.moveDetail.card},${makesTurupToken}`;
 	}
 
-	// --- Section 8: Next Move Player Position ---
-	const nextMoveSection = String(state.nextMovePlayerPosition);
+	// --- Section 8: Next Move Seat ---
+	const nextMoveSection = String(state.nextMoveSeat);
 
 	return `${gameSection} | ${ghoptesSection} | ${handsSection} | ${stacksSection} | ${moveNumberSection} | ${trickSection} | ${moveDetailSection} | ${nextMoveSection}`;
 }
@@ -147,7 +147,7 @@ export function serializeDMN(state: GameState): string {
  * Parse a pipe-separated DMN string into a GameState.
  *
  * Format:
- * <game> | <ghoptes> | <hands> | <stacks> | <move_number> | <trick> | <move_detail> | <next_move_player_position>
+ * <game> | <ghoptes> | <hands> | <stacks> | <move_number> | <trick> | <move_detail> | <next_move_seat>
  */
 export function parseDMN(dmn: string): GameState {
 	const trimmed = dmn.trim();
@@ -168,7 +168,7 @@ export function parseDMN(dmn: string): GameState {
 		throw new DalMaraError("Invalid DMN game section", ENGINE_ERROR_CODES.INVALID_DMN);
 	}
 	const mode: GameMode = gameParts[0] === GAME_MODES.TWO_PLAYER ? GAME_MODES.TWO_PLAYER : GAME_MODES.FOUR_PLAYER;
-	const dealerPosition = parseInt(gameParts[1], 10) as PlayerPosition;
+	const dealerSeat = parseInt(gameParts[1], 10) as Seat;
 	const turup = tokenToSuit(gameParts[2]);
 
 	// --- Construct players ---
@@ -176,7 +176,7 @@ export function parseDMN(dmn: string): GameState {
 	const players: Player[] = [];
 	for (let i = 0; i < numPlayers; i++) {
 		players.push({
-			position: i as PlayerPosition,
+			seat: i as Seat,
 			team: mode === GAME_MODES.FOUR_PLAYER ? (i % 2 === 0 ? "02" : "13") : String(i),
 		});
 	}
@@ -199,7 +199,7 @@ export function parseDMN(dmn: string): GameState {
 				const resolved = parts[2] === "r";
 
 				ghoptes.push({
-					playerPosition: pos as PlayerPosition,
+					seat: pos as Seat,
 					card,
 					order,
 					resolved,
@@ -209,15 +209,15 @@ export function parseDMN(dmn: string): GameState {
 	}
 
 	// --- Section 3: Hands ---
-	const hands = {} as Record<PlayerPosition, readonly Card[]>;
+	const hands = {} as Record<Seat, readonly Card[]>;
 	const handSegments = handsRaw.split("/");
 	for (let i = 0; i < numPlayers; i++) {
 		const segment = handSegments[i] ?? "";
-		hands[i as PlayerPosition] = segment ? (segment.split(",") as Card[]) : [];
+		hands[i as Seat] = segment ? (segment.split(",") as Card[]) : [];
 	}
 
 	// --- Section 4: Stacks ---
-	const stacks = {} as Record<PlayerPosition, readonly PlayerStack[]>;
+	const stacks = {} as Record<Seat, readonly PlayerStack[]>;
 	if (stacksRaw !== "-" && mode === GAME_MODES.TWO_PLAYER) {
 		const stackSlots = stacksRaw.split("/");
 		// First 4 = player 0, next 4 = player 1
@@ -240,7 +240,7 @@ export function parseDMN(dmn: string): GameState {
 					}
 				}
 			}
-			stacks[playerIdx as PlayerPosition] = playerStacks;
+			stacks[playerIdx as Seat] = playerStacks;
 		}
 	}
 
@@ -265,10 +265,10 @@ export function parseDMN(dmn: string): GameState {
 			const entry = cardEntries[idx];
 			const colonIdx = entry.indexOf(":");
 			if (colonIdx === -1) continue;
-			const pos = parseInt(entry.slice(0, colonIdx), 10) as PlayerPosition;
+			const pos = parseInt(entry.slice(0, colonIdx), 10) as Seat;
 			const card = entry.slice(colonIdx + 1) as Card;
 			trickCards.push({
-				playerPosition: pos,
+				seat: pos,
 				card,
 				playOrder: idx + 1,
 			});
@@ -285,12 +285,12 @@ export function parseDMN(dmn: string): GameState {
 
 	// --- Section 7: Move Detail ---
 	const moveDetailParts = moveDetailRaw.split(",");
-	const movePlayerPos = moveDetailParts[0] !== "-" ? (parseInt(moveDetailParts[0], 10) as PlayerPosition) : null;
+	const movePlayerSeat = moveDetailParts[0] !== "-" ? (parseInt(moveDetailParts[0], 10) as Seat) : null;
 	const moveCard = moveDetailParts[1] !== "-" ? (moveDetailParts[1] as Card) : null;
 	const moveMakesTurup = moveDetailParts[2] === "t";
 
-	// --- Section 8: Next Move Player Position ---
-	const nextMovePlayerPosition = parseInt(nextMoveRaw, 10) as PlayerPosition;
+	// --- Section 8: Next Move Seat ---
+	const nextMoveSeat = parseInt(nextMoveRaw, 10) as Seat;
 
 	// --- Determine phase ---
 	let phase: GamePhase = GAME_PHASES.PLAYING;
@@ -317,7 +317,7 @@ export function parseDMN(dmn: string): GameState {
 	return {
 		game: {
 			mode,
-			dealerPosition,
+			dealerSeat,
 			turup,
 			phase,
 		},
@@ -328,10 +328,10 @@ export function parseDMN(dmn: string): GameState {
 		moveNumber,
 		trick,
 		moveDetail: {
-			playerPosition: movePlayerPos,
+			seat: movePlayerSeat,
 			card: moveCard,
 			makesTurup: moveMakesTurup,
 		},
-		nextMovePlayerPosition,
+		nextMoveSeat,
 	};
 }

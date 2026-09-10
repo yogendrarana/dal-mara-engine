@@ -1,7 +1,7 @@
 import { createValidationError } from "../errors";
 import { ENGINE_ERROR_CODES, GAME_MODES, GAME_PHASES } from "../const";
 import { getCurrentTurnPlayer } from "../turn";
-import type { DeclareTurupAction, GameState, PlayerPosition, ValidationResult } from "../../types/index";
+import type { DeclareTurupAction, GameState, Seat, ValidationResult } from "../../types/index";
 
 // Validation
 
@@ -16,7 +16,7 @@ export function validateDeclareTurup({ state, action }: { state: GameState; acti
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "Cannot declare Turup outside TURUP_DECLARATION phase");
 	}
 
-	if (currentTurnPlayer?.position !== action.payload.playerPosition) {
+	if (currentTurnPlayer?.seat !== action.payload.seat) {
 		return createValidationError(ENGINE_ERROR_CODES.NOT_PLAYER_TURN, "It is not your turn to declare Turup");
 	}
 
@@ -29,8 +29,8 @@ export function reduceDeclareTurup2P(state: GameState, action: DeclareTurupActio
 	if (state.game.phase !== GAME_PHASES.TURUP_DECLARATION) return state;
 
 	const turupSuit = action.payload.suit;
-	const dealerPosition = state.game.dealerPosition;
-	const nonDealerPosition = ((dealerPosition + 1) % 2) as PlayerPosition;
+	const dealerSeat = state.game.dealerSeat;
+	const nonDealerSeat = ((dealerSeat + 1) % 2) as Seat;
 
 	return {
 		...state,
@@ -46,6 +46,6 @@ export function reduceDeclareTurup2P(state: GameState, action: DeclareTurupActio
 			isGhopte: false,
 			cards: [],
 		},
-		nextMovePlayerPosition: nonDealerPosition,
+		nextMoveSeat: nonDealerSeat,
 	};
 }

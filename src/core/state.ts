@@ -1,30 +1,26 @@
 import { GAME_MODES, GAME_PHASES } from "./const";
-import type { Card, GameMode, GameState, Player, PlayerPosition, PlayerStack } from "../types/index";
+import type { Card, GameMode, GameState, Player, Seat, PlayerStack } from "../types/index";
 
-export function createInitialState(options: {
-	mode: GameMode;
-	players: readonly Player[];
-	dealerPosition: PlayerPosition;
-}): GameState {
-	const { mode, players, dealerPosition } = options;
+export function createInitialState(options: { mode: GameMode; players: readonly Player[]; dealerSeat: Seat }): GameState {
+	const { mode, players, dealerSeat } = options;
 
 	const orderedPlayers: Player[] = [...players]
-		.sort((a, b) => a.position - b.position)
+		.sort((a, b) => a.seat - b.seat)
 		.map((p) => ({
-			position: p.position,
-			team: p.team ?? (mode === GAME_MODES.FOUR_PLAYER ? (p.position % 2 === 0 ? "02" : "13") : String(p.position)),
+			seat: p.seat,
+			team: p.team ?? (mode === GAME_MODES.FOUR_PLAYER ? (p.seat % 2 === 0 ? "02" : "13") : String(p.seat)),
 		}));
 
 	return {
 		game: {
 			mode,
-			dealerPosition,
+			dealerSeat,
 			turup: null,
 			phase: GAME_PHASES.DEAL,
 		},
 		players: orderedPlayers,
-		hands: {} as Record<PlayerPosition, readonly Card[]>,
-		stacks: {} as Record<PlayerPosition, readonly PlayerStack[]>,
+		hands: {} as Record<Seat, readonly Card[]>,
+		stacks: {} as Record<Seat, readonly PlayerStack[]>,
 		ghoptes: [],
 		moveNumber: 0,
 		trick: {
@@ -35,10 +31,10 @@ export function createInitialState(options: {
 			cards: [],
 		},
 		moveDetail: {
-			playerPosition: null,
+			seat: null,
 			card: null,
 			makesTurup: false,
 		},
-		nextMovePlayerPosition: dealerPosition,
+		nextMoveSeat: dealerSeat,
 	};
 }

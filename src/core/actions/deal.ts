@@ -5,12 +5,12 @@ import { createValidationError } from "../errors";
 import { ENGINE_ERROR_CODES, GAME_PHASES } from "../const";
 import { dealFourPlayer, detectGhopte } from "../rules/four-player";
 import { dealTwoPlayer, create2PStacks } from "../rules/two-player";
-import type { DealAction, GameState, PlayerPosition, ValidationResult } from "../../types/index";
+import type { DealAction, GameState, Seat, ValidationResult } from "../../types/index";
 
 // Validation
 
 export function validateDeal({ state, action }: { state: GameState; action: DealAction }): ValidationResult {
-	const { deck, playerPosition } = action.payload;
+	const { deck, seat } = action.payload;
 
 	if (state.game.phase !== GAME_PHASES.DEAL) {
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "Cannot deal cards outside DEAL phase");
@@ -20,7 +20,7 @@ export function validateDeal({ state, action }: { state: GameState; action: Deal
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_DECK, "Deck must be 52 cards long to deal");
 	}
 
-	if (playerPosition !== state.game.dealerPosition) {
+	if (seat !== state.game.dealerSeat) {
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Only the dealer can deal cards");
 	}
 
@@ -32,7 +32,7 @@ export function validateDeal({ state, action }: { state: GameState; action: Deal
 export function reduceDeal4P(state: GameState, action: DealAction): GameState {
 	const { deck } = action.payload;
 
-	const dealer = state.players.find((p) => p.position === state.game.dealerPosition);
+	const dealer = state.players.find((p) => p.seat === state.game.dealerSeat);
 	if (!dealer) {
 		throw new DalMaraError("Cannot find the dealer in the player list.", ENGINE_ERROR_CODES.INVALID_DEALER);
 	}
@@ -43,12 +43,12 @@ export function reduceDeal4P(state: GameState, action: DealAction): GameState {
 
 	const hands = dealFourPlayer({
 		deck: finalDeck,
-		dealerPosition: dealer.position,
+		dealerSeat: dealer.seat,
 	});
 
 	const ghoptes = detectGhopte({
 		hands,
-		dealerPosition: dealer.position,
+		dealerSeat: dealer.seat,
 	});
 
 	if (ghoptes && ghoptes.length > 0) {
@@ -72,16 +72,16 @@ export function reduceDeal4P(state: GameState, action: DealAction): GameState {
 				cards: [],
 			},
 			moveDetail: {
-				playerPosition: null,
+				seat: null,
 				card: null,
 				makesTurup: false,
 			},
-			nextMovePlayerPosition: activeGhopte.playerPosition,
+			nextMoveSeat: activeGhopte.seat,
 		};
 	}
 
 	// Normal 4P start (no Ghopte)
-	const firstTurnPos = ((dealer.position + 1) % 4) as PlayerPosition;
+	const firstTurnPos = ((dealer.seat + 1) % 4) as Seat;
 
 	return {
 		...state,
@@ -99,11 +99,11 @@ export function reduceDeal4P(state: GameState, action: DealAction): GameState {
 			cards: [],
 		},
 		moveDetail: {
-			playerPosition: null,
+			seat: null,
 			card: null,
 			makesTurup: false,
 		},
-		nextMovePlayerPosition: firstTurnPos,
+		nextMoveSeat: firstTurnPos,
 	};
 }
 
@@ -112,7 +112,7 @@ export function reduceDeal4P(state: GameState, action: DealAction): GameState {
 export function reduceDeal2P(state: GameState, action: DealAction): GameState {
 	const { deck } = action.payload;
 
-	const dealer = state.players.find((p) => p.position === state.game.dealerPosition);
+	const dealer = state.players.find((p) => p.seat === state.game.dealerSeat);
 	if (!dealer) {
 		throw new DalMaraError("Cannot find the dealer in the player list.", ENGINE_ERROR_CODES.INVALID_DEALER);
 	}
@@ -124,11 +124,11 @@ export function reduceDeal2P(state: GameState, action: DealAction): GameState {
 
 	const { hands, remainingDeck } = dealTwoPlayer({
 		deck: finalDeck,
-		dealerPosition: dealer.position,
+		dealerSeat: dealer.seat,
 	});
 
-	const stacks = create2PStacks({ remainingDeck, dealerPosition: dealer.position });
-	const nonDealerPosition = ((dealer.position + 1) % 2) as PlayerPosition;
+	const stacks = create2PStacks({ remainingDeck, dealerSeat: dealer.seat });
+	const nonDealerSeat = ((dealer.seat + 1) % 2) as Seat;
 
 	return {
 		...state,
@@ -147,10 +147,10 @@ export function reduceDeal2P(state: GameState, action: DealAction): GameState {
 			cards: [],
 		},
 		moveDetail: {
-			playerPosition: null,
+			seat: null,
 			card: null,
 			makesTurup: false,
 		},
-		nextMovePlayerPosition: nonDealerPosition,
+		nextMoveSeat: nonDealerSeat,
 	};
 }

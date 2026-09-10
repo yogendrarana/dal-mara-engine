@@ -1,5 +1,5 @@
 import type { Card, Suit } from "./card";
-import type { PlayerPosition } from "./player";
+import type { Seat } from "./player";
 import type { ACTION_TYPES } from "../core/const";
 
 export type ActionType = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
@@ -10,14 +10,14 @@ export type DealAction = {
 	type: typeof ACTION_TYPES.DEAL;
 	payload: {
 		deck?: readonly Card[];
-		playerPosition: PlayerPosition;
+		seat: Seat;
 	};
 };
 
 export type DeclareTurupAction = {
 	type: typeof ACTION_TYPES.DECLARE_TURUP;
 	payload: {
-		playerPosition: PlayerPosition;
+		seat: Seat;
 		suit: Suit;
 	};
 };
@@ -25,7 +25,7 @@ export type DeclareTurupAction = {
 export type PickupTurupCardAction = {
 	type: typeof ACTION_TYPES.PICKUP_TURUP_CARD;
 	payload: {
-		playerPosition: PlayerPosition;
+		seat: Seat;
 		card: Card;
 	};
 };
@@ -33,7 +33,7 @@ export type PickupTurupCardAction = {
 export type PlayCardAction = {
 	type: typeof ACTION_TYPES.PLAY_CARD;
 	payload: {
-		playerPosition: PlayerPosition;
+		seat: Seat;
 		card: Card;
 	};
 };
@@ -41,7 +41,7 @@ export type PlayCardAction = {
 export type PlayGhopteAction = {
 	type: typeof ACTION_TYPES.PLAY_GHOPTE;
 	payload: {
-		playerPosition: PlayerPosition;
+		seat: Seat;
 		card: Card;
 	};
 };
