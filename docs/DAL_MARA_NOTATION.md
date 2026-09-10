@@ -201,25 +201,36 @@ Example:
 
 ## 6. Trick
 
-The trick section describes the current trick context.
+The trick section describes the current trick context and cards played so far in the trick.
 
 Format:
 
-<trick_number>,<play_number>,<ghopte_flag>
+<trick_number>,<play_number>,<lead_suit>,<ghopte_flag>,<trick_cards>
 
 Examples:
 
-3,2,-
-5,1,g
+3,2,h,-,1:Kh/2:4h
+5,1,-,g,-
+1,0,-,-,-
 
 Values:
 
+trick_number:
+The current trick number (1 to 13).
+
+play_number:
+The play position within the current trick (0 to 4 in 4p, 0 to 2 in 2p).
+
+lead_suit:
+s | h | d | c | -
+Suit established by the lead card of the trick (- if no lead card yet).
+
+ghopte_flag:
 - = normal trick
 g = ghopte trick
 
-trick_number represents the current trick number.
-
-play_number represents the play position within the current trick.
+trick_cards:
+Cards played to this trick in order, formatted as `<player_position>:<card>`, separated by `/`. If no cards have been played to the trick yet, this is `-`.
 
 ## 7. Move Detail
 
@@ -275,4 +286,4 @@ In 2-player mode, non dealer is the next_move_player_position
 
 ## Example
 
-4p,2,h | -/Kh,2,-:7s,1,-/-/Qd,3,- | As,Qh,10d/7c,Js/Kd,8d/9s,Ad | -/-/-/-/-/-/-/- | 12 | 3,2,- | 2,4s,- | 3
+4p,2,h | -/Kh,2,-:7s,1,-/-/Qd,3,- | As,Qh,10d/7c,Js/Kd,8d/9s,Ad | - | 12 | 3,2,s,-,1:10s/2:4s | 2,4s,- | 3

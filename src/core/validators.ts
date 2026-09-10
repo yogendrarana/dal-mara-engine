@@ -48,6 +48,22 @@ export function validateCreateGame(options: {
 		positions.add(p.position);
 	}
 
+	// verify all seats are occupied
+	for (let i = 0; i < expectedCount; i++) {
+		if (!positions.has(i)) {
+			return createValidationError(ENGINE_ERROR_CODES.INVALID_CONFIGURATION, `Position ${i} is not occupied`);
+		}
+	}
+
+	// validate dealerPosition
+	if (typeof options.dealerPosition !== "number" || !positions.has(options.dealerPosition)) {
+		return createValidationError(
+			ENGINE_ERROR_CODES.INVALID_DEALER,
+			`dealerPosition must be a valid occupied player position (0 to ${expectedCount - 1})`,
+		);
+	}
+
+	// valiate the team
 	if (options.mode === GAME_MODES.FOUR_PLAYER) {
 		const p0 = options.players.find((p) => p.position === 0);
 		const p1 = options.players.find((p) => p.position === 1);
@@ -76,21 +92,6 @@ export function validateCreateGame(options: {
 		if (t0 === t1 || t2 === t3) {
 			return createValidationError(ENGINE_ERROR_CODES.INVALID_CONFIGURATION, "Opposing teams cannot have the same team");
 		}
-	}
-
-	// verify all seats are occupied
-	for (let i = 0; i < expectedCount; i++) {
-		if (!positions.has(i)) {
-			return createValidationError(ENGINE_ERROR_CODES.INVALID_CONFIGURATION, `Position ${i} is not occupied`);
-		}
-	}
-
-	// validate dealerPosition
-	if (typeof options.dealerPosition !== "number" || !positions.has(options.dealerPosition)) {
-		return createValidationError(
-			ENGINE_ERROR_CODES.INVALID_DEALER,
-			`dealerPosition must be a valid occupied player position (0 to ${expectedCount - 1})`,
-		);
 	}
 
 	return { success: true };

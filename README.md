@@ -1,6 +1,6 @@
 # dal-mara-engine
 
-> Pure, deterministic, zero-dependency TypeScript card game engine and Dal Mara Notation (DMN) parser for **Dal Mara**—a traditional Nepali trick-taking card game.
+> Pure, deterministic, zero-dependency functional TypeScript card game engine and Dal Mara Notation (DMN) parser for **Dal Mara**—a traditional Nepali trick-taking card game.
 
 [![npm version](https://img.shields.io/npm/v/dal-mara-engine.svg)](https://www.npmjs.com/package/dal-mara-engine)
 [![license](https://img.shields.io/npm/l/dal-mara-engine.svg)](https://github.com/yogendrarana/dal-mara-engine)
@@ -9,27 +9,27 @@
 
 ## Overview
 
-**Dal Mara** ("Dal" meaning *10*, "Mara" meaning *Killer*) is a celebrated traditional Nepali trick-taking card game played with a standard 52-card deck. Unlike games where the primary goal is capturing the maximum number of tricks, Dal Mara centers entirely on capturing the **four 10s** (`10s`, `10h`, `10d`, `10c`).
+**Dal Mara** (*"Dal"* meaning *10*, *"Mara"* meaning *Killer*) is a celebrated traditional Nepali trick-taking card game played with a standard 52-card deck. Unlike games where the primary goal is capturing trick count, Dal Mara centers entirely on capturing the **four 10s** (`10s`, `10h`, `10d`, `10c`).
 
-`dal-mara-engine` is a pure, headless, framework-agnostic implementation designed to be the single source of truth for:
-- Web applications (React, Vue, Svelte, Solid)
-- Mobile applications (React Native, Expo)
-- Backend servers (Node.js, Bun, Deno, Socket.io, WebSockets)
-- Headless AI bot runners & simulations
+`dal-mara-engine` is a pure, headless, framework-agnostic implementation designed around a **functional state-transition architecture**:
+- **Authoritative DMN State**: Dal Mara Notation (DMN) is the canonical serialization format.
+- **Pure State Transitions**: No mutable class state. The engine behaves as a deterministic state machine:
+  $$\text{Current State / DMN} + \text{Action} \longrightarrow \{\, \text{dmn},\; \text{state} \,\}$$
+- **Multi-Platform Support**: Ideal for Web (React, Vue, Svelte), Mobile (React Native, Flutter bridges), Servers (Node.js, Bun, Deno, WebSockets), and headless AI bot simulations.
 
 ---
 
 ## Features
 
 - **Zero Runtime Dependencies**: Pure TypeScript with 0 UI or framework dependencies.
-- **Official Rules Engine**: Full compliance with the canonical Dal Mara rulebook:
-  - **4-Player Team Mode (`4P`)**: 2 vs 2 diagonal team play, singleton 10 **Ghopte** guessing rounds, dynamic Turup creation, and same-trick Turup overrides.
-  - **2-Player Mode (`2P`)**: Head-to-head match with 6-card hands, 4 hidden stacks per player, manual face-up Turup stack pickups, and upfront Turup declaration.
-- **App-Controlled Shuffling**: Built-in Fisher-Yates deck utilities (`createDeck`, `shuffleDeck`). Applications retain control over deck shuffling and pass the deck to the engine on deal.
-- **Legal Move Generator**: Built-in `game.getLegalMoves(playerId)` helper for driving UI interaction states, move validation, and AI bots.
-- **Dal Mara Notation (DMN)**: FEN-equivalent compact snapshot format (`DMN1`) for instant state serialization and restoration over the network.
-- **Deterministic Replay System**: Export action histories and re-run games step-by-step for game reviews, cheat detection, and testing.
-- **Pub/Sub Event Bus**: Typed event dispatcher (`game.on`, `game.onAny`) for reactive audio, animations, and UI triggers.
+- **Functional Architecture**: No mutable classes or hidden internal states. Every action takes a `dmn` string or `GameState` object and returns `{ dmn, state }`.
+- **Dal Mara Notation (DMN)**: Canonical, 8-section pipe-separated snapshot format (similar to chess FEN) for compact network transmission, persistence, and instant rehydration.
+- **Official Rules Engine**: Full compliance with canonical Dal Mara rules:
+  - **4-Player Team Mode (`4p`)**: 2 vs 2 diagonal team play, singleton 10 **Ghopte** guessing rounds, dynamic Turup creation, and same-trick Turup overrides.
+  - **2-Player Mode (`2p`)**: Head-to-head match with 6-card hands, 4 hidden stacks per player, face-up Turup stack pickups, and upfront Turup declaration.
+- **App-Controlled Shuffling**: Built-in Fisher-Yates deck utilities (`createDeck`, `shuffleDeck`). Applications manage shuffling entropy and pass the deck to the engine on deal.
+- **Legal Move Generator**: Built-in `getLegalMoves(dmnOrState, playerPosition)` helper for driving UI interaction states, move validation, and AI bot runners.
+- **Externalized Scoring**: Scoring functions (`evaluateGameWinner4P`, `evaluateGameWinner2P`, `updateScoreOnTrickWon`) are pure utilities that evaluate game winners from trick history.
 
 ---
 
@@ -51,43 +51,63 @@ pnpm add dal-mara-engine
 ## Quick Start
 
 ```ts
-import { Game, createDeck, shuffleDeck } from "dal-mara-engine";
+import {
+  createGame,
+  deal,
+  playCard,
+  getCurrentPlayer,
+  getLegalMoves,
+  createDeck,
+  shuffleDeck,
+} from "dal-mara-engine";
 
-// 1. Create a 4-player game
-const game = Game.create({
-  id: "match-101",
-  mode: "4P",
+// 1. Initialize a 4-player game (returns initial DMN and state)
+const gameResult = createGame({
+  mode: "4p", // "4p" | "2p"
   dealerPosition: 0,
   players: [
-    { id: "p1", name: "Alice", position: 0, team: "red" },
-    { id: "p2", name: "Bob", position: 1, team: "blue" },
-    { id: "p3", name: "Charlie", position: 2, team: "red" },
-    { id: "p4", name: "Dave", position: 3, team: "blue" },
+    { position: 0, team: "red" },
+    { position: 1, team: "blue" },
+    { position: 2, team: "red" },
+    { position: 3, team: "blue" },
   ],
 });
+
+if (!gameResult.success) {
+  console.error("Game creation failed:", gameResult.error);
+  process.exit(1);
+}
 
 // 2. Prepare and shuffle deck
 const deck = shuffleDeck(createDeck());
 
-// 3. Dealer deals the cards
-const dealResult = game.deal({ deck, playerPosition: 0 });
+// 3. Dealer deals the cards (pure transition: pass state or DMN string)
+const dealResult = deal(gameResult.state, { deck, playerPosition: 0 });
 if (!dealResult.success) {
   console.error("Deal failed:", dealResult.error);
+  process.exit(1);
 }
 
-// 4. Inspect game state and current turn
-console.log("Current Phase:", game.phase); // "GHOPTE" or "PLAYING"
-const activePlayer = game.currentPlayer;
+console.log("Current DMN:", dealResult.dmn);
+console.log("Phase:", dealResult.state.game.phase); // "GHOPTE" or "PLAYING"
 
-// 5. Get legal moves for the current player
+// 4. Inspect current player turn
+const activePlayer = getCurrentPlayer(dealResult.state);
+
+// 5. Query legal moves for the active player
 if (activePlayer) {
-  const legalMoves = game.getLegalMoves(activePlayer.id);
+  const legalMoves = getLegalMoves(dealResult.state, activePlayer.position);
 
-  // 6. Play a card
-  game.playCard({
+  // 6. Play a card (returns new { dmn, state })
+  const playResult = playCard(dealResult.state, {
     playerPosition: activePlayer.position,
     card: legalMoves[0].card,
   });
+
+  if (playResult.success) {
+    console.log("Next DMN:", playResult.dmn);
+    console.log("Move Number:", playResult.state.moveNumber);
+  }
 }
 ```
 
@@ -96,17 +116,17 @@ if (activePlayer) {
 ## Dal Mara Game Rules
 
 ### 1. Objective & Winning Conditions
-- There are **four 10s** in the standard 52-card deck.
+- There are **four 10s** in the standard 52-card deck (`10s`, `10h`, `10d`, `10c`).
 - **Instant Win**: The team or player that captures **3 or 4 tens** wins the game.
 - **Tie-Breaker (2–2 on 10s)**: If each team/player captures exactly 2 tens, the winner is decided by the **most tricks won**.
-- **Full Duration**: All 13 rounds (tricks) are played to completion before scoring is finalized.
+- All 13 rounds (tricks) are played to completion before scoring is finalized.
 
-### 2. Card Ranking
+### 2. Card Ranking & Format
 Ranks are strictly ordered from highest to lowest:
 $$\text{A} > \text{K} > \text{Q} > \text{J} > \mathbf{10} > \text{9} > \text{8} > \text{7} > \text{6} > \text{5} > \text{4} > \text{3} > \text{2}$$
 - **Ace** is always the highest card.
 - **10** is the scoring card, ranked immediately below Jack and above 9.
-- Suits have no inherent ranking priority over each other.
+- Cards use uppercase face ranks (`A`, `K`, `Q`, `J`) and lowercase suits (`s`, `h`, `d`, `c`), e.g., `As`, `10h`, `Kd`, `2c`.
 
 ### 3. Turn Order & Anti-Clockwise Play
 - Dealing, turn progression, and Ghopte resolution proceed **anti-clockwise**.
@@ -115,13 +135,13 @@ $$\text{A} > \text{K} > \text{Q} > \text{J} > \mathbf{10} > \text{9} > \text{8} 
 
 ---
 
-### 4. Four-Player Team Mode (`4P`)
+### 4. Four-Player Team Mode (`4p`)
 
 #### Seating & Teams
 - 4 players sit in a square or diamond formation.
 - Diagonally opposite players form a team:
-  - **Team 1**: Position 0 and Position 2
-  - **Team 2**: Position 1 and Position 3
+  - **Team 02**: Position 0 and Position 2
+  - **Team 13**: Position 1 and Position 3
 
 #### Dealing
 - Handed out anti-clockwise starting from the player to the dealer's right.
@@ -129,41 +149,40 @@ $$\text{A} > \text{K} > \text{Q} > \text{J} > \mathbf{10} > \text{9} > \text{8} 
 
 #### Ghopte (Singleton 10 Guessing Round)
 - If a player holds **exactly one card of a suit, and that card is the 10** (a singleton 10, e.g., only ♦10 with no other Diamonds), a **Ghopte** round is declared before trick 1 begins.
-- A player can have multiple Ghoptes (e.g., singleton ♠10 and singleton ♥10).
+- A player can hold multiple Ghoptes (e.g., singleton ♠10 and singleton ♥10).
 - **Procedure**:
   1. The declarer places their 10 face down on the table.
   2. The other 3 players attempt to guess the suit of the Ghopte card and place any card face down from their hand (no follow-suit requirement).
   3. Cards are revealed simultaneously.
   4. The player who played the highest card matching the 10's suit wins the trick and captures all 4 cards. If no opponent matched the suit, the declarer wins.
   5. Each resolved Ghopte trick counts as 1 of the 13 total rounds.
-  6. Configurable resolution order: `"dealer-last"` (default) or `"dealer-first"`.
 
 #### Follow-Suit Rule
 - The lead card establishes the **Lead Suit**.
 - All players holding at least one card of the Lead Suit **must follow suit**.
 - Playing an off-suit card while holding the Lead Suit is illegal (`MUST_FOLLOW_SUIT`).
 
-#### Dynamic Turup (Trump) & Same-Trick Override
-- **No Initial Turup**: Turup does *not* exist when the game starts.
+#### Dynamic Turup & Same-Trick Override
+- **No Initial Turup**: Turup (*trump*) does *not* exist when the game starts.
 - **Creation**: When a player is void in the Lead Suit, the off-suit card they play establishes the **Turup suit**. From that moment, Turup cards defeat all non-Turup cards.
-- **Same-Trick Override**: Within that **same trick only**, if a subsequent player is void in *both* the Lead Suit and the current Turup suit, they can play any other suit to **override** and become the new Turup suit.
+- **Same-Trick Override**: Within that **same trick only**, if a subsequent player is void in *both* the Lead Suit and the current Turup suit, they can play any other suit to **override** and establish a new Turup suit.
 - **Permanent Lock**: Once the trick that established Turup finishes, the final Turup suit is **permanently locked** for the remainder of the game.
 
 #### Trick Resolution
-1. Highest Turup card wins (if Turup cards were played).
+1. Highest Turup card wins (if any Turup cards were played).
 2. Otherwise, highest card of the Lead Suit wins.
 
 ---
 
-### 5. Two-Player Mode (`2P`)
+### 5. Two-Player Mode (`2p`)
 
 #### Dealing & Setup
-1. **Initial Hand**: Dealer deals 6 cards to opponent first, then 6 cards to dealer.
-2. **Turup Declaration**: Opponent (non-dealer) inspects their 6-card hand and declares the Turup suit. Turup is fixed immediately and cannot be overridden.
+1. **Initial Hand**: Dealer deals 6 cards to opponent (position 1) first, then 6 cards to dealer (position 0).
+2. **Turup Declaration**: Opponent inspects their 6-card hand and declares the Turup suit upfront (`declareTurup(...)`). Turup is fixed immediately and cannot be overridden.
 3. **Hidden Stacks**: The remaining 40 cards are dealt into **4 personal stacks** per player (5 cards per stack). Only the top card of each stack is turned face up; cards underneath remain face down.
 
 #### Manual Turup Stack Pickup
-- Whenever a face-up stack card belongs to the Turup suit, the player **must pick it up into their hand** (`game.pickupTurupCard(...)`).
+- Whenever a face-up stack card belongs to the declared Turup suit, the player **must pick it up into their hand** (`pickupTurupCard(...)`).
 - A trick cannot begin until all face-up Turup cards on both players' stacks have been picked up into their hands.
 
 #### Playing Tricks
@@ -173,106 +192,273 @@ $$\text{A} > \text{K} > \text{Q} > \text{J} > \mathbf{10} > \text{9} > \text{8} 
 
 ---
 
-## Engine Public API Reference
+## Functional Engine API Reference
 
-### 1. `Game.create(options)`
+All engine action and query functions accept either a serialized **DMN string** or a **`GameState` object** (`dmnOrState: string | GameState`).
 
-Initializes a validated `Game` instance.
+### Result Type
 
 ```ts
-import { Game } from "dal-mara-engine";
-
-const game = Game.create({
-  id: "game-1",
-  mode: "4P", // "4P" | "2P"
-  dealerPosition: 0,
-  players: [
-    { id: "p1", name: "Alice", position: 0, team: "red" },
-    { id: "p2", name: "Bob", position: 1, team: "blue" },
-    { id: "p3", name: "Charlie", position: 2, team: "red" },
-    { id: "p4", name: "Dave", position: 3, team: "blue" },
-  ],
-});
-
-if ("success" in game && !game.success) {
-  console.error("Validation error:", game.error);
-}
+export type ActionResult =
+  | { readonly success: true; readonly dmn: string; readonly state: GameState }
+  | { readonly success: false; readonly error: EngineError };
 ```
 
 ---
 
-### 2. Actions & Game Methods
+### 1. Game Initialization
 
-#### `game.deal({ deck, playerPosition })`
-Dispatches the `DEAL` action. Only the designated dealer can deal. The deck must contain exactly 52 cards.
+#### `createGame(options): ActionResult`
+Initializes a new game and produces the initial DMN string and `GameState` snapshot (pre-deal state).
 
 ```ts
-import { createDeck, shuffleDeck } from "dal-mara-engine";
+import { createGame } from "dal-mara-engine";
 
-const deck = shuffleDeck(createDeck());
-const result = game.deal({ deck, playerPosition: 0 });
+const result = createGame({
+  mode: "4p", // "4p" | "2p"
+  dealerPosition: 0, // 0..3 (4p) or 0..1 (2p)
+  players: [
+    { position: 0, team: "red" },
+    { position: 1, team: "blue" },
+    { position: 2, team: "red" },
+    { position: 3, team: "blue" },
+  ],
+});
 ```
 
-#### `game.playCard({ playerPosition, card })`
-Plays a card for the active turn player. In 2P mode, automatically plays from hand or face-up stack. During the `GHOPTE` phase, routes to Ghopte card submission.
+---
+
+### 2. Actions & State Transitions
+
+#### `deal(dmnOrState, payload): ActionResult`
+Deals cards to players. Only the designated dealer can deal. The deck must contain exactly 52 cards.
 
 ```ts
-const result = game.playCard({
+import { deal, createDeck, shuffleDeck } from "dal-mara-engine";
+
+const deck = shuffleDeck(createDeck());
+const result = deal(currentState, { deck, playerPosition: 0 });
+```
+
+#### `playCard(dmnOrState, payload): ActionResult`
+Plays a card for the active turn player.
+- In `4p` mode during the `GHOPTE` phase, automatically routes to Ghopte card submission.
+- In `2p` mode, automatically checks and removes the card from hand or face-up stack.
+
+```ts
+import { playCard } from "dal-mara-engine";
+
+const result = playCard(currentState, {
   playerPosition: 1,
   card: "10s",
 });
 ```
 
-#### `game.declareTurup({ playerPosition, suit })` *(2P mode only)*
-Declares the Turup suit during `TURUP_DECLARATION` phase.
+#### `declareTurup(dmnOrState, payload): ActionResult` *(2p mode only)*
+Declares the Turup suit during the `TURUP_DECLARATION` phase.
 
 ```ts
-const result = game.declareTurup({
+import { declareTurup } from "dal-mara-engine";
+
+const result = declareTurup(currentState, {
   playerPosition: 1,
   suit: "hearts", // "spades" | "hearts" | "diamonds" | "clubs"
 });
 ```
 
-#### `game.pickupTurupCard({ playerPosition, card })` *(2P mode only)*
-Picks up a face-up Turup card from the player's stacks into their hand.
+#### `pickupTurupCard(dmnOrState, payload): ActionResult` *(2p mode only)*
+Picks up a face-up Turup card from a player's stack into their hand.
 
 ```ts
-const result = game.pickupTurupCard({
+import { pickupTurupCard } from "dal-mara-engine";
+
+const result = pickupTurupCard(currentState, {
   playerPosition: 0,
-  card: "Kh", // Must be of the declared Turup suit
+  card: "Kh",
 });
 ```
 
-#### `game.getLegalMoves(playerId)`
-Calculates legal playable cards for the given player based on phase, hand, stacks, and follow-suit rules.
+#### `dispatch(dmnOrState, action): ActionResult`
+Unified action dispatcher. Dispatches any valid engine action (`DEAL`, `DECLARE_TURUP`, `PICKUP_TURUP_CARD`, `PLAY_CARD`, `PLAY_GHOPTE`).
 
 ```ts
-const moves = game.getLegalMoves("p1");
+import { dispatch, ACTION_TYPES } from "dal-mara-engine";
+
+const result = dispatch(currentState, {
+  type: ACTION_TYPES.PLAY_CARD,
+  payload: { playerPosition: 0, card: "As" },
+});
+```
+
+---
+
+### 3. Inspection & Query Functions
+
+#### `getCurrentPlayer(dmnOrState): Player | null`
+Returns the `Player` whose turn it currently is (derived from `state.nextMovePlayerPosition`).
+
+```ts
+import { getCurrentPlayer } from "dal-mara-engine";
+
+const activePlayer = getCurrentPlayer(currentState);
+console.log("Active player position:", activePlayer?.position);
+```
+
+#### `getLegalMoves(dmnOrState, playerPosition): LegalPlayableCard[]`
+Calculates all legal moves for the given player position based on phase, hand, stacks, and follow-suit rules.
+
+```ts
+import { getLegalMoves } from "dal-mara-engine";
+
+const moves = getLegalMoves(currentState, 1);
 // Returns: Array<{ card: Card, stackPosition?: number, stackId?: string }>
 ```
 
----
-
-### 3. State Getters & Inspection
+#### `isFinished(dmnOrState): boolean`
+Returns `true` if the game has reached the `END` phase (all 13 rounds completed).
 
 ```ts
-game.id;                  // string: Game identifier
-game.mode;                // "4P" | "2P"
-game.phase;               // "DEAL" | "TURUP_DECLARATION" | "GHOPTE" | "PLAYING" | "END"
-game.players;             // readonly Player[]
-game.dealerPosition;      // PlayerPosition: 0 to 3 for 4P, 0 to 1 for 2P
-game.currentPlayer;       // Player | null
-game.currentTrick;        // Trick: { number, playNumber, leadSuit, leaderPosition, isGhopte, cards, nextLeaderPosition, winnerPosition }
-game.currentTurup;        // Suit | null
-game.scores;              // Record<string, ScoreState>: captured 10s and tricks
-game.isFinished;          // boolean (true when phase === "END")
-game.winnerTeam;          // string | null (team name in 4P or player ID in 2P)
-game.state;               // Full immutable GameState snapshot
+import { isFinished } from "dal-mara-engine";
+
+if (isFinished(currentState)) {
+  console.log("Game completed!");
+}
 ```
 
 ---
 
-### 4. Deck & Card Utilities
+### 4. `GameState` Object Structure
+
+The `GameState` object is the parsed in-memory representation of Dal Mara Notation:
+
+```ts
+interface GameState {
+  // Section 1: Game
+  readonly game: {
+    readonly mode: "4p" | "2p";
+    readonly dealerPosition: PlayerPosition;
+    readonly turup: Suit | null;
+    readonly phase: "DEAL" | "TURUP_DECLARATION" | "GHOPTE" | "PLAYING" | "END";
+  };
+
+  // Player roster
+  readonly players: readonly Player[];
+
+  // Section 3: Hands (keyed by PlayerPosition 0..3)
+  readonly hands: Record<PlayerPosition, readonly Card[]>;
+
+  // Section 2: Ghoptes (4p only)
+  readonly ghoptes: readonly Ghopte[];
+
+  // Section 4: Stacks (2p only, 4 stacks per player)
+  readonly stacks: Record<PlayerPosition, readonly PlayerStack[]>;
+
+  // Section 5: Move Number (total cards played)
+  readonly moveNumber: number;
+
+  // Section 6: Current Trick
+  readonly trick: {
+    readonly number: number;
+    readonly playNumber: number;
+    readonly leadSuit: Suit | null;
+    readonly isGhopte: boolean;
+    readonly cards: readonly PlayedCard[];
+  };
+
+  // Section 7: Move Detail (the move that produced this state)
+  readonly moveDetail: {
+    readonly playerPosition: PlayerPosition | null;
+    readonly card: Card | null;
+    readonly makesTurup: boolean;
+  };
+
+  // Section 8: Next Move Player Position
+  readonly nextMovePlayerPosition: PlayerPosition;
+}
+```
+
+---
+
+## Dal Mara Notation (DMN)
+
+Dal Mara Notation (DMN) is a fixed-order, pipe-separated state representation designed for deterministic serialization, network transmission, and rehydration:
+
+```
+<game> | <ghoptes> | <hands> | <stacks> | <move_number> | <trick> | <move_detail> | <next_move_player_position>
+```
+
+### Parsing & Serialization
+
+```ts
+import { parseDMN, serializeDMN } from "dal-mara-engine";
+
+// Parse a DMN string into a GameState object
+const state = parseDMN(dmnString);
+
+// Serialize a GameState object back into a canonical DMN string
+const canonicalDmn = serializeDMN(state);
+```
+
+### Format Specification
+
+| # | Section | Format | Example | Description |
+|---|---------|--------|---------|-------------|
+| **1** | `<game>` | `<mode>,<dealer>,<turup>` | `4p,2,h` | Mode (`4p`/`2p`), dealer position (`0`..`3`), Turup suit (`s`/`h`/`d`/`c` or `-`) |
+| **2** | `<ghoptes>` | `<p0>/<p1>/<p2>/<p3>` or `-` | `-/Kh,1,-:7s,1,-/Qd,2,-/-` | 4P Ghoptes grouped by player, `:` separated for multiple (`<card>,<order>,<resolved: r/->`). `-` in 2p. |
+| **3** | `<hands>` | `<p0>/<p1>/<p2>/<p3>` | `As,Qh,10d/7c,Js/Kd,8d/9s,Ad` | Cards currently held in each player's hand, separated by commas |
+| **4** | `<stacks>` | 8 `/`-separated slots or `-` | `7h,Kc,As,4d,10s/...` | 2P personal stacks (4 for P0, 4 for P1), ordered bottom-to-top (last card is face up). `-` in 4p. |
+| **5** | `<move_number>` | `<integer>` | `12` | Total cards played across the game (0 to 52) |
+| **6** | `<trick>` | `<num>,<play>,<lead>,<ghopte>,<cards>` | `3,2,h,-,1:Kh/2:4h` | Trick number, play number (1..4), lead suit, Ghopte flag (`g`/`-`), and trick cards (`<pos>:<card>/...` or `-`) |
+| **7** | `<move_detail>` | `<pos>,<card>,<makes_turup>` | `2,4s,-` | Move that created this state: player position, card played, and Turup establishment flag (`t`/`-`), or `-,-,-` |
+| **8** | `<next_move>` | `<position>` | `3` | Player position expected to play next |
+
+### Delimiters
+- `|` Top-level section separator
+- `/` Ordered collection separator (player hands, ghopte groups, stack slots, trick cards)
+- `:` Record association (multiple ghoptes per player, `<pos>:<card>` in trick cards)
+- `,` Field values within a record
+- `-` Empty, false, or not applicable
+
+---
+
+## Scoring & Winner Evaluation
+
+Scoring is externalized as pure utility functions, keeping `GameState` lean while providing full winner resolution:
+
+```ts
+import {
+  evaluateGameWinner4P,
+  evaluateGameWinner2P,
+  updateScoreOnTrickWon,
+  countTensInCards,
+  createInitialScoreState,
+} from "dal-mara-engine";
+
+// 1. Initialize score trackers
+const scores = {
+  0: createInitialScoreState(),
+  1: createInitialScoreState(),
+  2: createInitialScoreState(),
+  3: createInitialScoreState(),
+};
+
+// 2. Update score when a trick completes
+const winnerPos = 0;
+scores[winnerPos] = updateScoreOnTrickWon(scores[winnerPos], winnerPos, completedTrick);
+
+// 3. Evaluate winner for 4P game
+const result = evaluateGameWinner4P({
+  scores,
+  players: gameState.players,
+});
+
+console.log("Winner Team:", result.winnerTeam); // e.g. "red" or "02"
+console.log("Reason:", result.reason);          // e.g. "red wins with 3 tens"
+```
+
+---
+
+## Deck & Card Utilities
 
 ```ts
 import {
@@ -285,139 +471,46 @@ import {
   getCardRank,
 } from "dal-mara-engine";
 
-// Generate standard 52-card deck (Array of string cards: "2s", "10h", "Ac", ...)
+// Standard 52-card deck
 const deck = createDeck();
 
-// Shuffle without mutating the original array
+// Pure Fisher-Yates shuffle (returns a new array)
 const shuffled = shuffleDeck(deck);
 
-// Parse card string to its suit and rank
-const details = parseCard("10s"); // { suit: "spades", rank: "10" }
-const suit = getCardSuit("10s");  // "spades"
-const rank = getCardRank("10s");  // "10"
+// Parse card
+const { suit, rank } = parseCard("10s"); // { suit: "spades", rank: "10" }
 
-// Compare card ranks (positive if cardA > cardB)
-const ace = "Ah";
-const ten = "10s";
-const comparison = compareCardRanks(ace, ten); // > 0
+// Compare card ranks (returns positive if cardA > cardB)
+const isHigher = compareCardRanks("Ah", "10s") > 0; // true
 ```
 
 ---
 
-### 5. Event Subscriptions
+## State Serialization (JSON)
 
-Subscribe to engine events for triggering UI sound effects, animations, and announcements:
-
-```ts
-// Subscribe to specific events
-const unsubscribeStarted = game.on("TurnStarted", (event) => {
-  console.log("Turn started for player:", event.payload.playerId);
-});
-
-const unsubscribeCardPlayed = game.on("CardPlayed", (event) => {
-  console.log("Card played:", event.payload.card, "by", event.payload.playerId);
-});
-
-const unsubscribeTurup = game.on("TurupCreated", (event) => {
-  console.log("Turup established:", event.payload.suit);
-});
-
-// Subscribe to all events
-const unsubscribeAll = game.onAny((event) => {
-  console.log("Event:", event.type, event.payload);
-});
-```
-
-#### Available Events
-| Event Name | Description |
-|---|---|
-| `CardsDealt` | Cards dealt and initial phase transitions |
-| `TurnStarted` | Active turn player switched |
-| `CardPlayed` | Card played to the current trick |
-| `TurupDeclared` | Turup chosen by opponent in 2P mode |
-| `TurupCreated` | Turup first created by void play in 4P mode |
-| `TurupChanged` | Turup overridden by void play in the same trick |
-| `GhopteStarted` | Game entered Ghopte resolution phase |
-| `GameFinished` | Game finished, winner evaluated |
-
-### 6. Dal Mara Notation (DMN)
-
-Dal Mara Notation (`DMN1`) is a self-contained game state snapshot format (similar to chess FEN) designed for network transmission and instant game state reconstruction. Every DMN string encodes the complete game state — including player hands — so a full `Game` can be reconstructed without any database lookup.
+For debugging or persisting full `GameState` objects as JSON:
 
 ```ts
-import { fromDMN, Game } from "dal-mara-engine";
+import { serializeState, deserializeState } from "dal-mara-engine";
 
-// Export current snapshot to DMN1 string
-const dmnString = game.toDMN();
+// Serialize to formatted JSON
+const json = serializeState(gameState);
 
-// Reconstruct a full playable Game from any DMN snapshot
-const restoredGame = fromDMN(dmnString);
-// or: Game.fromDMN(dmnString)
-```
-
-**DMN1 Format**:
-```
-DMN1 G:"<GameInfo>" H:"<Hands>" S:"<Stacks>" M:"<MoveInfo>" T:"<TrickInfo>" P:"<PlayInfo>" GH:"<GhopteState>"
-```
-
-| Section | Format | Description |
-|---------|--------|-------------|
-| **G** | `"<Mode>,<Dealer>,<TrumpSuit>"` | Game mode (`4P`/`2P`), dealer position, trump suit (`s`/`h`/`d`/`c`/`-`) |
-| **H** | `"P0[<Cards>],P1[<Cards>],..."` | Current remaining cards per player (engine `Card` string format) |
-| **S** | `"-"` or `"P0[S0[<Hidden>\|<FaceUp>],...],..."` | 2P stacks (or `-` for 4P) |
-| **M** | `"<MoveNumber>"` | Total cards played (0 to 52) |
-| **T** | `"<TrickNumber>,<TrickPlay>,<TrickLeader>,<NextTrickLeader>,<IsGhopte>,[<TrickCards>]"` | Current trick info and played trick cards |
-| **P** | `"<Card>,<PlayedBy>,<IsGhopte>,<IsTurup>,<MakesTurup>"` | Last played card info |
-| **GH** | `"-"` or `"[P<Pos>,<Card>,<Order>,<IsResolved>],..."` | Active ghoptes |
-
-**Example** (initial state after deal, 4P):
-```
-DMN1 G:"4P,0,-" H:"P0[2s,3s,...],P1[...],P2[...],P3[...]" S:"-" M:"0" T:"1,0,1,1,0,[]" P:"-,-,0,0,0" GH:"-"
-```
-
-**Example** (mid-game with ghopte):
-```
-DMN1 G:"4P,0,-" H:"P0[...],..." S:"-" M:"4" T:"1,0,0,-,1,[]" P:"-,-,0,0,0" GH:"[P0,10s,0,0],[P2,10h,1,1]"
-```
-
-A 4-player game generates **53 snapshots**: 1 initial (after deal) + 52 card plays.
-
-### 7. Serialization & Replay Engine
-
-#### JSON State Serialization
-```ts
-import { Game } from "dal-mara-engine";
-
-// Serialize full game state to JSON
-const json = game.serialize();
-
-// Deserialize and revive into active Game instance
-const revivedGame = Game.deserialize(json);
-```
-
-#### Replay Engine
-Export game actions to replay matches step-by-step with 100% determinism:
-
-```ts
-import { Game } from "dal-mara-engine";
-
-// Export replay action log
-const replayData = game.exportReplay();
-
-// Re-run match from start to reconstruct final state
-const replayedGame = Game.playReplay(replayData);
+// Deserialize JSON back to GameState
+const restoredState = deserializeState(json);
 ```
 
 ---
 
 ## Error Handling
 
-All validation checks return `{ success: false, error: DalMaraError }` instead of throwing unhandled exceptions during normal play.
+All validation checks return `{ success: false, error: DalMaraError }` instead of throwing unhandled exceptions during gameplay:
 
 ```ts
-import { ENGINE_ERROR_CODES } from "dal-mara-engine";
+import { playCard, ENGINE_ERROR_CODES } from "dal-mara-engine";
 
-const result = game.playCard({ playerPosition: 0, card: "2s" });
+const result = playCard(currentState, { playerPosition: 0, card: "2s" });
+
 if (!result.success) {
   switch (result.error.code) {
     case ENGINE_ERROR_CODES.MUST_FOLLOW_SUIT:
@@ -432,12 +525,23 @@ if (!result.success) {
 }
 ```
 
+### Common Error Codes
+| Code | Description |
+|---|---|
+| `MUST_FOLLOW_SUIT` | Player attempted to play an off-suit card while holding the lead suit |
+| `NOT_PLAYER_TURN` | Player attempted to move out of turn |
+| `CARD_NOT_OWNED` | Card is not present in player hand or face-up stack |
+| `INVALID_TURUP_DECLARATION` | Turup declaration made by wrong player or with invalid suit |
+| `INVALID_GHOPTE_SUBMISSION` | Invalid card submitted during Ghopte resolution |
+| `INVALID_DMN` | Malformed Dal Mara Notation string |
+| `INVALID_DECK` | Deck passed to deal does not contain 52 distinct cards |
+
 ---
 
 ## Contributing & Development
 
 ```bash
-# Clone the repository
+# Clone repository
 git clone https://github.com/yogendrarana/dal-mara-engine.git
 
 # Install dependencies
