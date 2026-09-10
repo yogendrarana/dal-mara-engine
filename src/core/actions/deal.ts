@@ -2,7 +2,7 @@ import { parseCard } from "../card";
 import { DalMaraError } from "../errors";
 import { createDeck, shuffleDeck } from "../deck";
 import { createValidationError } from "../errors";
-import { ENGINE_ERROR_CODES, GAME_PHASES } from "../const";
+import { ENGINE_ERROR_CODES } from "../const";
 import { dealFourPlayer, detectGhopte } from "../rules/four-player";
 import { dealTwoPlayer, create2PStacks } from "../rules/two-player";
 import type { DealAction, GameState, Seat, ValidationResult } from "../../types/index";
@@ -12,8 +12,9 @@ import type { DealAction, GameState, Seat, ValidationResult } from "../../types/
 export function validateDeal({ state, action }: { state: GameState; action: DealAction }): ValidationResult {
 	const { deck, seat } = action.payload;
 
-	if (state.game.phase !== GAME_PHASES.DEAL) {
-		return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "Cannot deal cards outside DEAL phase");
+	const hasDealt = Object.values(state.hands).some((h) => h.length > 0);
+	if (hasDealt || state.moveNumber > 0) {
+		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Cards have already been dealt");
 	}
 
 	if (deck?.length !== 52) {
@@ -37,7 +38,8 @@ export function reduceDeal4P(state: GameState, action: DealAction): GameState {
 		throw new DalMaraError("Cannot find the dealer in the player list.", ENGINE_ERROR_CODES.INVALID_DEALER);
 	}
 
-	if (state.game.phase !== GAME_PHASES.DEAL) return state;
+	const hasDealt = Object.values(state.hands).some((h) => h.length > 0);
+	if (hasDealt || state.moveNumber > 0) return state;
 
 	const finalDeck = deck?.length === 52 ? deck : shuffleDeck(createDeck());
 
@@ -57,10 +59,6 @@ export function reduceDeal4P(state: GameState, action: DealAction): GameState {
 
 		return {
 			...state,
-			game: {
-				...state.game,
-				phase: GAME_PHASES.GHOPTE,
-			},
 			hands,
 			ghoptes,
 			moveNumber: 0,
@@ -85,10 +83,6 @@ export function reduceDeal4P(state: GameState, action: DealAction): GameState {
 
 	return {
 		...state,
-		game: {
-			...state.game,
-			phase: GAME_PHASES.PLAYING,
-		},
 		hands,
 		moveNumber: 0,
 		trick: {
@@ -117,7 +111,8 @@ export function reduceDeal2P(state: GameState, action: DealAction): GameState {
 		throw new DalMaraError("Cannot find the dealer in the player list.", ENGINE_ERROR_CODES.INVALID_DEALER);
 	}
 
-	if (state.game.phase !== GAME_PHASES.DEAL) return state;
+	const hasDealt = Object.values(state.hands).some((h) => h.length > 0);
+	if (hasDealt || state.moveNumber > 0) return state;
 	if (state.players.length !== 2) return state;
 
 	const finalDeck = deck?.length === 52 ? deck : shuffleDeck(createDeck());
@@ -132,10 +127,6 @@ export function reduceDeal2P(state: GameState, action: DealAction): GameState {
 
 	return {
 		...state,
-		game: {
-			...state.game,
-			phase: GAME_PHASES.TURUP_DECLARATION,
-		},
 		hands,
 		stacks,
 		moveNumber: 0,

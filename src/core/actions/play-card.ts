@@ -1,7 +1,7 @@
 import { parseCard } from "../card";
 import { getCurrentTurnPlayer } from "../turn";
 import { createValidationError } from "../errors";
-import { ENGINE_ERROR_CODES, GAME_MODES, GAME_PHASES } from "../const";
+import { ENGINE_ERROR_CODES, GAME_MODES } from "../const";
 import { validateFollowSuit, resolve4PTrickWinner } from "../rules/four-player";
 import { validate2PFollowSuit, resolve2PTrickWinner } from "../rules/two-player";
 import type { Card, GameState, PlayCardAction, PlayedCard, Seat, Trick, ValidationResult } from "../../types/index";
@@ -13,11 +13,25 @@ export function validatePlayCard({ state, action }: { state: GameState; action: 
 	const { seat, card } = action.payload;
 
 	if (state.ghoptes.some((g) => !g.resolved)) {
-		return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "Cannot play card while there are unresolved Ghoptes");
+		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Cannot play card while there are unresolved Ghoptes");
 	}
 
-	if (state.game.phase !== GAME_PHASES.PLAYING) {
-		return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "Cannot play cards outside PLAYING phase");
+	const notDealt = state.moveNumber === 0 && Object.values(state.hands).every((h) => h.length === 0);
+	if (notDealt) {
+		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Cannot play cards before cards are dealt");
+	}
+
+	if (state.game.mode === GAME_MODES.TWO_PLAYER && state.game.turup === null) {
+		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Cannot play cards before Turup is declared");
+	}
+
+	const allHandsEmpty = Object.values(state.hands).every((h) => h.length === 0);
+	const allStacksEmpty =
+		state.game.mode === GAME_MODES.TWO_PLAYER
+			? Object.values(state.stacks).every((pStacks) => pStacks.every((s) => !s.faceUpCard && s.hiddenCards.length === 0))
+			: true;
+	if (allHandsEmpty && allStacksEmpty) {
+		return createValidationError(ENGINE_ERROR_CODES.GAME_ALREADY_FINISHED, "Cannot play cards after game has ended");
 	}
 
 	if (currentTurnPlayer?.seat !== seat) {
@@ -53,7 +67,7 @@ export function validatePlayCard({ state, action }: { state: GameState; action: 
 		return createValidationError(ENGINE_ERROR_CODES.CARD_NOT_OWNED, `Player does not own or cannot access card ${card}`);
 	}
 
-	// follow-suit validation for standard PLAYING phase
+	// follow-suit validation for standard trick play
 	const leadSuit = state.trick.leadSuit;
 
 	if (state.game.mode === GAME_MODES.FOUR_PLAYER) {
@@ -168,7 +182,6 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 				...state,
 				game: {
 					...state.game,
-					phase: GAME_PHASES.END,
 					turup: newTurup,
 				},
 				hands: updatedHands,
@@ -319,10 +332,6 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 		if (finished) {
 			return {
 				...state,
-				game: {
-					...state.game,
-					phase: GAME_PHASES.END,
-				},
 				hands: updatedHands,
 				stacks: updatedStacks,
 				moveNumber: newMoveNumber,

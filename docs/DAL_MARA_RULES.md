@@ -10,7 +10,7 @@
 
 # 1. Introduction
 
-Dal Mara is a traditional Nepali trick-taking card game played using a standard 52-card deck. "Dal" meaning "10" and "mara "meanig "killer". 
+Dal Mara is a traditional Nepali trick-taking card game played using a standard 52-card deck. "Dal" meaning "10" and "Mara" meaning "Killer". 
 
 There are two official game modes:
 
@@ -204,7 +204,7 @@ The leader plays any card.
 
 That card establishes the Lead Suit.
 
-Every remaining player plays exactly one card and has to play same suite card as the Lead Suit if lead suite is present.
+Every remaining player plays exactly one card and has to play same suit card as the Lead Suit if lead suit is present.
 
 Play continues anticlockwise.
 

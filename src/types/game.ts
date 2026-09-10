@@ -1,12 +1,11 @@
 import type { Player, Seat } from "./player";
 import type { Card, Suit } from "./card";
 
-import type { GAME_MODES, GAME_PHASES } from "../core/const";
+import type { GAME_MODES } from "../core/const";
 
 // types
 
 export type GameMode = (typeof GAME_MODES)[keyof typeof GAME_MODES];
-export type GamePhase = (typeof GAME_PHASES)[keyof typeof GAME_PHASES];
 
 export interface PlayedCard {
 	readonly card: Card;
@@ -48,7 +47,6 @@ export interface GameState {
 		readonly mode: GameMode;
 		readonly dealerSeat: Seat;
 		readonly turup: Suit | null;
-		readonly phase: GamePhase; // internal, not in DMN
 	};
 
 	// Player roster (derived from mode, not in DMN)

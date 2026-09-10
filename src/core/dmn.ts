@@ -6,7 +6,6 @@ import type {
 	Card,
 	Ghopte,
 	GameMode,
-	GamePhase,
 	GameState,
 	PlayedCard,
 	Player,
@@ -18,7 +17,7 @@ import type {
 	ScoreState,
 } from "../types/index";
 
-import { ABBREVIATION_TO_SUIT, ENGINE_ERROR_CODES, GAME_MODES, GAME_PHASES, SUIT_ABBREVIATION } from "./const";
+import { ABBREVIATION_TO_SUIT, ENGINE_ERROR_CODES, GAME_MODES, SUIT_ABBREVIATION } from "./const";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -292,34 +291,11 @@ export function parseDMN(dmn: string): GameState {
 	// --- Section 8: Next Move Seat ---
 	const nextMoveSeat = parseInt(nextMoveRaw, 10) as Seat;
 
-	// --- Determine phase ---
-	let phase: GamePhase = GAME_PHASES.PLAYING;
-	if (ghopteFlag || ghoptes.some((g) => !g.resolved)) {
-		phase = GAME_PHASES.GHOPTE;
-	} else if (moveNumber === 0) {
-		const totalCards = Object.values(hands).reduce((sum, h) => sum + h.length, 0);
-		if (totalCards === 0) {
-			phase = GAME_PHASES.DEAL;
-		} else if (mode === GAME_MODES.TWO_PLAYER && !turup) {
-			phase = GAME_PHASES.TURUP_DECLARATION;
-		}
-	}
-
-	// Check if game is finished (all cards played)
-	const allHandsEmpty = Object.values(hands).every((h) => h.length === 0);
-	const allStacksEmpty = Object.values(stacks).every((playerStacks) =>
-		playerStacks.every((s) => !s.faceUpCard && s.hiddenCards.length === 0),
-	);
-	if (allHandsEmpty && allStacksEmpty && moveNumber > 0 && trickCards.length === 0) {
-		phase = GAME_PHASES.END;
-	}
-
 	return {
 		game: {
 			mode,
 			dealerSeat,
 			turup,
-			phase,
 		},
 		players,
 		hands,

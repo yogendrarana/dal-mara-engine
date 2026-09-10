@@ -1,6 +1,6 @@
 import type { Card, GameState, Seat } from "../types/index";
 import { parseCard } from "./card";
-import { GAME_MODES, GAME_PHASES } from "./const";
+import { GAME_MODES } from "./const";
 import { getCurrentTurnPlayer } from "./turn";
 
 export interface LegalPlayableCard {
@@ -12,18 +12,17 @@ export interface LegalPlayableCard {
  * Get legal playable cards for 4-Player mode.
  */
 export function getLegalMoves4P(state: GameState, seat: Seat): LegalPlayableCard[] {
-	if (state.game.phase !== GAME_PHASES.PLAYING && state.game.phase !== GAME_PHASES.GHOPTE) {
-		return [];
-	}
+	const hand = state.hands[seat] ?? [];
+	if (hand.length === 0) return [];
 
 	const currentTurnPlayer = getCurrentTurnPlayer(state);
 	if (currentTurnPlayer?.seat !== seat) return [];
 
-	const hand = state.hands[seat] ?? [];
 	const availableCards: LegalPlayableCard[] = hand.map((card) => ({ card }));
 
-	// 1. Ghopte Phase
-	if (state.game.phase === GAME_PHASES.GHOPTE && state.ghoptes.length > 0) {
+	// 1. Ghopte Round (if unresolved ghoptes exist)
+	const hasUnresolvedGhopte = state.ghoptes.some((g) => !g.resolved);
+	if (hasUnresolvedGhopte) {
 		const activeGhopte = state.ghoptes.find((g) => !g.resolved);
 
 		// If current player is the Ghopte declarer, they play their Ghopte 10
@@ -63,15 +62,20 @@ export function getLegalMoves4P(state: GameState, seat: Seat): LegalPlayableCard
  * Get legal playable cards for 2-Player mode.
  */
 export function getLegalMoves2P(state: GameState, seat: Seat): LegalPlayableCard[] {
-	if (state.game.phase !== GAME_PHASES.PLAYING) {
+	// Must declare Turup first before normal trick play
+	if (state.game.turup === null) {
+		return [];
+	}
+
+	const hand = state.hands[seat] ?? [];
+	const stacks = state.stacks[seat] ?? [];
+	if (hand.length === 0 && stacks.every((s) => !s.faceUpCard && s.hiddenCards.length === 0)) {
 		return [];
 	}
 
 	const currentTurnPlayer = getCurrentTurnPlayer(state);
 	if (currentTurnPlayer?.seat !== seat) return [];
 
-	const hand = state.hands[seat] ?? [];
-	const stacks = state.stacks[seat] ?? [];
 	const leadSuit = state.trick.leadSuit;
 
 	const availableCards: LegalPlayableCard[] = [];

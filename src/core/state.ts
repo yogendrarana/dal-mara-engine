@@ -1,4 +1,4 @@
-import { GAME_MODES, GAME_PHASES } from "./const";
+import { GAME_MODES } from "./const";
 import type { Card, GameMode, GameState, Player, Seat, PlayerStack } from "../types/index";
 
 export function createInitialState(options: { mode: GameMode; players: readonly Player[]; dealerSeat: Seat }): GameState {
@@ -16,7 +16,6 @@ export function createInitialState(options: { mode: GameMode; players: readonly 
 			mode,
 			dealerSeat,
 			turup: null,
-			phase: GAME_PHASES.DEAL,
 		},
 		players: orderedPlayers,
 		hands: {} as Record<Seat, readonly Card[]>,

@@ -115,7 +115,7 @@ describe("4-Player Game Mode", () => {
 		expect(dealRes.state.game.turup).toBeNull();
 	});
 
-	it("should start in DEAL phase and allow dealer to deal", () => {
+	it("should start with empty hands and allow dealer to deal", () => {
 		const gameResult = createGame({
 			mode: "4p",
 			dealerSeat: 0,
@@ -128,7 +128,7 @@ describe("4-Player Game Mode", () => {
 		});
 		if (!gameResult.success) return;
 
-		expect(gameResult.state.game.phase).toBe("DEAL");
+		expect(Object.values(gameResult.state.hands).length).toBe(0);
 
 		const nonDealerDeal = deal(gameResult.state, { deck, seat: 1 });
 		expect(nonDealerDeal.success).toBe(false);
@@ -136,7 +136,7 @@ describe("4-Player Game Mode", () => {
 		const dealRes = deal(gameResult.state, { deck, seat: 0 });
 		expect(dealRes.success).toBe(true);
 		if (dealRes.success) {
-			expect(dealRes.state.game.phase).not.toBe("DEAL");
+			expect(dealRes.state.hands[0]?.length).toBe(13);
 		}
 	});
 });

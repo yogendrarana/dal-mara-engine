@@ -16,7 +16,7 @@ describe("2-Player Game Mode", () => {
 		expect(dealRes.success).toBe(true);
 		if (!dealRes.success) return;
 
-		expect(dealRes.state.game.phase).toBe("TURUP_DECLARATION");
+		expect(dealRes.state.game.turup).toBeNull();
 
 		const declP = getCurrentPlayer(dealRes.state);
 		expect(declP?.seat).toBe(1);
@@ -26,7 +26,6 @@ describe("2-Player Game Mode", () => {
 			expect(declRes.success).toBe(true);
 			if (!declRes.success) return;
 
-			expect(declRes.state.game.phase).toBe("PLAYING");
 			expect(declRes.state.game.turup).toBe("spades");
 
 			const p1Stacks = declRes.state.stacks[0];

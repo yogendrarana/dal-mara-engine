@@ -37,7 +37,7 @@ describe("Ghopte Phase Mechanics", () => {
 		const dealRes = deal(gameResult.state, { deck, seat: 0 });
 		if (!dealRes.success) return;
 
-		if (dealRes.state.game.phase === "GHOPTE") {
+		if (dealRes.state.ghoptes.some((g) => !g.resolved)) {
 			const turnP = getCurrentPlayer(dealRes.state);
 			if (turnP) {
 				const moves = getLegalMoves(dealRes.state, turnP.seat);

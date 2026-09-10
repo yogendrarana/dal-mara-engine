@@ -3,7 +3,7 @@ import { createInitialState } from "./state";
 import { getCurrentTurnPlayer } from "./turn";
 import { parseDMN, serializeDMN } from "./dmn";
 import { validateCreateGame } from "./validators";
-import { ACTION_TYPES, GAME_PHASES } from "./const";
+import { ACTION_TYPES, GAME_MODES } from "./const";
 import { getLegalMoves as getLegalMovesInternal } from "./legal-moves";
 
 import type {
@@ -102,8 +102,8 @@ export function pickupTurupCard(dmnOrState: string | GameState, payload: PickupT
 export function playCard(dmnOrState: string | GameState, payload: PlayCardAction["payload"]): ActionResult {
 	const state = resolveState(dmnOrState);
 
-	// Auto-route to ghopte if in ghopte phase
-	if (state.game.phase === GAME_PHASES.GHOPTE) {
+	// Auto-route to ghopte if unresolved ghoptes exist
+	if (state.ghoptes.some((g) => !g.resolved)) {
 		return dispatch(state, { type: ACTION_TYPES.PLAY_GHOPTE, payload });
 	}
 
@@ -126,5 +126,13 @@ export function getCurrentPlayer(dmnOrState: string | GameState): Player | null 
 
 export function isFinished(dmnOrState: string | GameState): boolean {
 	const state = resolveState(dmnOrState);
-	return state.game.phase === GAME_PHASES.END;
+	if (state.moveNumber === 0) return false;
+	const allHandsEmpty = Object.values(state.hands).every((h) => h.length === 0);
+	if (state.game.mode === GAME_MODES.FOUR_PLAYER) {
+		return allHandsEmpty;
+	}
+	const allStacksEmpty = Object.values(state.stacks).every((pStacks) =>
+		pStacks.every((s) => !s.faceUpCard && s.hiddenCards.length === 0),
+	);
+	return allHandsEmpty && allStacksEmpty;
 }

@@ -1,5 +1,5 @@
 import { createValidationError } from "../errors";
-import { ENGINE_ERROR_CODES, GAME_MODES, GAME_PHASES } from "../const";
+import { ENGINE_ERROR_CODES, GAME_MODES } from "../const";
 import { getCurrentTurnPlayer } from "../turn";
 import type { DeclareTurupAction, GameState, Seat, ValidationResult } from "../../types/index";
 
@@ -12,8 +12,13 @@ export function validateDeclareTurup({ state, action }: { state: GameState; acti
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Turup declaration action is only valid in 2-Player mode");
 	}
 
-	if (state.game.phase !== GAME_PHASES.TURUP_DECLARATION) {
-		return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "Cannot declare Turup outside TURUP_DECLARATION phase");
+	if (state.game.turup !== null) {
+		return createValidationError(ENGINE_ERROR_CODES.INVALID_TURUP_DECLARATION, "Turup has already been declared");
+	}
+
+	const hasDealt = Object.values(state.hands).some((h) => h.length > 0);
+	if (!hasDealt) {
+		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Cannot declare Turup before cards are dealt");
 	}
 
 	if (currentTurnPlayer?.seat !== action.payload.seat) {
@@ -26,7 +31,7 @@ export function validateDeclareTurup({ state, action }: { state: GameState; acti
 // Reducer (2-Player only)
 
 export function reduceDeclareTurup2P(state: GameState, action: DeclareTurupAction): GameState {
-	if (state.game.phase !== GAME_PHASES.TURUP_DECLARATION) return state;
+	if (state.game.turup !== null) return state;
 
 	const turupSuit = action.payload.suit;
 	const dealerSeat = state.game.dealerSeat;
@@ -36,7 +41,6 @@ export function reduceDeclareTurup2P(state: GameState, action: DeclareTurupActio
 		...state,
 		game: {
 			...state.game,
-			phase: GAME_PHASES.PLAYING,
 			turup: turupSuit,
 		},
 		trick: {

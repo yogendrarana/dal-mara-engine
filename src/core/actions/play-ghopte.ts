@@ -1,6 +1,6 @@
 import { parseCard } from "../card";
 import { createValidationError } from "../errors";
-import { ENGINE_ERROR_CODES, GAME_MODES, GAME_PHASES } from "../const";
+import { ENGINE_ERROR_CODES, GAME_MODES } from "../const";
 import { resolve4PTrickWinner } from "../rules/four-player";
 import { getCurrentTurnPlayer } from "../turn";
 import type { GameState, PlayedCard, Seat, PlayGhopteAction, Trick, ValidationResult } from "../../types/index";
@@ -15,8 +15,9 @@ export function validatePlayGhopte({ state, action }: { state: GameState; action
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Ghopte is only valid in 4-Player mode");
 	}
 
-	if (state.game.phase !== GAME_PHASES.GHOPTE) {
-		return createValidationError(ENGINE_ERROR_CODES.INVALID_PHASE, "PLAY_GHOPTE action is only valid during GHOPTE phase");
+	const hasUnresolvedGhopte = state.ghoptes.some((g) => !g.resolved);
+	if (!hasUnresolvedGhopte) {
+		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "No unresolved Ghopte active");
 	}
 
 	if (currentTurnPlayer?.seat !== seat) {
@@ -95,7 +96,8 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 		playOrder: state.trick.cards.length + 1,
 	};
 
-	if (state.game.phase !== GAME_PHASES.GHOPTE || state.ghoptes.length === 0) return state;
+	const hasUnresolvedGhopte = state.ghoptes.some((g) => !g.resolved);
+	if (!hasUnresolvedGhopte) return state;
 
 	const currentGhopte = state.ghoptes.find((g) => !g.resolved);
 	if (!currentGhopte) return state;
@@ -152,13 +154,9 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 			};
 		}
 
-		// All Ghoptes resolved! Transition to PLAYING phase.
+		// All Ghoptes resolved! Transition to regular play.
 		return {
 			...state,
-			game: {
-				...state.game,
-				phase: GAME_PHASES.PLAYING,
-			},
 			hands: updatedHands,
 			ghoptes: updatedGhoptes,
 			moveNumber: newMoveNumber,

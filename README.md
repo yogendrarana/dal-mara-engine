@@ -89,7 +89,6 @@ if (!dealResult.success) {
 }
 
 console.log("Current DMN:", dealResult.dmn);
-console.log("Phase:", dealResult.state.game.phase); // "GHOPTE" or "PLAYING"
 
 // 4. Inspect current player turn
 const activePlayer = getCurrentPlayer(dealResult.state);
@@ -111,86 +110,13 @@ if (activePlayer) {
 }
 ```
 
-
 ---
 
-## Dal Mara Game Rules
+## Game Rules & Mechanics
 
-### 1. Objective & Winning Conditions
-- There are **four 10s** in the standard 52-card deck (`10s`, `10h`, `10d`, `10c`).
-- **Instant Win**: The team or player that captures **3 or 4 tens** wins the game.
-- **Tie-Breaker (2–2 on 10s)**: If each team/player captures exactly 2 tens, the winner is decided by the **most tricks won**.
-- All 13 rounds (tricks) are played to completion before scoring is finalized.
+For the official rules, trick-taking mechanics, Ghopte rounds, and winning conditions, see the dedicated specification:
 
-### 2. Card Ranking & Format
-Ranks are strictly ordered from highest to lowest:
-$$\text{A} > \text{K} > \text{Q} > \text{J} > \mathbf{10} > \text{9} > \text{8} > \text{7} > \text{6} > \text{5} > \text{4} > \text{3} > \text{2}$$
-- **Ace** is always the highest card.
-- **10** is the scoring card, ranked immediately below Jack and above 9.
-- Cards use uppercase face ranks (`A`, `K`, `Q`, `J`) and lowercase suits (`s`, `h`, `d`, `c`), e.g., `As`, `10h`, `Kd`, `2c`.
-
-### 3. Turn Order & Anti-Clockwise Play
-- Dealing, turn progression, and Ghopte resolution proceed **anti-clockwise**.
-- The player seated immediately to the dealer's right leads the first trick.
-- The winner of each trick leads the subsequent trick.
-
----
-
-### 4. Four-Player Team Mode (`4p`)
-
-#### Seating & Teams
-- 4 players sit in a square or diamond formation.
-- Diagonally opposite players form a team:
-  - **Team 02**: Seat 0 and Seat 2
-  - **Team 13**: Seat 1 and Seat 3
-
-#### Dealing
-- Handed out anti-clockwise starting from the player to the dealer's right.
-- Deal distribution: 5 cards each on the first pass, followed by 4 cards, then 4 cards (13 cards total per player).
-
-#### Ghopte (Singleton 10 Guessing Round)
-- If a player holds **exactly one card of a suit, and that card is the 10** (a singleton 10, e.g., only ♦10 with no other Diamonds), a **Ghopte** round is declared before trick 1 begins.
-- A player can hold multiple Ghoptes (e.g., singleton ♠10 and singleton ♥10).
-- **Procedure**:
-  1. The declarer places their 10 face down on the table.
-  2. The other 3 players attempt to guess the suit of the Ghopte card and place any card face down from their hand (no follow-suit requirement).
-  3. Cards are revealed simultaneously.
-  4. The player who played the highest card matching the 10's suit wins the trick and captures all 4 cards. If no opponent matched the suit, the declarer wins.
-  5. Each resolved Ghopte trick counts as 1 of the 13 total rounds.
-
-#### Follow-Suit Rule
-- The lead card establishes the **Lead Suit**.
-- All players holding at least one card of the Lead Suit **must follow suit**.
-- Playing an off-suit card while holding the Lead Suit is illegal (`MUST_FOLLOW_SUIT`).
-
-#### Dynamic Turup & Same-Trick Override
-- **No Initial Turup**: Turup (*trump*) does *not* exist when the game starts.
-- **Creation**: When a player is void in the Lead Suit, the off-suit card they play establishes the **Turup suit**. From that moment, Turup cards defeat all non-Turup cards.
-- **Same-Trick Override**: Within that **same trick only**, if a subsequent player is void in *both* the Lead Suit and the current Turup suit, they can play any other suit to **override** and establish a new Turup suit.
-- **Permanent Lock**: Once the trick that established Turup finishes, the final Turup suit is **permanently locked** for the remainder of the game.
-
-#### Trick Resolution
-1. Highest Turup card wins (if any Turup cards were played).
-2. Otherwise, highest card of the Lead Suit wins.
-
----
-
-### 5. Two-Player Mode (`2p`)
-
-#### Dealing & Setup
-1. **Initial Hand**: Dealer deals 6 cards to opponent (seat 1) first, then 6 cards to dealer (seat 0).
-
-2. **Turup Declaration**: Opponent inspects their 6-card hand and declares the Turup suit upfront (`declareTurup(...)`). Turup is fixed immediately and cannot be overridden.
-3. **Hidden Stacks**: The remaining 40 cards are dealt into **4 personal stacks** per player (5 cards per stack). Only the top card of each stack is turned face up; cards underneath remain face down.
-
-#### Manual Turup Stack Pickup
-- Whenever a face-up stack card belongs to the declared Turup suit, the player **must pick it up into their hand** (`pickupTurupCard(...)`).
-- A trick cannot begin until all face-up Turup cards on both players' stacks have been picked up into their hands.
-
-#### Playing Tricks
-- Players can play legal cards either from their **hand** or from the **face-up tops of their 4 stacks**.
-- When a top stack card is played, the underlying card is revealed face up.
-- Players must follow the Lead Suit if they possess matching cards in either their hand or any of their face-up stacks.
+👉 **[Dal Mara Official Rulebook (DAL_MARA_RULES.md)](docs/DAL_MARA_RULES.md)**
 
 ---
 
@@ -244,7 +170,7 @@ const result = deal(currentState, { deck, seat: 0 });
 
 #### `playCard(dmnOrState, payload): ActionResult`
 Plays a card for the active turn player.
-- In `4p` mode during the `GHOPTE` phase, automatically routes to Ghopte card submission.
+- In `4p` mode with unresolved Ghoptes, automatically routes to Ghopte card submission.
 - In `2p` mode, automatically checks and removes the card from hand or face-up stack.
 
 ```ts
@@ -257,7 +183,7 @@ const result = playCard(currentState, {
 ```
 
 #### `declareTurup(dmnOrState, payload): ActionResult` *(2p mode only)*
-Declares the Turup suit during the `TURUP_DECLARATION` phase.
+Declares the Turup suit in 2-Player mode before card play begins.
 
 ```ts
 import { declareTurup } from "dal-mara-engine";
@@ -307,7 +233,7 @@ console.log("Active player seat:", activePlayer?.seat);
 ```
 
 #### `getLegalMoves(dmnOrState, seat): LegalPlayableCard[]`
-Calculates all legal moves for the given player seat based on phase, hand, stacks, and follow-suit rules.
+Calculates all legal moves for the given player seat based on hand, stacks, Ghoptes, and follow-suit rules.
 
 ```ts
 import { getLegalMoves } from "dal-mara-engine";
@@ -318,7 +244,7 @@ const moves = getLegalMoves(currentState, 1);
 
 
 #### `isFinished(dmnOrState): boolean`
-Returns `true` if the game has reached the `END` phase (all 13 rounds completed).
+Returns `true` if the game has ended (all tricks completed).
 
 ```ts
 import { isFinished } from "dal-mara-engine";
@@ -341,7 +267,6 @@ interface GameState {
     readonly mode: "4p" | "2p";
     readonly dealerSeat: Seat;
     readonly turup: Suit | null;
-    readonly phase: "DEAL" | "TURUP_DECLARATION" | "GHOPTE" | "PLAYING" | "END";
   };
 
   // Player roster
