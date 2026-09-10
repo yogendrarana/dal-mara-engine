@@ -4,6 +4,8 @@
 	"type": "module",
 	"private": false,
 	"description": "Pure deterministic game engine and notation system for Dal Mara",
+	"license": "MIT",
+	"author": "Yogendra Rana <yogendrarana.dev@gmail.com>",
 	"main": "./dist/index.cjs",
 	"module": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -16,7 +18,8 @@
 	},
 	"files": [
 		"dist",
-		"README.md"
+		"README.md",
+		"LICENSE"
 	],
 	"publishConfig": {
 		"access": "public"
