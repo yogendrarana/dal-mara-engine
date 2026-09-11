@@ -21,6 +21,13 @@ export function validateDeclareTurup({ state, action }: { state: GameState; acti
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Cannot declare Turup before cards are dealt");
 	}
 
+	const hasDealtStacks = Object.values(state.stacks).some((pStacks) =>
+		pStacks.some((s) => s.faceUpCard !== null || s.hiddenCards.length > 0),
+	);
+	if (hasDealtStacks) {
+		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Cannot declare Turup after stacks are dealt");
+	}
+
 	if (currentTurnPlayer?.seat !== action.payload.seat) {
 		return createValidationError(ENGINE_ERROR_CODES.NOT_PLAYER_TURN, "It is not your turn to declare Turup");
 	}
@@ -35,7 +42,6 @@ export function reduceDeclareTurup2P(state: GameState, action: DeclareTurupActio
 
 	const turupSuit = action.payload.suit;
 	const dealerSeat = state.game.dealerSeat;
-	const nonDealerSeat = ((dealerSeat + 1) % 2) as Seat;
 
 	return {
 		...state,
@@ -50,6 +56,6 @@ export function reduceDeclareTurup2P(state: GameState, action: DeclareTurupActio
 			isGhopte: false,
 			cards: [],
 		},
-		nextMoveSeat: nonDealerSeat,
+		nextMoveSeat: dealerSeat,
 	};
 }

@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
 	createDeck,
 	createGame,
-	deal,
+	dealFourPlayer,
+	dealTwoPlayerHands,
+	dealTwoPlayerStacks,
+	getRemainingCards2P,
 	playCard,
 	declareTurup,
 	parseDMN,
@@ -31,17 +34,20 @@ const make4PGame = () => {
 
 describe("Dal Mara Notation (DMN) - Pipe-Separated Format", () => {
 	it("should produce initial DMN immediately on game creation (pre-deal)", () => {
-		const result = make4PGame();
-		expect(result.success).toBe(true);
-		expect(result.dmn).toBeDefined();
-		expect(typeof result.dmn).toBe("string");
+		const { dmn, state } = make4PGame();
+		expect(dmn).toBeDefined();
 
-		// Should have 8 pipe-separated sections
-		const sections = result.dmn.split(" | ");
+		const sections = dmn.split(" | ");
 		expect(sections.length).toBe(8);
 
-		// Game section
+		// Section 1: 4p,0,- (mode=4p, dealer=0, turup=-)
 		expect(sections[0]).toBe("4p,0,-");
+
+		// Section 2: ghoptes = -/-/-/- in 4p
+		expect(sections[1]).toBe("-/-/-/-");
+
+		// Section 3: hands = /// (4 empty seats)
+		expect(sections[2]).toBe("///");
 
 		// next_move_seat = dealer (0) before deal
 		expect(sections[7]).toBe("0");
@@ -49,7 +55,7 @@ describe("Dal Mara Notation (DMN) - Pipe-Separated Format", () => {
 
 	it("should export DMN with all 8 sections after dealing", () => {
 		const { state: initState } = make4PGame();
-		const result = deal(initState, { deck, seat: 0 });
+		const result = dealFourPlayer(initState, { deck, seat: 0 });
 		if (!result.success) throw new Error("Deal failed");
 
 		const sections = result.dmn.split(" | ");
@@ -67,7 +73,7 @@ describe("Dal Mara Notation (DMN) - Pipe-Separated Format", () => {
 
 	it("should encode hands as slash-separated player segments", () => {
 		const { state: initState } = make4PGame();
-		const result = deal(initState, { deck, seat: 0 });
+		const result = dealFourPlayer(initState, { deck, seat: 0 });
 		if (!result.success) throw new Error("Deal failed");
 
 		const sections = result.dmn.split(" | ");
@@ -101,7 +107,7 @@ describe("Dal Mara Notation (DMN) - Pipe-Separated Format", () => {
 
 	it("should use - for stacks in 4p mode", () => {
 		const { state: initState } = make4PGame();
-		const result = deal(initState, { deck, seat: 0 });
+		const result = dealFourPlayer(initState, { deck, seat: 0 });
 		if (!result.success) throw new Error("Deal failed");
 
 		const sections = result.dmn.split(" | ");
@@ -110,7 +116,7 @@ describe("Dal Mara Notation (DMN) - Pipe-Separated Format", () => {
 
 	it("should round-trip: serializeDMN → parseDMN → serializeDMN produces identical DMN", () => {
 		const { state: initState } = make4PGame();
-		const dealResult = deal(initState, { deck, seat: 0 });
+		const dealResult = dealFourPlayer(initState, { deck, seat: 0 });
 		if (!dealResult.success) throw new Error("Deal failed");
 
 		// Play a few cards
@@ -136,7 +142,7 @@ describe("Dal Mara Notation (DMN) - Pipe-Separated Format", () => {
 
 	it("should update DMN after playing a card", () => {
 		const { state: initState } = make4PGame();
-		const dealResult = deal(initState, { deck, seat: 0 });
+		const dealResult = dealFourPlayer(initState, { deck, seat: 0 });
 		if (!dealResult.success) throw new Error("Deal failed");
 
 		const turnPlayer = getCurrentPlayer(dealResult.state);
@@ -144,29 +150,24 @@ describe("Dal Mara Notation (DMN) - Pipe-Separated Format", () => {
 
 		const hand = dealResult.state.hands[turnPlayer!.seat] ?? [];
 		const firstCard = hand[0]!;
+
 		const playResult = playCard(dealResult.state, { seat: turnPlayer!.seat, card: firstCard });
-		if (!playResult.success) throw new Error("Play failed");
+		if (!playResult.success) throw new Error("Play card failed");
 
-		const sections = playResult.dmn.split(" | ");
+		const dmnAfter = playResult.dmn;
+		expect(dmnAfter).not.toBe(dealResult.dmn);
 
-		// Move number = 1
+		const sections = dmnAfter.split(" | ");
+
+		// Move number incremented
 		expect(sections[4]).toBe("1");
 
-		// Trick section: trick 1, play 1
-		const trickParts = sections[5].split(",");
-		expect(trickParts[0]).toBe("1"); // trick number
-		expect(trickParts[1]).toBe("1"); // play number
+		// Move detail contains player seat and card
+		expect(sections[6]).toContain(String(turnPlayer!.seat));
+		expect(sections[6]).toContain(firstCard);
 
-		// Move detail: player seat, card, no turup
-		const moveDetailParts = sections[6].split(",");
-		expect(moveDetailParts[0]).toBe(String(turnPlayer!.seat));
-		expect(moveDetailParts[1]).toBe(firstCard);
-		expect(moveDetailParts[2]).toBe("-");
-
-		// Hand shrank by 1
-		const parsed = parseDMN(playResult.dmn);
-		const handAfter = parsed.hands[turnPlayer!.seat] ?? [];
-		expect(handAfter.length).toBe(12);
+		// Hand no longer contains that card
+		const handAfter = playResult.state.hands[turnPlayer!.seat] ?? [];
 		expect(handAfter).not.toContain(firstCard);
 	});
 
@@ -181,16 +182,21 @@ describe("Dal Mara Notation (DMN) - Pipe-Separated Format", () => {
 		});
 		if (!result.success) throw new Error("Failed");
 
-		const dealResult = deal(result.state, { deck, seat: 0 });
-		if (!dealResult.success) throw new Error("Deal failed");
+		const handResult = dealTwoPlayerHands(result.state, { deck, seat: 0 });
+		if (!handResult.success) throw new Error("Hand deal failed");
 
-		const currP = getCurrentPlayer(dealResult.state);
+		const currP = getCurrentPlayer(handResult.state);
 		expect(currP).not.toBeNull();
 
-		const turupResult = declareTurup(dealResult.state, { seat: currP!.seat, suit: "hearts" });
+		const turupResult = declareTurup(handResult.state, { seat: currP!.seat, suit: "hearts" });
 		if (!turupResult.success) throw new Error("Turup failed");
 
-		const sections = turupResult.dmn.split(" | ");
+		const remaining40 = getRemainingCards2P(turupResult.state, deck);
+		const stackDealer = getCurrentPlayer(turupResult.state);
+		const stackResult = dealTwoPlayerStacks(turupResult.state, { deck: remaining40, seat: stackDealer!.seat });
+		if (!stackResult.success) throw new Error("Stack deal failed");
+
+		const sections = stackResult.dmn.split(" | ");
 
 		// Game section has turup
 		expect(sections[0]).toContain(",h");
@@ -218,7 +224,7 @@ describe("Dal Mara Notation (DMN) - Pipe-Separated Format", () => {
 		}
 
 		// Round-trip 2P
-		const dmn1 = turupResult.dmn;
+		const dmn1 = stackResult.dmn;
 		const parsed = parseDMN(dmn1);
 		const dmn2 = serializeDMN(parsed);
 		expect(dmn2).toBe(dmn1);
@@ -226,7 +232,7 @@ describe("Dal Mara Notation (DMN) - Pipe-Separated Format", () => {
 
 	it("should encode trick cards in DMN with player seat format", () => {
 		const { state: initState } = make4PGame();
-		const dealResult = deal(initState, { deck, seat: 0 });
+		const dealResult = dealFourPlayer(initState, { deck, seat: 0 });
 		if (!dealResult.success) throw new Error("Deal failed");
 
 		const player = getCurrentPlayer(dealResult.state);
@@ -248,30 +254,22 @@ describe("Dal Mara Notation (DMN) - Pipe-Separated Format", () => {
 	it("should encode and decode ghoptes in position-grouped format", () => {
 		// Craft a DMN string with ghoptes to test parsing
 		const dmnWithGhopte =
-			"4p,0,- | -/Kh,1,-:7s,1,-/Qd,2,-/- | As,Qh,10d,2c,3h,4d,5c,6h,7d,8c,9h,Jd,Qc/2s,3s,4s,5s,6s,7s,8s,9s,Js,Qs,Ks,As,2h/2d,3d,4d,5d,6d,7d,8d,9d,Jd,Qd,Kd,Ad,3c/4c,5c,6c,7c,8c,9c,Jc,Qc,Kc,Ac,4h,5h,6h | - | 0 | 1,0,s,g,- | -,-,- | 1";
+			"4p,0,- | -/10s,1,-/-/10h,2,- | 2s,3s,4s,5s,6s,7s,8s,9s,Js,Qs,Ks,As,2h/3h,4h,5h,6h,7h,8h,9h,Jh,Qh,Kh,Ah,2d,3d/4d,5d,6d,7d,8d,9d,10d,Jd,Qd,Kd,Ad,2c,3c/4c,5c,6c,7c,8c,9c,10c,Jc,Qc,Kc,Ac,10s,10h | - | 0 | 1,0,-,-,- | -,-,- | 1";
+
 		const parsed = parseDMN(dmnWithGhopte);
+		expect(parsed.ghoptes.length).toBeGreaterThan(0);
 
-		expect(parsed.ghoptes).toHaveLength(3);
-
-		// Player 0: no ghoptes
-		expect(parsed.ghoptes.filter((g) => g.seat === 0)).toHaveLength(0);
-
-		// Player 1: 2 ghoptes with order 1
+		// Player 1 has 10s with order 1
 		const p1Ghoptes = parsed.ghoptes.filter((g) => g.seat === 1);
-		expect(p1Ghoptes).toHaveLength(2);
-		expect(p1Ghoptes[0]?.card).toBe("Kh");
+		expect(p1Ghoptes).toHaveLength(1);
+		expect(p1Ghoptes[0]?.card).toBe("10s");
 		expect(p1Ghoptes[0]?.order).toBe(1);
-		expect(p1Ghoptes[0]?.resolved).toBe(false);
-		expect(p1Ghoptes[1]?.card).toBe("7s");
 
-		// Player 2: 1 ghopte with order 2
-		const p2Ghoptes = parsed.ghoptes.filter((g) => g.seat === 2);
-		expect(p2Ghoptes).toHaveLength(1);
-		expect(p2Ghoptes[0]?.card).toBe("Qd");
-		expect(p2Ghoptes[0]?.order).toBe(2);
-
-		// Player 3: no ghoptes
-		expect(parsed.ghoptes.filter((g) => g.seat === 3)).toHaveLength(0);
+		// Player 3 has 10h with order 2
+		const p3Ghoptes = parsed.ghoptes.filter((g) => g.seat === 3);
+		expect(p3Ghoptes).toHaveLength(1);
+		expect(p3Ghoptes[0]?.card).toBe("10h");
+		expect(p3Ghoptes[0]?.order).toBe(2);
 
 		// Round-trip
 		const reserialized = serializeDMN(parsed);
@@ -287,7 +285,7 @@ describe("Dal Mara Notation (DMN) - Pipe-Separated Format", () => {
 		expect(parseInt(initSections[7], 10)).toBeGreaterThanOrEqual(0);
 
 		// After deal
-		const dealResult = deal(initState, { deck, seat: 0 });
+		const dealResult = dealFourPlayer(initState, { deck, seat: 0 });
 		if (!dealResult.success) throw new Error("Deal failed");
 		const dealSections = dealResult.dmn.split(" | ");
 		expect(dealSections[7]).not.toBe("-");

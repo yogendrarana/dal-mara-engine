@@ -1,4 +1,4 @@
-import { createDeck, createGame, deal, playCard, getCurrentPlayer, getLegalMoves, parseCard } from "../src";
+import { createDeck, createGame, dealFourPlayer, playCard, getCurrentPlayer, getLegalMoves, parseCard } from "../src";
 import { describe, expect, it } from "vitest";
 
 const deck = createDeck();
@@ -19,7 +19,7 @@ describe("4-Player Game Mode", () => {
 		expect(gameResult.success).toBe(true);
 		if (!gameResult.success) return;
 
-		const dealRes = deal(gameResult.state, { deck, seat: 0 });
+		const dealRes = dealFourPlayer(gameResult.state, { deck, seat: 0 });
 		expect(dealRes.success).toBe(true);
 		if (!dealRes.success) return;
 
@@ -59,7 +59,7 @@ describe("4-Player Game Mode", () => {
 		});
 		if (!gameResult.success) return;
 
-		const dealRes = deal(gameResult.state, { deck, seat: 0 });
+		const dealRes = dealFourPlayer(gameResult.state, { deck, seat: 0 });
 		if (!dealRes.success) return;
 
 		let state = dealRes.state;
@@ -109,7 +109,7 @@ describe("4-Player Game Mode", () => {
 		});
 		if (!gameResult.success) return;
 
-		const dealRes = deal(gameResult.state, { deck, seat: 0 });
+		const dealRes = dealFourPlayer(gameResult.state, { deck, seat: 0 });
 		if (!dealRes.success) return;
 
 		expect(dealRes.state.game.turup).toBeNull();
@@ -130,10 +130,10 @@ describe("4-Player Game Mode", () => {
 
 		expect(Object.values(gameResult.state.hands).length).toBe(0);
 
-		const nonDealerDeal = deal(gameResult.state, { deck, seat: 1 });
+		const nonDealerDeal = dealFourPlayer(gameResult.state, { deck, seat: 1 });
 		expect(nonDealerDeal.success).toBe(false);
 
-		const dealRes = deal(gameResult.state, { deck, seat: 0 });
+		const dealRes = dealFourPlayer(gameResult.state, { deck, seat: 0 });
 		expect(dealRes.success).toBe(true);
 		if (dealRes.success) {
 			expect(dealRes.state.hands[0]?.length).toBe(13);

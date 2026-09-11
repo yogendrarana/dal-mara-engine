@@ -21,8 +21,16 @@ export function validatePlayCard({ state, action }: { state: GameState; action: 
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Cannot play cards before cards are dealt");
 	}
 
-	if (state.game.mode === GAME_MODES.TWO_PLAYER && state.game.turup === null) {
-		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Cannot play cards before Turup is declared");
+	if (state.game.mode === GAME_MODES.TWO_PLAYER) {
+		if (state.game.turup === null) {
+			return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Cannot play cards before Turup is declared");
+		}
+		const hasDealtStacks = Object.values(state.stacks).some((pStacks) =>
+			pStacks.some((s) => s.faceUpCard !== null || s.hiddenCards.length > 0),
+		);
+		if (!hasDealtStacks) {
+			return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Cannot play cards before stacks are dealt");
+		}
 	}
 
 	const allHandsEmpty = Object.values(state.hands).every((h) => h.length === 0);

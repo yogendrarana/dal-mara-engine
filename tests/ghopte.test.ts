@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createDeck, createGame, deal, getLegalMoves, getCurrentPlayer, parseCard } from "../src";
+import { createDeck, createGame, dealFourPlayer, getLegalMoves, getCurrentPlayer, parseCard } from "../src";
 import { detectGhopte } from "../src/core/rules/four-player";
 
 const deck = createDeck();
@@ -34,7 +34,7 @@ describe("Ghopte Phase Mechanics", () => {
 		});
 		if (!gameResult.success) return;
 
-		const dealRes = deal(gameResult.state, { deck, seat: 0 });
+		const dealRes = dealFourPlayer(gameResult.state, { deck, seat: 0 });
 		if (!dealRes.success) return;
 
 		if (dealRes.state.ghoptes.some((g) => !g.resolved)) {

@@ -3,7 +3,10 @@ import {
 	createDeck,
 	shuffleDeck,
 	createGame,
-	deal,
+	dealFourPlayer,
+	dealTwoPlayerHands,
+	dealTwoPlayerStacks,
+	getRemainingCards2P,
 	declareTurup,
 	playCard,
 	getCurrentPlayer,
@@ -32,7 +35,7 @@ describe("Stress & Determinism Testing", () => {
 			if (!gameResult.success) throw new Error("Create failed");
 
 			const shuffledDeck = shuffleDeck(deck);
-			const dealRes = deal(gameResult.state, { deck: shuffledDeck, seat: 0 });
+			const dealRes = dealFourPlayer(gameResult.state, { deck: shuffledDeck, seat: 0 });
 			expect(dealRes.success).toBe(true);
 			if (!dealRes.success) throw new Error("Deal failed");
 
@@ -84,11 +87,11 @@ describe("Stress & Determinism Testing", () => {
 			if (!gameResult.success) throw new Error("Create failed");
 
 			const shuffledDeck = shuffleDeck(deck);
-			const dealRes = deal(gameResult.state, { deck: shuffledDeck, seat: 0 });
-			expect(dealRes.success).toBe(true);
-			if (!dealRes.success) throw new Error("Deal failed");
+			const handDealRes = dealTwoPlayerHands(gameResult.state, { deck: shuffledDeck, seat: 0 });
+			expect(handDealRes.success).toBe(true);
+			if (!handDealRes.success) throw new Error("Hand deal failed");
 
-			let state = dealRes.state;
+			let state = handDealRes.state;
 
 			const declP = getCurrentPlayer(state);
 			if (!declP) throw new Error("No declarator");
@@ -100,6 +103,16 @@ describe("Stress & Determinism Testing", () => {
 			if (!declRes.success) throw new Error("Declare turup failed");
 
 			state = declRes.state;
+
+			const remaining40 = getRemainingCards2P(state, shuffledDeck);
+			const stackDealer = getCurrentPlayer(state);
+			if (!stackDealer) throw new Error("No stack dealer");
+
+			const stackDealRes = dealTwoPlayerStacks(state, { deck: remaining40, seat: stackDealer.seat });
+			expect(stackDealRes.success).toBe(true);
+			if (!stackDealRes.success) throw new Error("Stack deal failed");
+
+			state = stackDealRes.state;
 
 			let maxSafetyMoves = 300;
 			while (!isFinished(state) && maxSafetyMoves > 0) {

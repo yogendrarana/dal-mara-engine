@@ -67,6 +67,13 @@ export function getLegalMoves2P(state: GameState, seat: Seat): LegalPlayableCard
 		return [];
 	}
 
+	const hasDealtStacks = Object.values(state.stacks).some((pStacks) =>
+		pStacks.some((s) => s.faceUpCard !== null || s.hiddenCards.length > 0),
+	);
+	if (!hasDealtStacks) {
+		return [];
+	}
+
 	const hand = state.hands[seat] ?? [];
 	const stacks = state.stacks[seat] ?? [];
 	if (hand.length === 0 && stacks.every((s) => !s.faceUpCard && s.hiddenCards.length === 0)) {

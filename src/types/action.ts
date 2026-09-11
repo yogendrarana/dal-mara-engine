@@ -6,8 +6,24 @@ export type ActionType = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
 // actions
 
-export type DealAction = {
-	type: typeof ACTION_TYPES.DEAL;
+export type DealFourPlayerAction = {
+	type: typeof ACTION_TYPES.DEAL_FOUR_PLAYER;
+	payload: {
+		deck?: readonly Card[];
+		seat: Seat;
+	};
+};
+
+export type DealTwoPlayerHandsAction = {
+	type: typeof ACTION_TYPES.DEAL_TWO_PLAYER_HANDS;
+	payload: {
+		deck?: readonly Card[];
+		seat: Seat;
+	};
+};
+
+export type DealTwoPlayerStacksAction = {
+	type: typeof ACTION_TYPES.DEAL_TWO_PLAYER_STACKS;
 	payload: {
 		deck?: readonly Card[];
 		seat: Seat;
@@ -46,4 +62,11 @@ export type PlayGhopteAction = {
 	};
 };
 
-export type Action = DealAction | DeclareTurupAction | PickupTurupCardAction | PlayCardAction | PlayGhopteAction;
+export type Action =
+	| DealFourPlayerAction
+	| DealTwoPlayerHandsAction
+	| DealTwoPlayerStacksAction
+	| DeclareTurupAction
+	| PickupTurupCardAction
+	| PlayCardAction
+	| PlayGhopteAction;

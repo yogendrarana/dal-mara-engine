@@ -19,9 +19,9 @@ import type {
 
 import { ABBREVIATION_TO_SUIT, ENGINE_ERROR_CODES, GAME_MODES, SUIT_ABBREVIATION } from "./const";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+/**
+ * Helpers
+ */
 
 function suitToToken(suit: Suit | null): string {
 	if (!suit) return "-";
@@ -33,9 +33,9 @@ function tokenToSuit(token: string): Suit | null {
 	return ABBREVIATION_TO_SUIT[token as SuitAbbreviation] ?? null;
 }
 
-// ---------------------------------------------------------------------------
-// Serialize DMN
-// ---------------------------------------------------------------------------
+/**
+ * Serialize DMN
+ */
 
 /**
  * Serialize a GameState into the pipe-separated DMN string format.
@@ -46,13 +46,13 @@ function tokenToSuit(token: string): Suit | null {
 export function serializeDMN(state: GameState): string {
 	const numPlayers = state.game.mode === GAME_MODES.FOUR_PLAYER ? 4 : 2;
 
-	// --- Section 1: Game ---
+	// Section 1: Game
 	const modeToken = state.game.mode;
 	const dealerPos = String(state.game.dealerSeat);
 	const turupToken = suitToToken(state.game.turup);
 	const gameSection = `${modeToken},${dealerPos},${turupToken}`;
 
-	// --- Section 2: Ghoptes ---
+	// Section 2: Ghoptes
 	let ghoptesSection: string;
 	if (state.game.mode === GAME_MODES.TWO_PLAYER) {
 		ghoptesSection = "-";
@@ -70,7 +70,7 @@ export function serializeDMN(state: GameState): string {
 		ghoptesSection = groups.join("/");
 	}
 
-	// --- Section 3: Hands ---
+	// Section 3: Hands
 	const handParts: string[] = [];
 	for (let i = 0; i < numPlayers; i++) {
 		const hand = state.hands[i as Seat] ?? [];
@@ -78,7 +78,7 @@ export function serializeDMN(state: GameState): string {
 	}
 	const handsSection = handParts.join("/");
 
-	// --- Section 4: Stacks ---
+	// Section 4: Stacks
 	let stacksSection: string;
 	if (state.game.mode === GAME_MODES.FOUR_PLAYER) {
 		stacksSection = "-";
@@ -103,10 +103,10 @@ export function serializeDMN(state: GameState): string {
 		stacksSection = stackParts.join("/");
 	}
 
-	// --- Section 5: Move Number ---
+	// Section 5: Move Number
 	const moveNumberSection = String(state.moveNumber);
 
-	// --- Section 6: Trick ---
+	// Section 6: Trick
 	const trickNumber = state.trick.number;
 	const playNumber = state.trick.playNumber;
 	const leadSuitToken = suitToToken(state.trick.leadSuit);
@@ -123,7 +123,7 @@ export function serializeDMN(state: GameState): string {
 	}
 	const trickSection = `${trickNumber},${playNumber},${leadSuitToken},${ghopteFlag},${trickCardsToken}`;
 
-	// --- Section 7: Move Detail ---
+	// Section 7: Move Detail
 	let moveDetailSection: string;
 	if (state.moveDetail.seat === null || state.moveDetail.card === null) {
 		moveDetailSection = "-,-,-";
@@ -132,15 +132,15 @@ export function serializeDMN(state: GameState): string {
 		moveDetailSection = `${state.moveDetail.seat},${state.moveDetail.card},${makesTurupToken}`;
 	}
 
-	// --- Section 8: Next Move Seat ---
+	// Section 8: Next Move Seat
 	const nextMoveSection = String(state.nextMoveSeat);
 
 	return `${gameSection} | ${ghoptesSection} | ${handsSection} | ${stacksSection} | ${moveNumberSection} | ${trickSection} | ${moveDetailSection} | ${nextMoveSection}`;
 }
 
-// ---------------------------------------------------------------------------
-// Parse DMN
-// ---------------------------------------------------------------------------
+/**
+ * Parse DMN
+ */
 
 /**
  * Parse a pipe-separated DMN string into a GameState.
@@ -161,7 +161,7 @@ export function parseDMN(dmn: string): GameState {
 
 	const [gameRaw, ghoptesRaw, handsRaw, stacksRaw, moveNumberRaw, trickRaw, moveDetailRaw, nextMoveRaw] = sections;
 
-	// --- Section 1: Game ---
+	// Section 1: Game
 	const gameParts = gameRaw.split(",");
 	if (gameParts.length !== 3) {
 		throw new DalMaraError("Invalid DMN game section", ENGINE_ERROR_CODES.INVALID_DMN);
@@ -170,7 +170,7 @@ export function parseDMN(dmn: string): GameState {
 	const dealerSeat = parseInt(gameParts[1], 10) as Seat;
 	const turup = tokenToSuit(gameParts[2]);
 
-	// --- Construct players ---
+	// Construct players
 	const numPlayers = mode === GAME_MODES.FOUR_PLAYER ? 4 : 2;
 	const players: Player[] = [];
 	for (let i = 0; i < numPlayers; i++) {
@@ -180,7 +180,7 @@ export function parseDMN(dmn: string): GameState {
 		});
 	}
 
-	// --- Section 2: Ghoptes ---
+	// Section 2: Ghoptes
 	const ghoptes: Ghopte[] = [];
 	if (ghoptesRaw !== "-" && mode === GAME_MODES.FOUR_PLAYER) {
 		const playerGroups = ghoptesRaw.split("/");
@@ -207,7 +207,7 @@ export function parseDMN(dmn: string): GameState {
 		}
 	}
 
-	// --- Section 3: Hands ---
+	// Section 3: Hands
 	const hands = {} as Record<Seat, readonly Card[]>;
 	const handSegments = handsRaw.split("/");
 	for (let i = 0; i < numPlayers; i++) {
@@ -215,7 +215,7 @@ export function parseDMN(dmn: string): GameState {
 		hands[i as Seat] = segment ? (segment.split(",") as Card[]) : [];
 	}
 
-	// --- Section 4: Stacks ---
+	// Section 4: Stacks
 	const stacks = {} as Record<Seat, readonly PlayerStack[]>;
 	if (stacksRaw !== "-" && mode === GAME_MODES.TWO_PLAYER) {
 		const stackSlots = stacksRaw.split("/");
@@ -243,10 +243,10 @@ export function parseDMN(dmn: string): GameState {
 		}
 	}
 
-	// --- Section 5: Move Number ---
+	// Section 5: Move Number
 	const moveNumber = parseInt(moveNumberRaw, 10);
 
-	// --- Section 6: Trick ---
+	// Section 6: Trick
 	// Format: <trick_number>,<play_number>,<lead_suit>,<ghopte_flag>,<trick_cards>
 	const trickParts = trickRaw.split(",");
 	const trickNumber = parseInt(trickParts[0], 10);
@@ -282,13 +282,13 @@ export function parseDMN(dmn: string): GameState {
 		cards: trickCards,
 	};
 
-	// --- Section 7: Move Detail ---
+	// Section 7: Move Detail
 	const moveDetailParts = moveDetailRaw.split(",");
 	const movePlayerSeat = moveDetailParts[0] !== "-" ? (parseInt(moveDetailParts[0], 10) as Seat) : null;
 	const moveCard = moveDetailParts[1] !== "-" ? (moveDetailParts[1] as Card) : null;
 	const moveMakesTurup = moveDetailParts[2] === "t";
 
-	// --- Section 8: Next Move Seat ---
+	// Section 8: Next Move Seat
 	const nextMoveSeat = parseInt(nextMoveRaw, 10) as Seat;
 
 	return {

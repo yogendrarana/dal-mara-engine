@@ -50,10 +50,12 @@ pnpm add dal-mara-engine
 
 ## Quick Start
 
+### 4-Player Mode
+
 ```ts
 import {
   createGame,
-  deal,
+  dealFourPlayer,
   playCard,
   getCurrentPlayer,
   getLegalMoves,
@@ -82,7 +84,7 @@ if (!gameResult.success) {
 const deck = shuffleDeck(createDeck());
 
 // 3. Dealer deals the cards (pure transition: pass state or DMN string)
-const dealResult = deal(gameResult.state, { deck, seat: 0 });
+const dealResult = dealFourPlayer(gameResult.state, { deck, seat: 0 });
 if (!dealResult.success) {
   console.error("Deal failed:", dealResult.error);
   process.exit(1);
@@ -108,6 +110,47 @@ if (activePlayer) {
     console.log("Move Number:", playResult.state.moveNumber);
   }
 }
+```
+
+### 2-Player Mode
+
+In 2-player mode, dealing is split into two distinct steps with Turup declared in between:
+1. **Deal Hands**: Dealer deals 6 cards to the opponent (non-dealer) and 6 cards to themselves (`dealTwoPlayerHands`).
+2. **Establish Turup**: Non-dealer inspects their 6 cards and declares the Turup suit (`declareTurup`).
+3. **Deal Stacks**: Only after Turup is established, the dealer deals the remaining 40 cards into the 8 hidden stacks (`dealTwoPlayerStacks`).
+
+```ts
+import {
+  createGame,
+  dealTwoPlayerHands,
+  declareTurup,
+  dealTwoPlayerStacks,
+  getRemainingCards2P,
+  createDeck,
+  shuffleDeck,
+} from "dal-mara-engine";
+
+const game = createGame({
+  mode: "2p",
+  dealerSeat: 0,
+  players: [{ seat: 0 }, { seat: 1 }],
+});
+
+const deck = shuffleDeck(createDeck());
+
+// 1. Dealer deals initial 6-card hands (non-dealer first)
+const handResult = dealTwoPlayerHands(game.state, { deck, seat: 0 });
+
+// 2. Non-dealer (seat 1) declares Turup
+const turupResult = declareTurup(handResult.state, { seat: 1, suit: "spades" });
+
+// 3. Obtain the remaining 40 cards
+const remaining40 = getRemainingCards2P(turupResult.state, deck);
+
+// 4. Dealer deals the remaining 40 cards into 4 hidden stacks per player
+const stackResult = dealTwoPlayerStacks(turupResult.state, { deck: remaining40, seat: 0 });
+
+// Non-dealer now leads trick 1!
 ```
 
 ---
@@ -158,32 +201,47 @@ const result = createGame({
 
 ### 2. Actions & State Transitions
 
-#### `deal(dmnOrState, payload): ActionResult`
-Deals cards to players. Only the designated dealer can deal. The deck must contain exactly 52 cards.
+#### `dealFourPlayer(dmnOrState, payload): ActionResult`
+Deals 13 cards to each player in 4-Player mode. Only the designated dealer can deal. The deck must contain exactly 52 cards. Automatically detects Ghoptes and sets up the opening trick or Ghopte round.
 
 ```ts
-import { deal, createDeck, shuffleDeck } from "dal-mara-engine";
+import { dealFourPlayer, createDeck, shuffleDeck } from "dal-mara-engine";
 
 const deck = shuffleDeck(createDeck());
-const result = deal(currentState, { deck, seat: 0 });
+const result = dealFourPlayer(currentState, { deck, seat: 0 });
 ```
 
-#### `playCard(dmnOrState, payload): ActionResult`
-Plays a card for the active turn player.
-- In `4p` mode with unresolved Ghoptes, automatically routes to Ghopte card submission.
-- In `2p` mode, automatically checks and removes the card from hand or face-up stack.
+#### `dealTwoPlayerHands(dmnOrState, payload): ActionResult` *(2p mode only)*
+Deals the initial 6 cards each (non-dealer first, then dealer) in 2-Player mode. Only the designated dealer can deal. The deck must contain exactly 52 cards. Sets the next turn player to the non-dealer so they can establish Turup.
 
 ```ts
-import { playCard } from "dal-mara-engine";
+import { dealTwoPlayerHands, createDeck, shuffleDeck } from "dal-mara-engine";
 
-const result = playCard(currentState, {
-  seat: 1,
-  card: "10s",
-});
+const deck = shuffleDeck(createDeck());
+const result = dealTwoPlayerHands(currentState, { deck, seat: 0 });
+```
+
+#### `dealTwoPlayerStacks(dmnOrState, payload): ActionResult` *(2p mode only)*
+Deals the remaining 40 cards into 4 hidden stacks per player (5 cards each, top face up). Only the designated dealer can deal, and **Turup must already be declared**. Accepts either 40 cards or a 52-card deck (from which hand cards are automatically filtered). If omitted, computes undealt cards automatically. Passes turn to the non-dealer to lead trick 1.
+
+```ts
+import { dealTwoPlayerStacks, getRemainingCards2P } from "dal-mara-engine";
+
+const remainingCards = getRemainingCards2P(currentState, deck);
+const result = dealTwoPlayerStacks(currentState, { deck: remainingCards, seat: 0 });
+```
+
+#### `getRemainingCards2P(dmnOrState, originalDeck?): Card[]`
+Utility helper that returns the remaining cards not held in either player's hands. If `originalDeck` is provided, filters it while preserving the original shuffled order; otherwise returns undealt cards from a standard deck.
+
+```ts
+import { getRemainingCards2P } from "dal-mara-engine";
+
+const remaining40 = getRemainingCards2P(currentState, originalDeck);
 ```
 
 #### `declareTurup(dmnOrState, payload): ActionResult` *(2p mode only)*
-Declares the Turup suit in 2-Player mode before card play begins.
+Declares the Turup suit in 2-Player mode before stack dealing. Must be called by the non-dealer. Sets next turn to the dealer to deal stacks.
 
 ```ts
 import { declareTurup } from "dal-mara-engine";
@@ -206,8 +264,22 @@ const result = pickupTurupCard(currentState, {
 });
 ```
 
+#### `playCard(dmnOrState, payload): ActionResult`
+Plays a card for the active turn player.
+- In `4p` mode with unresolved Ghoptes, automatically routes to Ghopte card submission.
+- In `2p` mode, automatically checks and removes the card from hand or face-up stack (requires stacks to be dealt first).
+
+```ts
+import { playCard } from "dal-mara-engine";
+
+const result = playCard(currentState, {
+  seat: 1,
+  card: "10s",
+});
+```
+
 #### `dispatch(dmnOrState, action): ActionResult`
-Unified action dispatcher. Dispatches any valid engine action (`DEAL`, `DECLARE_TURUP`, `PICKUP_TURUP_CARD`, `PLAY_CARD`, `PLAY_GHOPTE`).
+Unified action dispatcher. Dispatches any valid engine action (`DEAL_FOUR_PLAYER`, `DEAL_TWO_PLAYER_HANDS`, `DEAL_TWO_PLAYER_STACKS`, `DECLARE_TURUP`, `PICKUP_TURUP_CARD`, `PLAY_CARD`, `PLAY_GHOPTE`).
 
 ```ts
 import { dispatch, ACTION_TYPES } from "dal-mara-engine";

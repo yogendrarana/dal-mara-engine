@@ -1,5 +1,6 @@
 import { compareCardRanks, parseCard } from "../card";
-import type { Card, Player, Seat, PlayerStack, Suit, Trick } from "../../types/index";
+import { createDeck } from "../deck";
+import type { Card, Seat, PlayerStack, Suit, Trick } from "../../types/index";
 
 /**
  * 2-Player initial deal:
@@ -154,3 +155,18 @@ export function resolve2PTrickWinner(options: { trick: Trick; currentTurup: Suit
 
 	return card1.seat;
 }
+
+/**
+ * Get remaining undealt cards in 2-Player mode after hands are dealt.
+ */
+export function getRemainingCards2P(
+	handsOrState: Record<Seat, readonly Card[]> | { hands: Record<Seat, readonly Card[]> },
+	originalDeck?: readonly Card[],
+): Card[] {
+	const hands = "hands" in handsOrState ? handsOrState.hands : handsOrState;
+	const handCards = new Set<Card>([...(hands[0 as Seat] ?? []), ...(hands[1 as Seat] ?? [])]);
+
+	const baseDeck = originalDeck && originalDeck.length === 52 ? originalDeck : createDeck();
+	return baseDeck.filter((c) => !handCards.has(c));
+}
+

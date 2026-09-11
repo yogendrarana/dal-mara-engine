@@ -5,10 +5,14 @@ import { parseDMN, serializeDMN } from "./dmn";
 import { validateCreateGame } from "./validators";
 import { ACTION_TYPES, GAME_MODES } from "./const";
 import { getLegalMoves as getLegalMovesInternal } from "./legal-moves";
+import { getRemainingCards2P as getRemainingCards2PInternal } from "./rules/two-player";
 
 import type {
 	Action,
-	DealAction,
+	Card,
+	DealFourPlayerAction,
+	DealTwoPlayerHandsAction,
+	DealTwoPlayerStacksAction,
 	DeclareTurupAction,
 	EngineError,
 	GameMode,
@@ -21,10 +25,9 @@ import type {
 
 import type { LegalPlayableCard } from "./legal-moves";
 
-// ---------------------------------------------------------------------------
-// Result Types
-// ---------------------------------------------------------------------------
-
+/**
+ * Result Types
+ */
 export type ActionResult =
 	| { readonly success: true; readonly dmn: string; readonly state: GameState }
 	| { readonly success: false; readonly error: EngineError };
@@ -35,20 +38,15 @@ export interface CreateGameOptions {
 	readonly dealerSeat: Seat;
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
+/**
+ * Helper functions
+ */
 function resolveState(dmnOrState: string | GameState): GameState {
 	return typeof dmnOrState === "string" ? parseDMN(dmnOrState) : dmnOrState;
 }
 
-// ---------------------------------------------------------------------------
-// Game Creation
-// ---------------------------------------------------------------------------
-
 /**
- * Create a new game. Returns initial DMN + state (pre-deal, like FEN starting position).
+ * Create a new game. Returns initial DMN + state.
  */
 export function createGame(options: CreateGameOptions): ActionResult {
 	const validation = validateCreateGame(options);
@@ -62,10 +60,6 @@ export function createGame(options: CreateGameOptions): ActionResult {
 
 	return { success: true, dmn, state };
 }
-
-// ---------------------------------------------------------------------------
-// Unified Dispatch
-// ---------------------------------------------------------------------------
 
 /**
  * Dispatch any action against a DMN string or GameState.
@@ -83,12 +77,20 @@ export function dispatch(dmnOrState: string | GameState, action: Action): Action
 	return { success: true, dmn, state: result.state };
 }
 
-// ---------------------------------------------------------------------------
-// Per-Action Convenience Functions
-// ---------------------------------------------------------------------------
+/**
+ * Per-Action Convenience Functions
+ */
 
-export function deal(dmnOrState: string | GameState, payload: DealAction["payload"]): ActionResult {
-	return dispatch(dmnOrState, { type: ACTION_TYPES.DEAL, payload });
+export function dealFourPlayer(dmnOrState: string | GameState, payload: DealFourPlayerAction["payload"]): ActionResult {
+	return dispatch(dmnOrState, { type: ACTION_TYPES.DEAL_FOUR_PLAYER, payload });
+}
+
+export function dealTwoPlayerHands(dmnOrState: string | GameState, payload: DealTwoPlayerHandsAction["payload"]): ActionResult {
+	return dispatch(dmnOrState, { type: ACTION_TYPES.DEAL_TWO_PLAYER_HANDS, payload });
+}
+
+export function dealTwoPlayerStacks(dmnOrState: string | GameState, payload: DealTwoPlayerStacksAction["payload"]): ActionResult {
+	return dispatch(dmnOrState, { type: ACTION_TYPES.DEAL_TWO_PLAYER_STACKS, payload });
 }
 
 export function declareTurup(dmnOrState: string | GameState, payload: DeclareTurupAction["payload"]): ActionResult {
@@ -110,10 +112,9 @@ export function playCard(dmnOrState: string | GameState, payload: PlayCardAction
 	return dispatch(state, { type: ACTION_TYPES.PLAY_CARD, payload });
 }
 
-// ---------------------------------------------------------------------------
-// Query Functions
-// ---------------------------------------------------------------------------
-
+/**
+ * Query Functions
+ */
 export function getLegalMoves(dmnOrState: string | GameState, seat: Seat): LegalPlayableCard[] {
 	const state = resolveState(dmnOrState);
 	return getLegalMovesInternal(state, seat);
@@ -122,6 +123,11 @@ export function getLegalMoves(dmnOrState: string | GameState, seat: Seat): Legal
 export function getCurrentPlayer(dmnOrState: string | GameState): Player | null {
 	const state = resolveState(dmnOrState);
 	return getCurrentTurnPlayer(state);
+}
+
+export function getRemainingCards2P(dmnOrState: string | GameState, originalDeck?: readonly Card[]): Card[] {
+	const state = resolveState(dmnOrState);
+	return getRemainingCards2PInternal(state, originalDeck);
 }
 
 export function isFinished(dmnOrState: string | GameState): boolean {
