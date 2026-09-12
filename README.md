@@ -3,10 +3,7 @@
 > Pure, deterministic, zero-dependency functional TypeScript card game engine and Dal Mara Notation (DMN) parser for **Dal Mara**—a traditional Nepali trick-taking card game.
 
 [![npm version](https://img.shields.io/npm/v/dal-mara-engine.svg)](https://www.npmjs.com/package/dal-mara-engine)
-
 [![npm downloads](https://img.shields.io/npm/dm/dal-mara-engine)](https://www.npmjs.com/package/dal-mara-engine)
-
-
 [![license](https://img.shields.io/npm/l/dal-mara-engine)](https://www.npmjs.com/package/dal-mara-engine)
 
 ---
