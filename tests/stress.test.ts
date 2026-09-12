@@ -124,7 +124,7 @@ describe("Stress & Determinism Testing", () => {
 				const legalMoves = getLegalMoves(state, turnP.seat);
 				expect(legalMoves.length).toBeGreaterThan(0);
 
-				const move = legalMoves[0];
+				const move = legalMoves[Math.floor(Math.random() * legalMoves.length)];
 				if (!move) break;
 
 				const playRes = playCard(state, {

@@ -4,7 +4,7 @@ import { createDeck, shuffleDeck } from "../deck";
 import { createValidationError } from "../errors";
 import { ENGINE_ERROR_CODES, GAME_MODES } from "../const";
 import { dealFourPlayer, detectGhopte } from "../rules/four-player";
-import { dealTwoPlayer, create2PStacks, getRemainingCards2P } from "../rules/two-player";
+import { dealTwoPlayer, create2PStacks, getRemainingCards2P, hasDealtStacks2P } from "../rules/two-player";
 import type {
 	Card,
 	DealFourPlayerAction,
@@ -217,10 +217,7 @@ export function validateDealTwoPlayerStacks({
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Turup must be declared before dealing stacks");
 	}
 
-	const hasDealtStacks = Object.values(state.stacks).some((pStacks) =>
-		pStacks.some((s) => s.faceUpCard !== null || s.hiddenCards.length > 0),
-	);
-	if (hasDealtStacks) {
+	if (hasDealtStacks2P(state)) {
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Stacks have already been dealt");
 	}
 

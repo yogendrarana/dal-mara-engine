@@ -91,3 +91,4 @@ export {
 
 // rules
 export { detectGhopte } from "./core/rules/four-player";
+export { hasDealtStacks2P } from "./core/rules/two-player";

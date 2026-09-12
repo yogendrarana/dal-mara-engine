@@ -2,6 +2,7 @@ import type { Card, GameState, Seat } from "../types/index";
 import { parseCard } from "./card";
 import { GAME_MODES } from "./const";
 import { getCurrentTurnPlayer } from "./turn";
+import { hasDealtStacks2P } from "./rules/two-player";
 
 export interface LegalPlayableCard {
 	readonly card: Card;
@@ -67,10 +68,7 @@ export function getLegalMoves2P(state: GameState, seat: Seat): LegalPlayableCard
 		return [];
 	}
 
-	const hasDealtStacks = Object.values(state.stacks).some((pStacks) =>
-		pStacks.some((s) => s.faceUpCard !== null || s.hiddenCards.length > 0),
-	);
-	if (!hasDealtStacks) {
+	if (!hasDealtStacks2P(state)) {
 		return [];
 	}
 

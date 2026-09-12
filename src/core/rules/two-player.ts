@@ -1,6 +1,18 @@
 import { compareCardRanks, parseCard } from "../card";
 import { createDeck } from "../deck";
-import type { Card, Seat, PlayerStack, Suit, Trick } from "../../types/index";
+import type { Card, Seat, PlayerStack, Suit, Trick, GameState } from "../../types/index";
+
+/**
+ * Checks whether stacks have been dealt in 2-Player mode.
+ * - If moveNumber > 0, cards have already been played, so stacks were definitely dealt.
+ * - If moveNumber === 0, checks if any cards currently exist in the stacks.
+ */
+export function hasDealtStacks2P(state: GameState): boolean {
+	if (state.moveNumber > 0) {
+		return true;
+	}
+	return Object.values(state.stacks).some((pStacks) => pStacks.some((s) => s.faceUpCard !== null || s.hiddenCards.length > 0));
+}
 
 /**
  * 2-Player initial deal:

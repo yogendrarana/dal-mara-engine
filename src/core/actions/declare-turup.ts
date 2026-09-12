@@ -1,6 +1,7 @@
 import { createValidationError } from "../errors";
 import { ENGINE_ERROR_CODES, GAME_MODES } from "../const";
 import { getCurrentTurnPlayer } from "../turn";
+import { hasDealtStacks2P } from "../rules/two-player";
 import type { DeclareTurupAction, GameState, ValidationResult } from "../../types/index";
 
 // Validation
@@ -21,10 +22,7 @@ export function validateDeclareTurup({ state, action }: { state: GameState; acti
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Cannot declare Turup before cards are dealt");
 	}
 
-	const hasDealtStacks = Object.values(state.stacks).some((pStacks) =>
-		pStacks.some((s) => s.faceUpCard !== null || s.hiddenCards.length > 0),
-	);
-	if (hasDealtStacks) {
+	if (hasDealtStacks2P(state)) {
 		return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Cannot declare Turup after stacks are dealt");
 	}
 

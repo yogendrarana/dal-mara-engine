@@ -3,7 +3,7 @@ import { getCurrentTurnPlayer } from "../turn";
 import { createValidationError } from "../errors";
 import { ENGINE_ERROR_CODES, GAME_MODES } from "../const";
 import { validateFollowSuit, resolve4PTrickWinner } from "../rules/four-player";
-import { validate2PFollowSuit, resolve2PTrickWinner } from "../rules/two-player";
+import { validate2PFollowSuit, resolve2PTrickWinner, hasDealtStacks2P } from "../rules/two-player";
 import type { Card, GameState, PlayCardAction, PlayedCard, Seat, Trick, ValidationResult } from "../../types/index";
 
 // Validation
@@ -25,10 +25,7 @@ export function validatePlayCard({ state, action }: { state: GameState; action: 
 		if (state.game.turup === null) {
 			return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Cannot play cards before Turup is declared");
 		}
-		const hasDealtStacks = Object.values(state.stacks).some((pStacks) =>
-			pStacks.some((s) => s.faceUpCard !== null || s.hiddenCards.length > 0),
-		);
-		if (!hasDealtStacks) {
+		if (!hasDealtStacks2P(state)) {
 			return createValidationError(ENGINE_ERROR_CODES.INVALID_ACTION, "Cannot play cards before stacks are dealt");
 		}
 	}
