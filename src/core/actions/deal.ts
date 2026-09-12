@@ -260,4 +260,3 @@ export function reduceDealTwoPlayerStacks(state: GameState, action: DealTwoPlaye
 		nextMoveSeat: nonDealerSeat,
 	};
 }
-

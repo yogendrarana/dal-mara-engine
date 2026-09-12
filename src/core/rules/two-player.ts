@@ -169,4 +169,3 @@ export function getRemainingCards2P(
 	const baseDeck = originalDeck && originalDeck.length === 52 ? originalDeck : createDeck();
 	return baseDeck.filter((c) => !handCards.has(c));
 }
-
