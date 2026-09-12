@@ -1,4 +1,4 @@
-import { createDeck, createGame, dealFourPlayer, playCard, getCurrentPlayer, getLegalMoves, parseCard } from "../src";
+import { createDeck, createGame, dealFourPlayer, playCard, getCurrentPlayer, parseCard } from "../src";
 import { describe, expect, it } from "vitest";
 
 const deck = createDeck();

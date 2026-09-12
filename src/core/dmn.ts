@@ -1,6 +1,4 @@
-import { parseCard } from "./card";
 import { DalMaraError } from "./errors";
-import { createInitialScoreState } from "./scoring/scoring";
 
 import type {
 	Card,
@@ -14,7 +12,6 @@ import type {
 	Suit,
 	SuitAbbreviation,
 	Trick,
-	ScoreState,
 } from "../types/index";
 
 import { ABBREVIATION_TO_SUIT, ENGINE_ERROR_CODES, GAME_MODES, SUIT_ABBREVIATION } from "./const";

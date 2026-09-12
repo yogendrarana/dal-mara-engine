@@ -1,6 +1,6 @@
 import { compareCardRanks, parseCard } from "../card";
 import { RANKS, SUITS } from "../const";
-import type { Card, Ghopte, PlayedCard, Player, Seat, Suit, Trick } from "../../types/index";
+import type { Card, Ghopte, PlayedCard, Seat, Suit, Trick } from "../../types/index";
 
 /**
  * Get anti-clockwise next seat in square arrangement [P0, P1, P2, P3].

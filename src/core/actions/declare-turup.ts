@@ -1,7 +1,7 @@
 import { createValidationError } from "../errors";
 import { ENGINE_ERROR_CODES, GAME_MODES } from "../const";
 import { getCurrentTurnPlayer } from "../turn";
-import type { DeclareTurupAction, GameState, Seat, ValidationResult } from "../../types/index";
+import type { DeclareTurupAction, GameState, ValidationResult } from "../../types/index";
 
 // Validation
 
