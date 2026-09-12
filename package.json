@@ -6,6 +6,14 @@
 	"description": "Pure deterministic game engine and notation system for Dal Mara",
 	"license": "MIT",
 	"author": "Yogendra Rana <yogendrarana.dev@gmail.com>",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/yogendrarana/dal-mara-engine.git"
+	},
+	"bugs": {
+		"url": "https://github.com/yogendrarana/dal-mara-engine/issues"
+	},
+	"homepage": "https://github.com/yogendrarana/dal-mara-engine#readme",
 	"main": "./dist/index.cjs",
 	"module": "./dist/index.js",
 	"types": "./dist/index.d.ts",
