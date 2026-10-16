@@ -15,10 +15,10 @@ export interface PlayedCard {
 
 export interface Trick {
 	readonly number: number;
-	// 1-4 in a 4P trick, 1-2 in 2P mode
-	readonly playNumber: number;
+	readonly playNumber: number; // 1-4 in a 4P trick, 1-2 in 2P mode
 	readonly leadSuit: Suit | null;
 	readonly isGhopte: boolean;
+	readonly isTurupCreationTrick: boolean;
 	readonly cards: readonly PlayedCard[];
 }
 

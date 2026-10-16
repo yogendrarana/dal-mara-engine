@@ -108,6 +108,7 @@ export function serializeDMN(state: GameState): string {
 	const playNumber = state.trick.playNumber;
 	const leadSuitToken = suitToToken(state.trick.leadSuit);
 	const ghopteFlag = state.trick.isGhopte ? "g" : "-";
+	const turupCreationFlag = state.trick.isTurupCreationTrick ? "t" : "-";
 
 	let trickCardsToken: string;
 	if (state.trick.cards.length === 0) {
@@ -118,7 +119,7 @@ export function serializeDMN(state: GameState): string {
 		});
 		trickCardsToken = cardEntries.join("/");
 	}
-	const trickSection = `${trickNumber},${playNumber},${leadSuitToken},${ghopteFlag},${trickCardsToken}`;
+	const trickSection = `${trickNumber},${playNumber},${leadSuitToken},${ghopteFlag},${turupCreationFlag},${trickCardsToken}`;
 
 	// Section 7: Move Detail
 	let moveDetailSection: string;
@@ -244,16 +245,17 @@ export function parseDMN(dmn: string): GameState {
 	const moveNumber = parseInt(moveNumberRaw, 10);
 
 	// Section 6: Trick
-	// Format: <trick_number>,<play_number>,<lead_suit>,<ghopte_flag>,<trick_cards>
+	// Format: <trick_number>,<play_number>,<lead_suit>,<ghopte_flag>,<turup_creation_flag>,<trick_cards>
 	const trickParts = trickRaw.split(",");
 	const trickNumber = parseInt(trickParts[0], 10);
 	const playNumber = parseInt(trickParts[1], 10);
 	const leadSuit = tokenToSuit(trickParts[2]);
 	const ghopteFlag = trickParts[3] === "g";
+	const isTurupCreationTrick = trickParts[4] === "t";
 
-	// Trick cards: everything after the 4th comma is the trick cards portion
+	// Trick cards: everything after the 5th comma is the trick cards portion
 	// Format: <pos>:<card>/<pos>:<card>/...  or  -
-	const trickCardsPart = trickParts.slice(4).join(","); // rejoin in case card has no commas — but trick cards use / separator
+	const trickCardsPart = trickParts.slice(5).join(","); // rejoin in case card has no commas — but trick cards use / separator
 	const trickCards: PlayedCard[] = [];
 	if (trickCardsPart && trickCardsPart !== "-") {
 		const cardEntries = trickCardsPart.split("/");
@@ -276,6 +278,7 @@ export function parseDMN(dmn: string): GameState {
 		playNumber,
 		leadSuit,
 		isGhopte: ghopteFlag,
+		isTurupCreationTrick,
 		cards: trickCards,
 	};
 

@@ -115,6 +115,7 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 		playNumber: updatedTrickCards.length,
 		leadSuit: currentTrickLeadSuit,
 		isGhopte: true,
+		isTurupCreationTrick: false,
 		cards: updatedTrickCards,
 	};
 
@@ -148,6 +149,7 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 					playNumber: 0,
 					leadSuit: nextSuit,
 					isGhopte: true,
+					isTurupCreationTrick: false,
 					cards: [],
 				},
 				nextMoveSeat: nextGhopte.seat,
@@ -170,6 +172,7 @@ export function reducePlayGhopte4P(state: GameState, action: PlayGhopteAction): 
 				playNumber: 0,
 				leadSuit: null,
 				isGhopte: false,
+				isTurupCreationTrick: false,
 				cards: [],
 			},
 			nextMoveSeat: winnerPos,

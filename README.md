@@ -1,10 +1,22 @@
-# dal-mara-engine
+<h1 align="center">dal-mara-engine</h1>
 
-> Pure, deterministic, zero-dependency functional TypeScript card game engine and Dal Mara Notation (DMN) parser for **Dal Mara**—a traditional Nepali trick-taking card game.
+<p align="center">
+  <b>Pure, deterministic, zero-dependency functional card game engine and Dal Mara Notation (DMN) parser</b> for <b>Dal Mara</b>—a traditional Nepali trick-taking card game.
+</p>
 
-[![npm version](https://img.shields.io/npm/v/dal-mara-engine.svg)](https://www.npmjs.com/package/dal-mara-engine)
-[![npm downloads](https://img.shields.io/npm/dm/dal-mara-engine)](https://www.npmjs.com/package/dal-mara-engine)
-[![license](https://img.shields.io/npm/l/dal-mara-engine)](https://www.npmjs.com/package/dal-mara-engine)
+<p align="center">
+  <a href="https://www.npmjs.com/package/dal-mara-engine"><img src="https://img.shields.io/npm/v/dal-mara-engine.svg" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/dal-mara-engine"><img src="https://img.shields.io/npm/dm/dal-mara-engine" alt="npm downloads" /></a>
+  <a href="https://www.npmjs.com/package/dal-mara-engine"><img src="https://img.shields.io/npm/l/dal-mara-engine" alt="license" /></a>
+</p>
+
+<p align="center">
+  <a href="#overview">Overview</a> •
+  <a href="#features">Features</a> •
+  <a href="#installation">Installation</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#api-reference">API</a>
+</p>
 
 ---
 
@@ -164,7 +176,7 @@ For the official rules, trick-taking mechanics, Ghopte rounds, and winning condi
 
 ---
 
-## Functional Engine API Reference
+## API Reference
 
 All engine action and query functions accept either a serialized **DMN string** or a **`GameState` object** (`dmnOrState: string | GameState`).
 
