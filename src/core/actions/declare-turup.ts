@@ -52,6 +52,7 @@ export function reduceDeclareTurup2P(state: GameState, action: DeclareTurupActio
 			playNumber: 0,
 			leadSuit: null,
 			isGhopte: false,
+			isTurupCreationTrick: false,
 			cards: [],
 		},
 		nextMoveSeat: dealerSeat,

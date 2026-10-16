@@ -79,6 +79,7 @@ export function reduceDealFourPlayer(state: GameState, action: DealFourPlayerAct
 				playNumber: 0,
 				leadSuit: parseCard(activeGhopte.card).suit,
 				isGhopte: true,
+				isTurupCreationTrick: false,
 				cards: [],
 			},
 			moveDetail: {
@@ -102,6 +103,7 @@ export function reduceDealFourPlayer(state: GameState, action: DealFourPlayerAct
 			playNumber: 0,
 			leadSuit: null,
 			isGhopte: false,
+			isTurupCreationTrick: false,
 			cards: [],
 		},
 		moveDetail: {
@@ -176,6 +178,7 @@ export function reduceDealTwoPlayerHands(state: GameState, action: DealTwoPlayer
 			playNumber: 0,
 			leadSuit: null,
 			isGhopte: false,
+			isTurupCreationTrick: false,
 			cards: [],
 		},
 		moveDetail: {

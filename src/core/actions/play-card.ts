@@ -117,8 +117,8 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 	const hand = state.hands[playerSeat];
 	if (!hand) return state;
 
-	const playedCardObj = hand.find((c) => c === card);
-	if (!playedCardObj) return state;
+	const playedCard = hand.find((c) => c === card);
+	if (!playedCard) return state;
 
 	const updatedHands = {
 		...state.hands,
@@ -127,31 +127,34 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 
 	const playedCardItem: PlayedCard = {
 		seat: playerSeat,
-		card: playedCardObj,
+		card: playedCard,
 		playOrder: state.trick.cards.length + 1,
 	};
 
-	const cardSuit = parseCard(playedCardObj).suit;
+	const cardSuit = parseCard(playedCard).suit;
 	const isLead = state.trick.cards.length === 0;
 	const currentTrickLeadSuit = isLead ? cardSuit : state.trick.leadSuit;
 
 	let newTurup = state.game.turup;
+	let isTurupCreationTrick = state.trick.isTurupCreationTrick;
 
-	// Turup Creation & Override Logic (within the same trick):
-	const trickHasOffSuitCard = state.trick.cards.some((pc) => parseCard(pc.card).suit !== state.trick.leadSuit);
-	const turupFromPastTrick = state.game.turup !== null && !trickHasOffSuitCard;
+	// Turup Creation & Override Logic (4P):
+	const isOffSuit = cardSuit !== currentTrickLeadSuit;
 
-	if (!turupFromPastTrick) {
-		const isOffSuit = cardSuit !== currentTrickLeadSuit;
-		if (isOffSuit) {
-			if (!newTurup) {
-				// First time turup is created in this trick
-				newTurup = cardSuit;
-			} else if (newTurup !== cardSuit) {
-				// Turup was created in this same trick. Check if player can override it.
-				const playerHand = updatedHands[playerSeat] ?? [];
-				const hasExistingTurupInHand = playerHand.some((c) => parseCard(c).suit === newTurup);
-				if (!hasExistingTurupInHand) {
+	if (isOffSuit) {
+		if (!state.game.turup) {
+			// First time an off-suit card is played in the game: establishes brand new Turup
+			newTurup = cardSuit;
+			isTurupCreationTrick = true;
+		} else if (state.trick.isTurupCreationTrick) {
+			// We are in the same trick where Turup was created/established.
+			// A player who has neither the Lead Suit nor the current Turup suit may play any other suit to override.
+			// If the player holds cards of the current Turup suit, they may play off-suit to preserve Turup, which does NOT override Turup.
+			if (cardSuit !== newTurup) {
+				const remainingHand = hand.filter((c) => c !== card);
+				const hasTurupInHand = remainingHand.some((c) => parseCard(c).suit === newTurup);
+
+				if (!hasTurupInHand) {
 					newTurup = cardSuit;
 				}
 			}
@@ -169,6 +172,7 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 		playNumber: updatedTrickCards.length,
 		leadSuit: currentTrickLeadSuit,
 		isGhopte: false,
+		isTurupCreationTrick,
 		cards: updatedTrickCards,
 	};
 
@@ -193,7 +197,7 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 				moveNumber: newMoveNumber,
 				moveDetail: {
 					seat: playerSeat,
-					card: playedCardObj,
+					card: playedCard,
 					makesTurup,
 				},
 				trick: {
@@ -201,6 +205,7 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 					playNumber: 4,
 					leadSuit: currentTrickLeadSuit,
 					isGhopte: false,
+					isTurupCreationTrick,
 					cards: [],
 				},
 				nextMoveSeat: winnerPos,
@@ -217,7 +222,7 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 			moveNumber: newMoveNumber,
 			moveDetail: {
 				seat: playerSeat,
-				card: playedCardObj,
+				card: playedCard,
 				makesTurup,
 			},
 			trick: {
@@ -225,6 +230,7 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 				playNumber: 0,
 				leadSuit: null,
 				isGhopte: false,
+				isTurupCreationTrick: false,
 				cards: [],
 			},
 			nextMoveSeat: winnerPos,
@@ -244,7 +250,7 @@ export function reducePlayCard4P(state: GameState, action: PlayCardAction): Game
 		moveNumber: newMoveNumber,
 		moveDetail: {
 			seat: playerSeat,
-			card: playedCardObj,
+			card: playedCard,
 			makesTurup,
 		},
 		trick: currentTrickSnapshot,
@@ -261,7 +267,7 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 	if (!currentPlayer) return state;
 	const playerSeat = currentPlayer.seat;
 
-	let playedCardObj: Card | null = null;
+	let playedCard: Card | null = null;
 	const updatedHands = { ...state.hands };
 	const updatedStacks = { ...state.stacks };
 	const playerStacks = [...(updatedStacks[playerSeat] ?? [])];
@@ -271,7 +277,7 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 	if (targetStackIndex >= 0 && targetStackIndex < playerStacks.length) {
 		const stack = playerStacks[targetStackIndex];
 		if (stack?.faceUpCard && stack.faceUpCard === card) {
-			playedCardObj = stack.faceUpCard;
+			playedCard = stack.faceUpCard;
 			const newHidden = [...stack.hiddenCards];
 			const nextFaceUp = newHidden.pop() ?? null;
 
@@ -286,25 +292,25 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 	}
 
 	// 2. Play from hand if not played from stack
-	if (!playedCardObj) {
+	if (!playedCard) {
 		const hand = updatedHands[playerSeat] ?? [];
-		playedCardObj = hand.find((c) => c === card) ?? null;
+		playedCard = hand.find((c) => c === card) ?? null;
 
-		if (playedCardObj) {
+		if (playedCard) {
 			updatedHands[playerSeat] = hand.filter((c) => c !== card);
 		}
 	}
 
 	// If card to play is not owned or invalid, return state directly
-	if (!playedCardObj) return state;
+	if (!playedCard) return state;
 
 	const playedCardItem: PlayedCard = {
 		seat: playerSeat,
-		card: playedCardObj,
+		card: playedCard,
 		playOrder: state.trick.cards.length + 1,
 	};
 
-	const cardSuit = parseCard(playedCardObj).suit;
+	const cardSuit = parseCard(playedCard).suit;
 	const isLead = state.trick.cards.length === 0;
 	const currentTrickLeadSuit = isLead ? cardSuit : state.trick.leadSuit;
 
@@ -318,6 +324,7 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 		playNumber: currentTrickCards.length,
 		leadSuit: currentTrickLeadSuit,
 		isGhopte: false,
+		isTurupCreationTrick: false,
 		cards: currentTrickCards,
 	};
 
@@ -342,7 +349,7 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 				moveNumber: newMoveNumber,
 				moveDetail: {
 					seat: playerSeat,
-					card: playedCardObj,
+					card: playedCard,
 					makesTurup: false,
 				},
 				trick: {
@@ -350,6 +357,7 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 					playNumber: 2,
 					leadSuit: currentTrickLeadSuit,
 					isGhopte: false,
+					isTurupCreationTrick: false,
 					cards: [],
 				},
 				nextMoveSeat: winnerPos,
@@ -363,7 +371,7 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 			moveNumber: newMoveNumber,
 			moveDetail: {
 				seat: playerSeat,
-				card: playedCardObj,
+				card: playedCard,
 				makesTurup: false,
 			},
 			trick: {
@@ -371,6 +379,7 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 				playNumber: 0,
 				leadSuit: null,
 				isGhopte: false,
+				isTurupCreationTrick: false,
 				cards: [],
 			},
 			nextMoveSeat: winnerPos,
@@ -387,7 +396,7 @@ export function reducePlayCard2P(state: GameState, action: PlayCardAction): Game
 		moveNumber: newMoveNumber,
 		moveDetail: {
 			seat: playerSeat,
-			card: playedCardObj,
+			card: playedCard,
 			makesTurup: false,
 		},
 		trick: currentTrickSnapshot,

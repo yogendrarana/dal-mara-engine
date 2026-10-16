@@ -245,8 +245,8 @@ describe("Dal Mara Notation (DMN) - Pipe-Separated Format", () => {
 		const sections = playResult.dmn.split(" | ");
 		const trickParts = sections[5].split(",");
 
-		// Trick cards (5th element onwards): format is <seat>:<card>
-		const trickCardsPart = trickParts.slice(4).join(",");
+		// Trick cards (6th element onwards): format is <seat>:<card>
+		const trickCardsPart = trickParts.slice(5).join(",");
 		expect(trickCardsPart).toContain(":");
 		expect(trickCardsPart).toContain(String(player.seat));
 	});
@@ -254,7 +254,7 @@ describe("Dal Mara Notation (DMN) - Pipe-Separated Format", () => {
 	it("should encode and decode ghoptes in position-grouped format", () => {
 		// Craft a DMN string with ghoptes to test parsing
 		const dmnWithGhopte =
-			"4p,0,- | -/10s,1,-/-/10h,2,- | 2s,3s,4s,5s,6s,7s,8s,9s,Js,Qs,Ks,As,2h/3h,4h,5h,6h,7h,8h,9h,Jh,Qh,Kh,Ah,2d,3d/4d,5d,6d,7d,8d,9d,10d,Jd,Qd,Kd,Ad,2c,3c/4c,5c,6c,7c,8c,9c,10c,Jc,Qc,Kc,Ac,10s,10h | - | 0 | 1,0,-,-,- | -,-,- | 1";
+			"4p,0,- | -/10s,1,-/-/10h,2,- | 2s,3s,4s,5s,6s,7s,8s,9s,Js,Qs,Ks,As,2h/3h,4h,5h,6h,7h,8h,9h,Jh,Qh,Kh,Ah,2d,3d/4d,5d,6d,7d,8d,9d,10d,Jd,Qd,Kd,Ad,2c,3c/4c,5c,6c,7c,8c,9c,10c,Jc,Qc,Kc,Ac,10s,10h | - | 0 | 1,0,-,-,-,- | -,-,- | 1";
 
 		const parsed = parseDMN(dmnWithGhopte);
 		expect(parsed.ghoptes.length).toBeGreaterThan(0);

@@ -27,6 +27,7 @@ export function createInitialState(options: { mode: GameMode; players: readonly 
 			playNumber: 0,
 			leadSuit: null,
 			isGhopte: false,
+			isTurupCreationTrick: false,
 			cards: [],
 		},
 		moveDetail: {

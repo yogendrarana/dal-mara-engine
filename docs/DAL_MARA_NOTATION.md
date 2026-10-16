@@ -206,13 +206,13 @@ The trick section describes the current trick context and cards played so far in
 
 Format:
 
-<trick_number>,<play_number>,<lead_suit>,<ghopte_flag>,<trick_cards>
+<trick_number>,<play_number>,<lead_suit>,<ghopte_flag>,<turup_creation_flag>,<trick_cards>
 
 Examples:
 
-3,2,h,-,1:Kh/2:4h
-5,1,-,g,-
-1,0,-,-,-
+3,2,h,-,-,1:Kh/2:4h
+5,1,-,g,-,-
+1,0,-,-,-,-
 
 Values:
 
@@ -229,6 +229,10 @@ Suit established by the lead card of the trick (- if no lead card yet).
 ghopte_flag:
 - = normal trick
 g = ghopte trick
+
+turup_creation_flag:
+- = normal trick (not a Turup creation trick)
+t = Turup creation trick (trick in which Turup was established / can be overridden)
 
 trick_cards:
 Cards played to this trick in order, formatted as `<seat>:<card>`, separated by `/`. If no cards have been played to the trick yet, this is `-`.
